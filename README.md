@@ -3,7 +3,7 @@
 [![PyPI Latest Release](https://img.shields.io/pypi/v/matplotlib-pyodide.svg)](https://pypi.org/project/micropip/)
 ![GHA](https://github.com/pyodide/micropip/actions/workflows/main.yml/badge.svg)
 
-A lightweight Python package installer for the web
+A lightweight Python package installer for the web 
 
 ## Installation
 
