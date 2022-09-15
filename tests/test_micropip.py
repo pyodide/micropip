@@ -771,8 +771,9 @@ async def test_load_binary_wheel1(
 @pytest.mark.skip_refcount_check
 @run_in_pyodide(packages=["micropip"])
 async def test_load_binary_wheel2(selenium):
-    import micropip
     from pyodide_js._api import repodata_packages
+
+    import micropip
 
     await micropip.install(repodata_packages.regex.file_name)
     import regex  # noqa: F401
@@ -813,8 +814,9 @@ def test_emfs(selenium_standalone_micropip):
 
         @run_in_pyodide(packages=["micropip"])
         async def run_test(selenium, url, wheel_name):
-            import micropip
             from pyodide.http import pyfetch
+
+            import micropip
 
             resp = await pyfetch(url + wheel_name)
             await resp._into_file(open(wheel_name, "wb"))
