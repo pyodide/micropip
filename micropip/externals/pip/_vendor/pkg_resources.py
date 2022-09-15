@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Package resource API
 --------------------
@@ -15,26 +14,22 @@ The package resource API is designed to work with normal filesystem packages,
 method.
 """
 
-from __future__ import absolute_import
 
-import sys
-import re
-import warnings
 import email.parser
+import re
+import sys
 import urllib
+import warnings
 
 try:
     FileExistsError
 except NameError:
     FileExistsError = OSError
 
-import packaging.version
-import packaging.specifiers
-import packaging.requirements
 import packaging.markers
-
-
-__metaclass__ = type
+import packaging.requirements
+import packaging.specifiers
+import packaging.version
 
 
 class PEP440Warning(RuntimeWarning):
@@ -311,7 +306,9 @@ class Distribution:
             try:
                 deps.extend(dm[safe_extra(ext)])
             except KeyError:
-                raise UnknownExtra("%s has no such extra feature %r" % (self, ext))
+                raise UnknownExtra(
+                    "{} has no such extra feature {!r}".format(self, ext)
+                )
         return deps
 
     def _get_metadata_path_for_display(self, name):
@@ -333,8 +330,7 @@ class Distribution:
 
     def _get_metadata(self, name):
         if self.has_metadata(name):
-            for line in self.get_metadata_lines(name):
-                yield line
+            yield from self.get_metadata_lines(name)
 
     def _get_version(self):
         lines = self._get_metadata(self.PKG_INFO)
@@ -344,7 +340,7 @@ class Distribution:
 
     def __repr__(self):
         if self.location:
-            return "%s (%s)" % (self, self.location)
+            return "{} ({})".format(self, self.location)
         else:
             return str(self)
 
@@ -354,7 +350,7 @@ class Distribution:
         except ValueError:
             version = None
         version = version or "[unknown version]"
-        return "%s %s" % (self.project_name, version)
+        return "{} {}".format(self.project_name, version)
 
     def __getattr__(self, attr):
         """Delegate all unrecognized public attributes to .metadata provider"""
@@ -364,8 +360,8 @@ class Distribution:
 
     def __dir__(self):
         return list(
-            set(super(Distribution, self).__dir__())
-            | set(attr for attr in self._provider.__dir__() if not attr.startswith("_"))
+            set(super().__dir__())
+            | {attr for attr in self._provider.__dir__() if not attr.startswith("_")}
         )
 
     if not hasattr(object, "__dir__"):
@@ -458,7 +454,7 @@ class Requirement(packaging.requirements.Requirement):
     def __init__(self, requirement_string):
         """DO NOT CALL THIS UNDOCUMENTED METHOD; use Requirement.parse()!"""
         try:
-            super(Requirement, self).__init__(requirement_string)
+            super().__init__(requirement_string)
         except packaging.requirements.InvalidRequirement as e:
             raise RequirementParseError(str(e))
         self.unsafe_name = self.name

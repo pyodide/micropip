@@ -1,4 +1,5 @@
-from typing import Dict, Iterable, List
+from typing import Dict, List
+from collections.abc import Iterable
 
 from ..._vendor.pkg_resources import yield_lines
 

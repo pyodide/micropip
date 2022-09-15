@@ -8,6 +8,7 @@ from typing import Dict, Tuple
 from zipfile import BadZipFile, ZipFile
 
 from packaging.utils import canonicalize_name
+
 from ..._vendor.pkg_resources import DistInfoDistribution, Distribution
 from .pkg_resources import DictMetadata
 
@@ -62,7 +63,7 @@ def pkg_resources_distribution_for_wheel(wheel_zip, name, location):
         try:
             metadata_text[metadata_name] = read_wheel_metadata_file(wheel_zip, path)
         except UnsupportedWheel as e:
-            raise UnsupportedWheel("{} has an invalid wheel, {}".format(name, str(e)))
+            raise UnsupportedWheel(f"{name} has an invalid wheel, {str(e)}")
 
     metadata = WheelMetadata(metadata_text, location)
 
@@ -81,7 +82,7 @@ def parse_wheel(wheel_zip, name):
         metadata = wheel_metadata(wheel_zip, info_dir)
         version = wheel_version(metadata)
     except UnsupportedWheel as e:
-        raise UnsupportedWheel("{} has an invalid wheel, {}".format(name, str(e)))
+        raise UnsupportedWheel(f"{name} has an invalid wheel, {str(e)}")
 
     check_compatibility(version, name)
 
