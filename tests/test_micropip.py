@@ -26,11 +26,10 @@ def platform() -> str:
     version = EMSCRIPTEN_VER.replace(".", "_")
     return f"emscripten_{version}_wasm32"
 
+
 PLATFORM = platform()
 
 cpver = f"cp{sys.version_info.major}{sys.version_info.minor}"
-
-
 
 
 @pytest.fixture
@@ -850,8 +849,6 @@ def does_not_raise():
 
 def raiseValueError(msg):
     return pytest.raises(ValueError, match=msg)
-
-
 
 
 @pytest.mark.parametrize(
