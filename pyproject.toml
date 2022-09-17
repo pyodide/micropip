@@ -1,3 +1,25 @@
+[project]
+name = "micropip"
+authors = [
+  { name="Pyodide developers"},
+]
+description = "A lightweight Python package installer for the web "
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: OS Independent",
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/pyodide/micropip"
+"Bug Tracker" = "https://github.com/pyodide/micropip/issues"
+
+
+
 [build-system]
 requires = ["setuptools>=42", "setuptools_scm[toml]>=6.2"]
 
@@ -5,6 +27,7 @@ build-backend = "setuptools.build_meta"
 
 # Evable versioning via setuptools_scm
 [tool.setuptools_scm]
+write_to = "micropip/_version.py"
 
 [tool.pycln]
 all = true

@@ -19,17 +19,26 @@ try:
 except ImportError:
     pass
 
-from pyodide_build import common
+EMSCRIPTEN_VER = "3.1.14"
+
+# Vendored from pyodide_build.common
+def platform() -> str:
+    version = EMSCRIPTEN_VER.replace(".", "_")
+    return f"emscripten_{version}_wasm32"
+
+PLATFORM = platform()
 
 cpver = f"cp{sys.version_info.major}{sys.version_info.minor}"
 
 
+
+
 @pytest.fixture
 def mock_platform(monkeypatch):
-    monkeypatch.setenv("_PYTHON_HOST_PLATFORM", common.platform())
+    monkeypatch.setenv("_PYTHON_HOST_PLATFORM", platform())
     from micropip import _micropip
 
-    monkeypatch.setattr(_micropip, "get_platform", common.platform)
+    monkeypatch.setattr(_micropip, "get_platform", platform)
 
 
 def _mock_importlib_version(name: str) -> str:
@@ -82,7 +91,7 @@ def make_wheel_filename(name: str, version: str, platform: str = "generic") -> s
     if platform == "generic":
         platform_str = "py3-none-any"
     elif platform == "emscripten":
-        platform_str = f"{cpver}-{cpver}-{common.platform()}"
+        platform_str = f"{cpver}-{cpver}-{platform()}"
     elif platform == "native":
         platform_str = f"{cpver}-{cpver}-manylinux_2_31_x86_64"
     else:
@@ -843,8 +852,6 @@ def raiseValueError(msg):
     return pytest.raises(ValueError, match=msg)
 
 
-PLATFORM = common.platform()
-EMSCRIPTEN_VER = common.emscripten_version()
 
 
 @pytest.mark.parametrize(
