@@ -13,6 +13,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dynamic = ["version"]
+dependencies = []
+[project.optional-dependencies]
+test = [
+  "pytest-pyodide",
+  "pytest-cov"
+]
+
 
 [project.urls]
 "Homepage" = "https://github.com/pyodide/micropip"
