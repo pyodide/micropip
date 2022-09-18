@@ -281,7 +281,7 @@ def test_parse_wheel_url3():
 def test_install_custom_url(selenium_standalone_micropip, base_url):
     selenium = selenium_standalone_micropip
 
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
@@ -334,7 +334,7 @@ async def test_add_requirement():
     pytest.importorskip("packaging")
     from micropip._micropip import Transaction
 
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
@@ -817,7 +817,7 @@ async def test_freeze(mock_fetch: mock_fetch_cls) -> None:
 
 
 def test_emfs(selenium_standalone_micropip):
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         url = f"http://{server_hostname}:{server_port}/"
 

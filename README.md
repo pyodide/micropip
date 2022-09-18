@@ -1,13 +1,13 @@
 # micropip
 
-[![PyPI Latest Release](https://img.shields.io/pypi/v/matplotlib-pyodide.svg)](https://pypi.org/project/micropip/)
+[![PyPI Latest Release](https://img.shields.io/pypi/v/micropip.svg)](https://pypi.org/project/micropip/)
 ![GHA](https://github.com/pyodide/micropip/actions/workflows/main.yml/badge.svg)
 
 A lightweight Python package installer for the web
 
 ## Installation
 
-In Pyodide, you can install micropip,
+In [Pyodide](https://pyodide.org), you can install micropip,
  - either implicitly by importing it in the REPL
  - or explicitly via `pyodide.loadPackage('micropip')`. You can also install by URL from PyPI for instance.
 
