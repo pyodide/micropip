@@ -682,7 +682,7 @@ async def test_list_wheel_name_mismatch(mock_fetch: mock_fetch_cls) -> None:
 
 
 def test_list_load_package_from_url(selenium_standalone_micropip):
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
