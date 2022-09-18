@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 import pytest
 from pytest_pyodide import run_in_pyodide, spawn_web_server
 
-sys.path.append(str(Path(__file__).resolve().parent / "src"))
+sys.path.append(str(Path(__file__).resolve().parent / "vendored"))
 
 from importlib.metadata import Distribution, PackageNotFoundError
 
@@ -19,17 +19,26 @@ try:
 except ImportError:
     pass
 
-from pyodide_build import common
+EMSCRIPTEN_VER = "3.1.14"
+
+
+def _platform() -> str:
+    # Vendored from pyodide_build.common
+    version = EMSCRIPTEN_VER.replace(".", "_")
+    return f"emscripten_{version}_wasm32"
+
+
+PLATFORM = _platform()
 
 cpver = f"cp{sys.version_info.major}{sys.version_info.minor}"
 
 
 @pytest.fixture
 def mock_platform(monkeypatch):
-    monkeypatch.setenv("_PYTHON_HOST_PLATFORM", common.platform())
+    monkeypatch.setenv("_PYTHON_HOST_PLATFORM", _platform())
     from micropip import _micropip
 
-    monkeypatch.setattr(_micropip, "get_platform", common.platform)
+    monkeypatch.setattr(_micropip, "get_platform", _platform)
 
 
 def _mock_importlib_version(name: str) -> str:
@@ -82,7 +91,7 @@ def make_wheel_filename(name: str, version: str, platform: str = "generic") -> s
     if platform == "generic":
         platform_str = "py3-none-any"
     elif platform == "emscripten":
-        platform_str = f"{cpver}-{cpver}-{common.platform()}"
+        platform_str = f"{cpver}-{cpver}-{_platform()}"
     elif platform == "native":
         platform_str = f"{cpver}-{cpver}-manylinux_2_31_x86_64"
     else:
@@ -272,7 +281,7 @@ def test_parse_wheel_url3():
 def test_install_custom_url(selenium_standalone_micropip, base_url):
     selenium = selenium_standalone_micropip
 
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
@@ -325,7 +334,7 @@ async def test_add_requirement():
     pytest.importorskip("packaging")
     from micropip._micropip import Transaction
 
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
@@ -673,7 +682,7 @@ async def test_list_wheel_name_mismatch(mock_fetch: mock_fetch_cls) -> None:
 
 
 def test_list_load_package_from_url(selenium_standalone_micropip):
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
@@ -808,7 +817,7 @@ async def test_freeze(mock_fetch: mock_fetch_cls) -> None:
 
 
 def test_emfs(selenium_standalone_micropip):
-    with spawn_web_server(Path(__file__).parent / "test") as server:
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
         server_hostname, server_port, _ = server
         url = f"http://{server_hostname}:{server_port}/"
 
@@ -841,10 +850,6 @@ def does_not_raise():
 
 def raiseValueError(msg):
     return pytest.raises(ValueError, match=msg)
-
-
-PLATFORM = common.platform()
-EMSCRIPTEN_VER = common.emscripten_version()
 
 
 @pytest.mark.parametrize(
