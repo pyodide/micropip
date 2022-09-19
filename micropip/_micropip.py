@@ -19,17 +19,18 @@ from packaging.requirements import Requirement
 from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import Version
-from pyodide._package_loader import get_dynlibs, wheel_dist_info_dir
-from pyodide.ffi import to_js
 
 from ._compat import (
     REPODATA_INFO,
     REPODATA_PACKAGES,
     fetch_bytes,
     fetch_string,
+    get_dynlibs,
     loadDynlib,
     loadedPackages,
     loadPackage,
+    to_js,
+    wheel_dist_info_dir,
 )
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageDict, PackageMetadata
