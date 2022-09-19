@@ -1,4 +1,6 @@
-from pyodide._core import IN_BROWSER
+import sys
+
+IN_BROWSER = "_pyodide_core" in sys.modules
 
 if IN_BROWSER:
     from ._compat_in_pyodide import (
