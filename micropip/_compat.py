@@ -1,4 +1,6 @@
-from pyodide._core import IN_BROWSER
+import sys
+
+IN_BROWSER = "_pyodide_core" in sys.modules
 
 if IN_BROWSER:
     from ._compat_in_pyodide import (
@@ -6,9 +8,12 @@ if IN_BROWSER:
         REPODATA_PACKAGES,
         fetch_bytes,
         fetch_string,
+        get_dynlibs,
         loadDynlib,
         loadedPackages,
         loadPackage,
+        to_js,
+        wheel_dist_info_dir,
     )
 else:
     from ._compat_not_in_pyodide import (
@@ -16,9 +21,12 @@ else:
         REPODATA_PACKAGES,
         fetch_bytes,
         fetch_string,
+        get_dynlibs,
         loadDynlib,
         loadedPackages,
         loadPackage,
+        to_js,
+        wheel_dist_info_dir,
     )
 
 __all__ = [
@@ -29,4 +37,7 @@ __all__ = [
     "loadedPackages",
     "loadDynlib",
     "loadPackage",
+    "get_dynlibs",
+    "wheel_dist_info_dir",
+    "to_js",
 ]
