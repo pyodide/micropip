@@ -89,8 +89,10 @@ def make_wheel_filename(name: str, version: str, platform: str = "generic") -> s
         platform_str = "py3-none-any"
     elif platform == "emscripten":
         platform_str = f"{cpver}-{cpver}-{_platform()}"
-    elif platform == "native":
+    elif platform == "linux":
         platform_str = f"{cpver}-{cpver}-manylinux_2_31_x86_64"
+    elif platform == "windows":
+        platform_str = f"{cpver}-{cpver}-win_amd64"
     else:
         platform_str = platform
 
@@ -547,8 +549,8 @@ async def test_install_keep_going(mock_fetch: mock_fetch_cls) -> None:
     dep1 = "dep1"
     dep2 = "dep2"
     mock_fetch.add_pkg_version(dummy, requirements=[dep1, dep2])
-    mock_fetch.add_pkg_version(dep1, platform="native")
-    mock_fetch.add_pkg_version(dep2, platform="native")
+    mock_fetch.add_pkg_version(dep1, platform="windows")
+    mock_fetch.add_pkg_version(dep2, platform="windows")
 
     # report order is non-deterministic
     msg = f"({dep1}|{dep2}).*({dep2}|{dep1})"
