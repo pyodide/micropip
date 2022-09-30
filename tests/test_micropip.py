@@ -93,6 +93,8 @@ def make_wheel_filename(name: str, version: str, platform: str = "generic") -> s
         platform_str = f"{cpver}-{cpver}-manylinux_2_31_x86_64"
     elif platform == "windows":
         platform_str = f"{cpver}-{cpver}-win_amd64"
+    elif platform == "invalid":
+        platform_str = f"{cpver}-{cpver}-invalid"
     else:
         platform_str = platform
 
@@ -549,8 +551,8 @@ async def test_install_keep_going(mock_fetch: mock_fetch_cls) -> None:
     dep1 = "dep1"
     dep2 = "dep2"
     mock_fetch.add_pkg_version(dummy, requirements=[dep1, dep2])
-    mock_fetch.add_pkg_version(dep1, platform="windows")
-    mock_fetch.add_pkg_version(dep2, platform="windows")
+    mock_fetch.add_pkg_version(dep1, platform="invalid")
+    mock_fetch.add_pkg_version(dep2, platform="invalid")
 
     # report order is non-deterministic
     msg = f"({dep1}|{dep2}).*({dep2}|{dep1})"
