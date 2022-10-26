@@ -195,17 +195,48 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
     return result
 
 
+@pytest.fixture(scope="function")
+def install_wheel(selenium):
+    wheel_dir = Path(__file__).parent / "wheel"
+    wheel_files = list(wheel_dir.glob("*.whl"))
+
+    if not wheel_files:
+        pytest.exit("No wheel files found in wheel/ directory")
+
+    wheel_file = wheel_files[0]
+    with spawn_web_server(wheel_dir) as server:
+        server_hostname, server_port, _ = server
+        base_url = f"http://{server_hostname}:{server_port}/"
+        selenium.run_js(
+            f"""
+            await pyodide.loadPackage("{base_url + wheel_file.name}");
+            """
+        )
+
+
 @pytest.fixture
 def selenium_standalone_micropip(selenium_standalone):
     """Import micropip before entering test so that global initialization of
     micropip doesn't count towards hiwire refcount.
     """
-    selenium_standalone.run_js(
-        """
-        await pyodide.loadPackage("micropip");
-        pyodide.runPython("import micropip");
-        """
-    )
+
+    wheel_dir = Path(__file__).parent / "wheel"
+    wheel_files = list(wheel_dir.glob("*.whl"))
+
+    if not wheel_files:
+        pytest.exit("No wheel files found in wheel/ directory")
+
+    wheel_file = wheel_files[0]
+    with spawn_web_server(wheel_dir) as server:
+        server_hostname, server_port, _ = server
+        base_url = f"http://{server_hostname}:{server_port}/"
+        selenium_standalone.run_js(
+            f"""
+            await pyodide.loadPackage("{base_url + wheel_file.name}");
+            pyodide.runPython("import micropip");
+            """
+        )
+
     yield selenium_standalone
 
 
