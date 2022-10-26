@@ -36,6 +36,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "micropip/_version.py"
 
+[tool.setuptools]
+py-modules = ["micropip"]
+
 [tool.pycln]
 all = true
 
