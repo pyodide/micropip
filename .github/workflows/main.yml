@@ -77,12 +77,6 @@ jobs:
           path: dist
           key: pyodide-${{ matrix.pyodide-version }}-${{ hashFiles('.github/**/*.yml') }}
 
-      - name: Build wheel
-        shell: bash -l {0}
-        run: |
-          python -m pip install build
-          python -m build . --outdir wheel
-
       - name: Run tests
         shell: bash -l {0}
         run: |
