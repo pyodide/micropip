@@ -198,12 +198,18 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
 @pytest.fixture(scope="module")
 def wheel_path(tmp_path_factory):
     # Build a micropip wheel for testing
+    from build.env import IsolatedEnvBuilder
+
     import build
 
     output_dir = tmp_path_factory.mktemp("wheel")
 
-    builder = build.ProjectBuilder(Path(__file__).parent.parent)
-    builder.build("wheel", output_directory=output_dir)
+    with IsolatedEnvBuilder() as env:
+        builder = build.ProjectBuilder(Path(__file__).parent.parent)
+        builder.python_executable = env.executable
+        builder.scripts_dir = env.scripts_dir
+        env.install(builder.build_system_requires)
+        builder.build("wheel", output_directory=output_dir)
 
     yield output_dir
 
