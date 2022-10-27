@@ -17,7 +17,8 @@ dependencies = []
 [project.optional-dependencies]
 test = [
   "pytest-pyodide",
-  "pytest-cov"
+  "pytest-cov",
+  "build",
 ]
 
 

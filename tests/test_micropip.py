@@ -195,13 +195,26 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
     return result
 
 
+@pytest.fixture(scope="module")
+def wheel_path(tmp_path_factory):
+    # Build a micropip wheel for testing
+    import build
+
+    output_dir = tmp_path_factory.mktemp("wheel")
+
+    builder = build.ProjectBuilder(Path(__file__).parent.parent)
+    builder.build("wheel", output_directory=output_dir)
+
+    yield output_dir
+
+
 @pytest.fixture
-def selenium_standalone_micropip(selenium_standalone):
+def selenium_standalone_micropip(selenium_standalone, wheel_path):
     """Import micropip before entering test so that global initialization of
     micropip doesn't count towards hiwire refcount.
     """
 
-    wheel_dir = Path(__file__).parent.parent / "wheel"
+    wheel_dir = Path(wheel_path)
     wheel_files = list(wheel_dir.glob("*.whl"))
 
     if not wheel_files:
