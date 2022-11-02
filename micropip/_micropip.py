@@ -288,6 +288,7 @@ class Transaction:
     deps: bool
     pre: bool
     fetch_kwargs: dict[str, str]
+    skip_deps: list[str]
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
     wheels: list[WheelInfo] = field(default_factory=list)
@@ -346,6 +347,9 @@ class Transaction:
         See PEP 508 for a description of the requirements.
         https://www.python.org/dev/peps/pep-0508
         """
+        if req.name in self.skip_deps:
+            # don't install any dependencies we've been told to ignore
+            return
         for e in req.extras:
             self.ctx_extras.append({"extra": e})
 
@@ -443,6 +447,7 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
+    skip_deps: list[str]=[],
 ) -> None:
     """Install the given package and all of its dependencies.
 
@@ -514,6 +519,11 @@ async def install(
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
+    skip_deps: ``Optional[list[str]]``
+
+        This parameter specifies a list of packages which should not be installed 
+        if they are in the dependency tree.
+
     Returns
     -------
     ``Future``
@@ -544,6 +554,7 @@ async def install(
         deps=deps,
         pre=pre,
         fetch_kwargs=fetch_kwargs,
+        skip_deps=skip_deps
     )
     await transaction.gather_requirements(requirements)
 
