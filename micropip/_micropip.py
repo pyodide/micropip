@@ -447,7 +447,7 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
-    skip_deps: list[str]=[],
+    skip_deps: list[str] = [],
 ) -> None:
     """Install the given package and all of its dependencies.
 
@@ -521,7 +521,7 @@ async def install(
 
     skip_deps: ``Optional[list[str]]``
 
-        This parameter specifies a list of packages which should not be installed 
+        This parameter specifies a list of packages which should not be installed
         if they are in the dependency tree.
 
     Returns
@@ -554,7 +554,7 @@ async def install(
         deps=deps,
         pre=pre,
         fetch_kwargs=fetch_kwargs,
-        skip_deps=skip_deps
+        skip_deps=skip_deps,
     )
     await transaction.gather_requirements(requirements)
 
