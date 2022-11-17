@@ -46,7 +46,7 @@ from .package import PackageDict, PackageMetadata
 
 
 
-async def _get_pypi_json(pkgname: str, fetch_kwargs: "dict[str, str]") -> Any:
+async def _get_pypi_json(pkgname: str, fetch_kwargs: dict[str, str]) -> Any:
     url = f"https://pypi.org/pypi/{pkgname}/json"
     try:
         metadata = await fetch_string(url, fetch_kwargs)
