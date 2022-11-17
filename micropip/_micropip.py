@@ -764,4 +764,3 @@ Author-email: {name}@micro.pip.non-working-fake-host
             init_file = dir_path / "__init__.py"
             with open(init_file, "w") as f:
                 f.write(s)
-                print(dir_path)
