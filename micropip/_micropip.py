@@ -814,6 +814,7 @@ Author-email: {name}@micro.pip.non-working-fake-host
         INSTALLER = "micropip in-memory mock package"
         metafiles = {"METADATA": METADATA, "INSTALLER": INSTALLER}
         _mock_package.add_in_memory_distribution(name, metafiles, modules)
+    importlib.invalidate_caches()
 
 
 def list_mock_packages() -> list[str]:
