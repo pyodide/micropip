@@ -1,6 +1,6 @@
 import importlib.abc
-import importlib.machinery
 import importlib.metadata
+import importlib.util
 import sys
 from collections.abc import Callable
 
@@ -51,8 +51,12 @@ class _MockModuleFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         return spec
 
     def create_module(self, spec):
-        # let the default module creation occur
-        return None
+        if spec.name in _mock_modules:
+            from types import ModuleType
+
+            module = ModuleType(spec.name)
+            module.__path__ = "/micropip_mocks/" + module.__name__.replace(".", "/")
+            return module
 
     def exec_module(self, module):
         init_object = _mock_modules[module.__name__]
@@ -66,8 +70,7 @@ class _MockModuleFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
     def find_spec(self, fullname, path=None, target=None):
         if fullname not in _mock_modules.keys():
             return None
-
-        spec = importlib.machinery.ModuleSpec(fullname, self)
+        spec = importlib.util.spec_from_loader(fullname, self)
         return spec
 
 
@@ -88,5 +91,7 @@ def _add_mock_module(name, obj):
 def remove_in_memory_distribution(name):
     if name in _mock_distributions:
         for module in _mock_distributions[name].modules.keys():
+            if module in sys.modules:
+                del sys.modules[module]
             del _mock_modules[module]
         del _mock_distributions[name]

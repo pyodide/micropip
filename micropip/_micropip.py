@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import importlib
 import json
+import shutil
 import site
 import warnings
 from asyncio import gather
@@ -852,6 +853,4 @@ def remove_mock_package(name: str) -> None:
     site_packages = Path(site.getusersitepackages())
     for f in folders:
         if f != site_packages:
-            for x in f.iterdir():
-                x.unlink
-            f.rmdir()
+            shutil.rmtree(f)

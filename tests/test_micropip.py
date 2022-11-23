@@ -1023,10 +1023,16 @@ def test_add_mock_package(monkeypatch, capsys):
 def test_memory_mock():
     from micropip import _micropip
 
+    def mod_init(module):
+        module.__dict__["add2"] = lambda x: x + 2
+
     _micropip.add_mock_package(
         "micropip_test_bob",
         "1.0.0",
-        modules={"micropip_bob_mod": "print('hi from bob')"},
+        modules={
+            "micropip_bob_mod": "print('hi from bob')",
+            "micropip_bob_mod.fn": mod_init,
+        },
         persistent=False,
     )
     import importlib
@@ -1034,6 +1040,10 @@ def test_memory_mock():
     import micropip_bob_mod
 
     dir(micropip_bob_mod)
+
+    import micropip_bob_mod.fn
+
+    assert micropip_bob_mod.fn.add2(5) == 7
 
     found_bob = False
     for d in importlib.metadata.distributions():
