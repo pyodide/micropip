@@ -1018,3 +1018,40 @@ def test_add_mock_package(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert captured.out.find("hi from t1") != -1
     assert captured.out.find("Hello from fn") != -1
+
+
+def test_memory_mock():
+    from micropip import _micropip
+
+    _micropip.add_mock_package(
+        "micropip_test_bob",
+        "1.0.0",
+        modules={"micropip_bob_mod": "print('hi from bob')"},
+        persistent=False,
+    )
+    import importlib
+
+    import micropip_bob_mod
+
+    dir(micropip_bob_mod)
+
+    found_bob = False
+    for d in importlib.metadata.distributions():
+        if d.name == "micropip_test_bob":
+            found_bob = True
+    assert found_bob is True
+    assert (
+        importlib.metadata.distribution("micropip_test_bob").name == "micropip_test_bob"
+    )
+    # check package removes okay
+    _micropip.remove_mock_package("micropip_test_bob")
+    del micropip_bob_mod
+    try:
+        import micropip_bob_mod
+
+        dir(micropip_bob_mod)
+
+        pytest.fail("Bob module not unloaded")
+    except ImportError:
+        # this should throw
+        pass
