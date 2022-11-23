@@ -941,16 +941,14 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
 def test_add_mock_package_in_pyodide(selenium_standalone_micropip):  #
     import sys
     from importlib.metadata import version as importlib_version
+    from io import StringIO
 
     from micropip._micropip import add_mock_package
 
-    stdout_captured = ""
+    capture_stdio = StringIO()
 
-    def capture_out(x):
-        global stdout_captured
-        stdout_captured += x
+    sys.stdout = capture_stdio
 
-    sys.stdout.write = capture_out
     add_mock_package("test_1", "1.0.0", persistent=True)
     add_mock_package(
         "test_2",
@@ -975,8 +973,8 @@ def test_add_mock_package_in_pyodide(selenium_standalone_micropip):  #
     dir(test_1)
 
     t2.fn()
-    assert stdout_captured.find("Hello from fn") != 0
-    assert stdout_captured.find("hi from t1") != 0
+    assert capture_stdio.getvalue().find("Hello from fn") != -1
+    assert capture_stdio.getvalue().find("hi from t1") != -1
     assert importlib_version("test_1") == "1.0.0"
 
 
