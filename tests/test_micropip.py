@@ -198,8 +198,9 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
 @pytest.fixture(scope="module")
 def wheel_path(tmp_path_factory):
     # Build a micropip wheel for testing
-    import build
     from build.env import IsolatedEnvBuilder
+
+    import build
 
     output_dir = tmp_path_factory.mktemp("wheel")
 
@@ -934,6 +935,47 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
     wheel_name = f"{pkg}-{interp}-{abi}-{arch}.whl"
     with ctx:
         WheelInfo.from_url(wheel_name).check_compatible()
+
+
+@run_in_pyodide(packages=["micropip"])
+def test_add_mock_package_in_pyodide(selenium):
+    from importlib.metadata import version as importlib_version
+
+    from micropip._micropip import add_mock_package
+
+    stdout_captured = ""
+
+    def capture_out(x):
+        global stdout_captured
+        stdout_captured += x
+
+    sys.stdout.write = capture_out
+    add_mock_package("test_1", "1.0.0")
+    add_mock_package(
+        "test_2",
+        "1.2.0",
+        modules={
+            "t1": "print('hi from t1')",
+            "t2": """
+        def fn():
+            print("Hello from fn")
+        """,
+        },
+    )
+    import t1
+
+    dir(t1)
+    import t2
+
+    dir(t2)
+    import test_1
+
+    dir(test_1)
+
+    t2.fn()
+    assert stdout_captured.find("Hello from fn") != 0
+    assert stdout_captured.find("hi from t1") != 0
+    assert importlib_version("test_1") == "1.0.0"
 
 
 def test_add_mock_package(monkeypatch, capsys):
