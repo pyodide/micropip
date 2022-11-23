@@ -198,8 +198,9 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
 @pytest.fixture(scope="module")
 def wheel_path(tmp_path_factory):
     # Build a micropip wheel for testing
-    import build
     from build.env import IsolatedEnvBuilder
+
+    import build
 
     output_dir = tmp_path_factory.mktemp("wheel")
 
@@ -961,15 +962,16 @@ def test_add_mock_package_in_pyodide(selenium_standalone_micropip):  #
         },
         persistent=True,
     )
+    import test_1
+
+    dir(test_1)
+
     import t1
 
     dir(t1)
     import t2
 
     dir(t2)
-    import test_1
-
-    dir(test_1)
 
     t2.fn()
     assert capture_stdio.getvalue().find("Hello from fn") != -1
