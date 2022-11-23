@@ -4,6 +4,7 @@ import importlib
 import json
 import shutil
 import site
+import sys
 import warnings
 from asyncio import gather
 from dataclasses import dataclass, field
@@ -782,6 +783,11 @@ Author-email: {name}@micro.pip.non-working-fake-host
     if persistent:
         # make empty mock modules with the requested names in user site packages
         site_packages = Path(site.getusersitepackages())
+        # in pyodide site packages isn't on sys.path initially
+        if not site_packages.exists():
+            site_packages.mkdir(parents=True, exist_ok=True)
+        if site_packages not in sys.path:
+            sys.path.append(str(site_packages))
         metadata_dir = site_packages / (name + "-" + version + ".dist-info")
         metadata_dir.mkdir(parents=True, exist_ok=False)
         metadata_file = metadata_dir / "METADATA"

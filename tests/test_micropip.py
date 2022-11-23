@@ -938,7 +938,7 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
 
 
 @run_in_pyodide()
-def test_add_mock_package_in_pyodide(selenium_standalone_micropip):  #
+def test_persistent_mock_pyodide(selenium_standalone_micropip):  #
     import sys
     from importlib.metadata import version as importlib_version
     from io import StringIO
@@ -948,7 +948,6 @@ def test_add_mock_package_in_pyodide(selenium_standalone_micropip):  #
     capture_stdio = StringIO()
 
     sys.stdout = capture_stdio
-
     add_mock_package("test_1", "1.0.0", persistent=True)
     add_mock_package(
         "test_2",
@@ -979,7 +978,7 @@ def test_add_mock_package_in_pyodide(selenium_standalone_micropip):  #
     assert importlib_version("test_1") == "1.0.0"
 
 
-def test_add_mock_package(monkeypatch, capsys):
+def test_persistent_mock(monkeypatch, capsys):
     import site
     from importlib.metadata import version as importlib_version
 
@@ -1069,7 +1068,7 @@ def test_memory_mock():
 
 
 @run_in_pyodide()
-def test_memory_mock_in_pyodide(selenium_standalone_micropip):
+def test_memory_mock_pyodide(selenium_standalone_micropip):
     from micropip import _micropip
 
     def mod_init(module):
