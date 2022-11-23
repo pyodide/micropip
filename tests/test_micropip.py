@@ -198,8 +198,9 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
 @pytest.fixture(scope="module")
 def wheel_path(tmp_path_factory):
     # Build a micropip wheel for testing
-    import build
     from build.env import IsolatedEnvBuilder
+
+    import build
 
     output_dir = tmp_path_factory.mktemp("wheel")
 
@@ -936,8 +937,8 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
         WheelInfo.from_url(wheel_name).check_compatible()
 
 
-@run_in_pyodide(packages=["micropip"])
-def test_add_mock_package_in_pyodide(selenium):
+@run_in_pyodide()
+def test_add_mock_package_in_pyodide(selenium_standalone_micropip):
     from importlib.metadata import version as importlib_version
 
     from micropip._micropip import add_mock_package
@@ -1020,6 +1021,54 @@ def test_add_mock_package(monkeypatch, capsys):
 
 
 def test_memory_mock():
+    from micropip import _micropip
+
+    def mod_init(module):
+        module.__dict__["add2"] = lambda x: x + 2
+
+    _micropip.add_mock_package(
+        "micropip_test_bob",
+        "1.0.0",
+        modules={
+            "micropip_bob_mod": "print('hi from bob')",
+            "micropip_bob_mod.fn": mod_init,
+        },
+        persistent=False,
+    )
+    import importlib
+
+    import micropip_bob_mod
+
+    dir(micropip_bob_mod)
+
+    import micropip_bob_mod.fn
+
+    assert micropip_bob_mod.fn.add2(5) == 7
+
+    found_bob = False
+    for d in importlib.metadata.distributions():
+        if d.name == "micropip_test_bob":
+            found_bob = True
+    assert found_bob is True
+    assert (
+        importlib.metadata.distribution("micropip_test_bob").name == "micropip_test_bob"
+    )
+    # check package removes okay
+    _micropip.remove_mock_package("micropip_test_bob")
+    del micropip_bob_mod
+    try:
+        import micropip_bob_mod
+
+        dir(micropip_bob_mod)
+
+        pytest.fail("Bob module not unloaded")
+    except ImportError:
+        # this should throw
+        pass
+
+
+@run_in_pyodide()
+def test_memory_mock_in_pyodide(selenium_standalone_micropip):
     from micropip import _micropip
 
     def mod_init(module):
