@@ -3,6 +3,7 @@ import importlib.metadata
 import importlib.util
 import sys
 from collections.abc import Callable
+from textwrap import dedent
 
 
 class MockDistribution(importlib.metadata.Distribution):
@@ -62,7 +63,7 @@ class _MockModuleFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         init_object = _mock_modules[module.__name__]
         if isinstance(init_object, str):
             # run module init code in the module
-            exec(init_object, module.__dict__)
+            exec(dedent(init_object), module.__dict__)
         elif callable(init_object):
             # run module init function
             init_object(module)
