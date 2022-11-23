@@ -938,7 +938,8 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
 
 
 @run_in_pyodide()
-def test_add_mock_package_in_pyodide(selenium_standalone_micropip):
+def test_add_mock_package_in_pyodide(selenium_standalone_micropip):  #
+    import sys
     from importlib.metadata import version as importlib_version
 
     from micropip._micropip import add_mock_package
