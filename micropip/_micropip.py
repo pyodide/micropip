@@ -699,7 +699,7 @@ def _list():
 
 
 def add_mock_package(
-    name: str, version: str, *, modules: dict | None = None, persistent: bool = True
+    name: str, version: str, *, modules: dict | None = None, persistent: bool = False
 ) -> None:
     """
        Add a mock version of a package to the package dictionary.
