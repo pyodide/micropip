@@ -700,6 +700,10 @@ def _list():
     return packages
 
 
+MOCK_INSTALL_NAME_MEMORY = "micropip in-memory mock package"
+MOCK_INSTALL_NAME_PERSISTENT = "micropip mock package"
+
+
 def add_mock_package(
     name: str, version: str, *, modules: dict | None = None, persistent: bool = False
 ) -> None:
@@ -810,14 +814,14 @@ Author-email: {name}@micro.pip.non-working-fake-host
             with open(init_file, "w") as f:
                 f.write(s)
         with open(installer_file, "w") as f:
-            f.write("micropip mock package")
+            f.write(MOCK_INSTALL_NAME_PERSISTENT)
         with open(record_file, "w") as f:
             for file in file_list:
                 f.write(f"{str(file)},,{file.stat().st_size}\n")
             f.write(f"{str(record_file)},,\n")
     else:
         # make memory mocks of files
-        INSTALLER = "micropip in-memory mock package"
+        INSTALLER = MOCK_INSTALL_NAME_MEMORY
         metafiles = {"METADATA": METADATA, "INSTALLER": INSTALLER}
         _mock_package.add_in_memory_distribution(name, metafiles, modules)
     importlib.invalidate_caches()
@@ -828,8 +832,8 @@ def list_mock_packages() -> list[str]:
     for dist in importlib_distributions():
         installer = dist.read_text("INSTALLER")
         if installer is not None and (
-            installer == "micropip mock package"
-            or installer == "micropip in-memory mock package"
+            installer == MOCK_INSTALL_NAME_PERSISTENT
+            or installer == MOCK_INSTALL_NAME_MEMORY
         ):
             packages.append(dist.name)
     return packages
@@ -838,15 +842,15 @@ def list_mock_packages() -> list[str]:
 def remove_mock_package(name: str) -> None:
     d = importlib_distribution(name)
     installer = d.read_text("INSTALLER")
-    if installer == "micropip in-memory mock package":
+    if installer == MOCK_INSTALL_NAME_MEMORY:
         _mock_package.remove_in_memory_distribution(name)
         return
-    elif installer is None or installer != "micropip mock package":
+    elif installer is None or installer != MOCK_INSTALL_NAME_PERSISTENT:
         raise ValueError(
             f"Package {name} doesn't seem to be a micropip mock. \n"
             "Are you sure it was installed with micropip?"
         )
-    # real package - kill it
+    # a real mock package - kill it
     # remove all files
     folders: set[Path] = set()
     if d.files is not None:
@@ -856,7 +860,7 @@ def remove_mock_package(name: str) -> None:
             folders.add(p.parent)
     # delete all folders except site_packages
     # (that check is just to avoid killing
-    # undesirable things in case of micropip errors)
+    # undesirable things in case of weird micropip errors)
     site_packages = Path(site.getusersitepackages())
     for f in folders:
         if f != site_packages:

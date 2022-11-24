@@ -198,8 +198,9 @@ def mock_fetch(monkeypatch, mock_importlib, wheel_base):
 @pytest.fixture(scope="module")
 def wheel_path(tmp_path_factory):
     # Build a micropip wheel for testing
-    import build
     from build.env import IsolatedEnvBuilder
+
+    import build
 
     output_dir = tmp_path_factory.mktemp("wheel")
 
@@ -977,43 +978,41 @@ def test_persistent_mock_pyodide(selenium_standalone_micropip):  #
     assert importlib_version("test_1") == "1.0.0"
 
 
-def test_persistent_mock(monkeypatch, capsys):
+def test_persistent_mock(monkeypatch, capsys, tmp_path):
     import site
     from importlib.metadata import version as importlib_version
 
     from micropip._micropip import add_mock_package
 
-    with TemporaryDirectory() as tmpdirname:
+    def _getusersitepackages():
+        return tmp_path
 
-        def _getusersitepackages():
-            return tmpdirname
+    monkeypatch.setattr(site, "getusersitepackages", _getusersitepackages)
+    monkeypatch.setattr(sys, "path", [tmp_path])
+    add_mock_package("test_1", "1.0.0")
+    add_mock_package(
+        "test_2",
+        "1.2.0",
+        modules={
+            "t1": "print('hi from t1')",
+            "t2": """
+        def fn():
+            print("Hello from fn")
+        """,
+        },
+    )
+    import t1
 
-        monkeypatch.setattr(site, "getusersitepackages", _getusersitepackages)
-        monkeypatch.setattr(sys, "path", [tmpdirname])
-        add_mock_package("test_1", "1.0.0")
-        add_mock_package(
-            "test_2",
-            "1.2.0",
-            modules={
-                "t1": "print('hi from t1')",
-                "t2": """
-            def fn():
-                print("Hello from fn")
-            """,
-            },
-        )
-        import t1
+    dir(t1)
+    import t2
 
-        dir(t1)
-        import t2
+    dir(t2)
+    import test_1
 
-        dir(t2)
-        import test_1
+    dir(test_1)
 
-        dir(test_1)
-
-        t2.fn()
-        assert importlib_version("test_2") == "1.2.0"
+    t2.fn()
+    assert importlib_version("test_2") == "1.2.0"
     captured = capsys.readouterr()
     assert captured.out.find("hi from t1") != -1
     assert captured.out.find("Hello from fn") != -1
@@ -1055,19 +1054,16 @@ def test_memory_mock():
     # check package removes okay
     _micropip.remove_mock_package("micropip_test_bob")
     del micropip_bob_mod
-    try:
+    with pytest.raises(ImportError):
         import micropip_bob_mod
 
         dir(micropip_bob_mod)
 
-        pytest.fail("Bob module not unloaded")
-    except ImportError:
-        # this should throw
-        pass
-
 
 @run_in_pyodide()
 def test_memory_mock_pyodide(selenium_standalone_micropip):
+    import pytest
+
     from micropip import _micropip
 
     def mod_init(module):
@@ -1103,12 +1099,7 @@ def test_memory_mock_pyodide(selenium_standalone_micropip):
     # check package removes okay
     _micropip.remove_mock_package("micropip_test_bob")
     del micropip_bob_mod
-    try:
+    with pytest.raises(ImportError):
         import micropip_bob_mod
 
         dir(micropip_bob_mod)
-
-        pytest.fail("Bob module not unloaded")
-    except ImportError:
-        # this should throw
-        pass

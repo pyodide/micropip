@@ -76,10 +76,11 @@ class _MockModuleFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
 
 _finder = _MockModuleFinder()
-sys.meta_path = [_finder] + sys.meta_path
 
 
 def add_in_memory_distribution(name, metafiles, modules):
+    if _finder not in sys.meta_path:
+        sys.meta_path = [_finder] + sys.meta_path
     _mock_distributions[name] = MockDistribution(metafiles, modules)
     for name, obj in modules.items():
         _add_mock_module(name, obj)
