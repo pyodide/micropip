@@ -452,8 +452,6 @@ async def install(
 ) -> None:
     """Install the given package and all of its dependencies.
 
-    See :ref:`loading packages <loading_packages>` for more information.
-
     If a package is not found in the Pyodide repository it will be loaded from
     PyPI. Micropip can only load pure Python wheels or wasm32/emscripten wheels
     built by Pyodide.
@@ -488,7 +486,6 @@ async def install(
 
         - In node, you can access the native file system using a URI that starts
           with ``file:``. In the browser this will not work.
-
 
     keep_going : ``bool``, default: False
 
@@ -595,12 +592,12 @@ def freeze() -> str:
     ``repodata.json`` lock file.
 
     If you later load Pyodide with this lock file, you can use
-    :any:`pyodide.loadPackage` to load packages that were loaded with `micropip`
-    this time. Loading packages with :any:`pyodide.loadPackage` is much faster
+    `pyodide.loadPackage` to load packages that were loaded with `micropip`
+    this time. Loading packages with `pyodide.loadPackage` is much faster
     and you will always get consistent versions of all your dependencies.
 
     You can use your custom lock file by passing an appropriate url to the
-    `lockFileURL` argument to :any:`loadPyodide <globalThis.loadPyodide>`.
+    `lockFileURL` argument to `loadPyodide`.
     """
     from copy import deepcopy
 
@@ -641,12 +638,13 @@ def freeze() -> str:
     return json.dumps(package_data)
 
 
-def _list():
+def _list() -> PackageDict:
     """Get the dictionary of installed packages.
 
     Returns
     -------
-    packages : :any:`micropip.package.PackageDict`
+    ``PackageDict``
+
         A dictionary of installed packages.
 
         >>> import micropip
@@ -708,64 +706,62 @@ def add_mock_package(
     name: str, version: str, *, modules: dict | None = None, persistent: bool = False
 ) -> None:
     """
-       Add a mock version of a package to the package dictionary.
+    Add a mock version of a package to the package dictionary.
 
-       This means that if it is a dependency, it is skipped on install.
+    This means that if it is a dependency, it is skipped on install.
 
-       By default a single empty module is installed with the same
-       name as the package. You can alternatively give one or more modules to make a
-       set of named modules.
+    By default a single empty module is installed with the same
+    name as the package. You can alternatively give one or more modules to make a
+    set of named modules.
 
-       The modules parameter is usually a dictionary mapping module name to module text.
+    The modules parameter is usually a dictionary mapping module name to module text.
 
-        e.g.
-       ``
-       {
-          "mylovely_module":'''
+    .. code-block:: python
+
+        {
+            "mylovely_module":'''
             def module_method(an_argument):
                 print("This becomes a module level argument")
+
             module_value = "this value becomes a module level variable"
-
             print("This is run on import of module")
-          '''
-       }
+            '''
+        }
 
-       If you are adding the module in non-persistent mode, you can also pass functions
-       which are used to initialize the module on loading (as in `importlib.abc.loader.exec_module` ).
-       This allows you to do things like use `unittest.mock.MagicMock` classes for modules.
+    If you are adding the module in non-persistent mode, you can also pass functions
+    which are used to initialize the module on loading (as in `importlib.abc.loader.exec_module` ).
+    This allows you to do things like use `unittest.mock.MagicMock` classes for modules.
 
-        e.g.
-       ``
-       def init_fn(module):
-           module.dict["WOO"]="hello"
-           print("Initing the module now!")
+    .. code-block:: python
 
-       ...
-       ...
+        def init_fn(module):
+            module.dict["WOO"]="hello"
+            print("Initing the module now!")
 
-       {
-          "mylovely_module": init_fn
-       }
-       ``
+        ...
+
+        {
+            "mylovely_module": init_fn
+        }
 
     Parameters
     ----------
-    name : ``str ``
+    name : ``str``
 
         Package name to add
 
-    version : ``str ``
+    version : ``str``
 
         Version of the package. This should be a semantic version string,
         e.g. 1.2.3
 
-    modules : ``Optional(dict) ``
+    modules : ``Optional(dict)``
 
         Dictionary of module_name:string pairs.
         The string contains the source of the mock module or is blank for
         an empty module.
 
-    persistent: ``boolean ``
+    persistent: ``boolean``
 
         If this is True, modules will be written to the file system, so they
         persist between runs of python (assuming the file system persists).
