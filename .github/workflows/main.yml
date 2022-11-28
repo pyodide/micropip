@@ -10,32 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  download-pyodide:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        pyodide-version: [0.21.3]
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Cache Pyodide
-        uses: actions/cache@v3
-        id: cache-pyodide
-        with:
-          path: dist
-          key: pyodide-${{ matrix.pyodide-version }}-${{ hashFiles('.github/**/*.yml') }}
-
-      - name: Download Pyodide
-        shell: bash -l {0}
-        if: steps.cache-pyodide.outputs.cache-hit != 'true'
-        run: |
-          wget -q https://github.com/pyodide/pyodide/releases/download/${{ matrix.pyodide-version }}/pyodide-build-${{ matrix.pyodide-version }}.tar.bz2
-          tar xjf pyodide-build-${{ matrix.pyodide-version }}.tar.bz2
-          mv pyodide dist/
-
   test:
-    needs: download-pyodide
     runs-on: ${{ matrix.os }}
     env:
       DISPLAY: :99
@@ -43,9 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        pyodide-version: [0.21.3]
+        pyodide-version: [0.21.3, 0.22.0a3]
         test-config: [
-          {runner: selenium, runtime: chrome, chrome-version: latest, chromedriver-version: latest },
+          {runner: selenium, runtime: chrome, runtime-version: latest },
         ]
 
     steps:
@@ -55,32 +30,26 @@ jobs:
         with:
           python-version: 3.10.2
 
-
-      - name: Install chrome
-        uses: browser-actions/setup-chrome@latest
-        if: ${{ matrix.test-config.runner == 'selenium' && contains(matrix.test-config.runtime, 'chrome') }}
+      - uses: pyodide/pyodide-actions/download-pyodide@v1
         with:
-          chrome-version: ${{ matrix.test-config.geckodriver-version }}
-
-      - name: Install chromedriver
-        if: ${{ matrix.test-config.runner == 'selenium' && contains(matrix.test-config.runtime, 'chrome') }}
-        uses: nanasess/setup-chromedriver@v1
+          version: ${{ matrix.pyodide-version }}
+          to: dist
+      
+      - uses: pyodide/pyodide-actions/install-browser@v1
+        with:
+          runner: ${{ matrix.test-config.runner }}
+          browser: ${{ matrix.test-config.runtime }}
+          browser-version: ${{ matrix.test-config.runtime-version }}
 
       - name: Install requirements
         shell: bash -l {0}
         run: |
           python3 -m pip install -e .[test]
 
-      - name: Get Pyodide from cache
-        uses: actions/cache@v3
-        with:
-          path: dist
-          key: pyodide-${{ matrix.pyodide-version }}-${{ hashFiles('.github/**/*.yml') }}
-
       - name: Run tests
         shell: bash -l {0}
         run: |
-          STANDALONE_REFRESH=${{ env.STANDALONE_REFRESH }} pytest -v \
+          pytest -v \
             --cov=micropip \
             --dist-dir=./dist/ \
             --runner=${{ matrix.test-config.runner }} \
