@@ -4,7 +4,7 @@ default_language_version:
 exclude: (^micropip/externals|^tests/vendored)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: "v4.3.0"
+    rev: "v4.4.0"
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
@@ -41,7 +41,7 @@ repos:
       - id: black
 
   - repo: https://github.com/pycqa/flake8
-    rev: "5.0.4"
+    rev: "6.0.0"
     hooks:
       - id: flake8
         additional_dependencies: [flake8-bugbear]
