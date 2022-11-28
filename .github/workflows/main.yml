@@ -34,7 +34,7 @@ jobs:
         with:
           version: ${{ matrix.pyodide-version }}
           to: dist
-      
+
       - uses: pyodide/pyodide-actions/install-browser@v1
         with:
           runner: ${{ matrix.test-config.runner }}
