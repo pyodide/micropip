@@ -28,5 +28,10 @@ html_theme = "sphinx_book_theme"
 html_logo = "_static/img/pyodide-logo.png"
 html_static_path = ["_static"]
 
-release = importlib_metadata.version("micropip")
+try:
+    release = importlib_metadata.version("micropip")
+except importlib_metadata.PackageNotFoundError:
+    print("Could not find package version, please install micropip do build docs")
+    release = "0.0.0"
+
 version = release
