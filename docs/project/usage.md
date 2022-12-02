@@ -45,7 +45,7 @@ See the [Building packages](https://pyodide.org/en/stable/development/new-packag
 ```python
 import micropip
 
-# snoballstemmer is a pure Python packag
+# snoballstemmer is a pure Python package
 # and has a pure Python wheel on PyPI
 # so it can be installed directly
 await micropip.install("snowballstemmer")
