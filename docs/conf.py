@@ -1,14 +1,6 @@
-import os
 import sys
+from importlib import metadata as importlib_metadata
 from pathlib import Path
-
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "micropip"
 copyright = "2019-2022, Pyodide contributors and Mozilla"
@@ -36,11 +28,5 @@ html_theme = "sphinx_book_theme"
 html_logo = "_static/img/pyodide-logo.png"
 html_static_path = ["_static"]
 
-
-IN_READTHEDOCS = "READTHEDOCS" in os.environ
-
-if IN_READTHEDOCS:
-    import importlib.metadata
-
-    release = importlib.metadata.version("micropip")
-    version = release
+release = importlib_metadata.version("micropip")
+version = release
