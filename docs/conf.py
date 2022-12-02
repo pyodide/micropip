@@ -11,7 +11,7 @@ from pathlib import Path
 
 project = "micropip"
 copyright = "2019-2022, Pyodide contributors and Mozilla"
-author = "Pyodide Authors"
+# author = "Pyodide Authors"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

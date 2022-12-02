@@ -1,12 +1,7 @@
-.. micropip documentation master file, created by
-   sphinx-quickstart on Mon Nov 28 19:03:15 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 micropip
 ========
 
-micropip is a lightweight Python package manager for Pyodide.
+micropip is a lightweight package installer for Pyodide and other projects that use Pyodide.
 
 Overview
 ----------------
@@ -14,7 +9,9 @@ Overview
 .. toctree::
    :maxdepth: 1
 
+   project/usage.md
    project/api.md
+   project/micropip-in-other-projects.md
 
 
 Communication
