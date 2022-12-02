@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -34,3 +35,12 @@ sys.path.append(Path(__file__).parent.parent.as_posix())
 html_theme = "sphinx_book_theme"
 html_logo = "_static/img/pyodide-logo.png"
 html_static_path = ["_static"]
+
+
+IN_READTHEDOCS = "READTHEDOCS" in os.environ
+
+if IN_READTHEDOCS:
+    import importlib.metadata
+
+    release = importlib.metadata.version("micropip")
+    version = release
