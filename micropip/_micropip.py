@@ -314,7 +314,7 @@ class Transaction:
         if isinstance(req, Requirement):
             return await self.add_requirement_inner(req)
 
-        if not req.endswith(".whl"):
+        if not urlparse(req).path.endswith(".whl"):
             return await self.add_requirement_inner(Requirement(req))
 
         # custom download location
