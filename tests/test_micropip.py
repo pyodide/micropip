@@ -481,6 +481,30 @@ async def test_package_with_extra_transitive(
         assert "depb" not in pkg_list
 
 
+def _pypi_metadata(package, versions_to_tags):
+    # Build package release metadata as would be returned from
+    # https://pypi.org/pypi/{pkgname}/json
+    #
+    # `package` is a string containing the package name as
+    # it would appear in a wheel file name.
+    #
+    # `versions` is a mapping with version strings as
+    # keys and iterables of tag strings as values.
+    releases = {}
+    for version, tags in versions_to_tags.items():
+        release = []
+        for tag in tags:
+            wheel_name = f"{package}-{version}-{tag}-none-any.whl"
+            wheel_info = {
+                "filename": wheel_name,
+                "url": wheel_name,
+                "digests": None,
+            }
+            release.append(wheel_info)
+        releases[version] = release
+    return {"releases": releases}
+
+
 def test_last_version_from_pypi():
     pytest.importorskip("packaging")
     from packaging.requirements import Requirement
@@ -490,19 +514,84 @@ def test_last_version_from_pypi():
     requirement = Requirement("dummy_module")
     versions = ["0.0.1", "0.15.5", "0.9.1"]
 
-    # building metadata as returned from
-    # https://pypi.org/pypi/{pkgname}/json
-    releases = {}
-    for v in versions:
-        filename = f"dummy_module-{v}-py3-none-any.whl"
-        releases[v] = [{"filename": filename, "url": filename, "digests": None}]
-
-    metadata = {"releases": releases}
+    metadata = _pypi_metadata("dummy_module", {v: ["py3"] for v in versions})
 
     # get version number from find_wheel
     wheel = find_wheel(metadata, requirement)
 
     assert str(wheel.version) == "0.15.5"
+
+
+_best_tag_test_cases = (
+    "package, version, incompatible_tags, compatible_tags",
+    # Tests assume that `compatible_tags` is sorted from least to most compatible:
+    [
+        # Common modern case (pure Python 3-only wheel):
+        ("hypothesis", "6.60.0", [], ["py3"]),
+        # Common historical case (pure Python 2-or-3 wheel):
+        ("attrs", "22.1.0", [], ["py2.py3"]),
+        # Still simple, less common (separate Python 2 and 3 wheels):
+        ("raise", "1.1.9", ["py2"], ["py3"]),
+        # More complicated, rarer cases:
+        ("compose", "1.4.8", [], ["py2.py30", "py35", "py38"]),
+        ("with_as_a_function", "1.0.1", ["py20", "py25"], ["py26.py3"]),
+        ("with_as_a_function", "1.1.0", ["py22", "py25"], ["py26.py30", "py33"]),
+    ],
+)
+
+
+@pytest.mark.parametrize(*_best_tag_test_cases)
+def test_best_tag_from_pypi(package, version, incompatible_tags, compatible_tags):
+    pytest.importorskip("packaging")
+    from packaging.requirements import Requirement
+
+    from micropip._micropip import find_wheel
+
+    requirement = Requirement(package)
+    tags = incompatible_tags + compatible_tags
+
+    metadata = _pypi_metadata(package, {version: tags})
+
+    wheel = find_wheel(metadata, requirement)
+
+    best_tag = tags[-1].split(".")[-1] + "-none-any"
+    assert best_tag in set(map(str, wheel.tags))
+
+
+# A newer version with a compatible wheel has higher precedence
+# than an older version with a more precisely compatible wheel.
+# This test verifies that we didn't break that corner case:
+@pytest.mark.parametrize(
+    "package, old_version, old_tags, new_version, new_tags",
+    [
+        ("compose", "1.1.1", ["py2.py3"], "1.2.0", ["py2.py30", "py35", "py38"]),
+        (
+            "with_as_a_function",
+            "1.0.1",
+            ["py20", "py25", "py26.py3"],
+            "1.1.0",
+            ["py22", "py25", "py26.py30", "py33"],
+        ),
+    ],
+)
+def test_last_version_and_best_tag_from_pypi(
+    package, old_version, new_version, old_tags, new_tags
+):
+    pytest.importorskip("packaging")
+    from packaging.requirements import Requirement
+
+    from micropip._micropip import find_wheel
+
+    requirement = Requirement(package)
+
+    metadata = _pypi_metadata(
+        package,
+        {old_version: old_tags, new_version: new_tags},
+    )
+
+    wheel = find_wheel(metadata, requirement)
+
+    assert str(wheel.version) == new_version
 
 
 @pytest.mark.asyncio
@@ -934,6 +1023,26 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
     wheel_name = f"{pkg}-{interp}-{abi}-{arch}.whl"
     with ctx:
         WheelInfo.from_url(wheel_name).check_compatible()
+
+
+@pytest.mark.parametrize(*_best_tag_test_cases)
+def test_best_compatible_tag(package, version, incompatible_tags, compatible_tags):
+    from micropip._micropip import WheelInfo
+
+    for tag in incompatible_tags:
+        wheel_name = f"{package}-{version}-{tag}-none-any.whl"
+        wheel = WheelInfo.from_url(wheel_name)
+        assert wheel.best_compatible_tag_index() is None
+
+    wheels = []
+    for tag in compatible_tags:
+        wheel_name = f"{package}-{version}-{tag}-none-any.whl"
+        wheel = WheelInfo.from_url(wheel_name)
+        wheels.append(wheel)
+
+    sorted_wheels = sorted(wheels, key=WheelInfo.best_compatible_tag_index)
+    sorted_wheels.reverse()
+    assert sorted_wheels == wheels
 
 
 @run_in_pyodide()
