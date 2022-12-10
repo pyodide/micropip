@@ -89,13 +89,27 @@ class WheelInfo:
             parsed_url=parsed_url,
         )
 
+    def best_compatible_tag_index(self) -> int | None:
+        """Get the index of the first tag in ``packaging.tags.sys_tags()`` that this wheel has.
+
+        Since ``packaging.tags.sys_tags()`` is sorted from most specific ("best") to most
+        general ("worst") compatibility, this index douples as a priority rank: given two
+        compatible wheels, the one whose best index is closer to zero should be installed.
+
+        Returns
+        -------
+        ``int | None``
+            The index, or ``None`` if this wheel has no compatible tags.
+        """
+        for index, tag in enumerate(sys_tags()):
+            if tag in self.tags:
+                return index
+        return None
+
     def is_compatible(self):
         if self.filename.endswith("py3-none-any.whl"):
             return True
-        for tag in sys_tags():
-            if tag in self.tags:
-                return True
-        return False
+        return self.best_compatible_tag_index() is not None
 
     def check_compatible(self) -> None:
         if self.is_compatible():
@@ -268,15 +282,23 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
             )
             continue
 
+        best_wheel = None
+        best_tag_index = float("infinity")
+
         release = releases[str(ver)]
         for fileinfo in release:
             url = fileinfo["url"]
             if not url.endswith(".whl"):
                 continue
             wheel = WheelInfo.from_url(url)
-            if wheel.is_compatible():
+            tag_index = wheel.best_compatible_tag_index()
+            if tag_index is not None and tag_index < best_tag_index:
                 wheel.digests = fileinfo["digests"]
-                return wheel
+                best_wheel = wheel
+                best_tag_index = tag_index
+
+        if best_wheel is not None:
+            return wheel
 
     raise ValueError(
         f"Can't find a pure Python 3 wheel for '{req}'.\n"
