@@ -21,6 +21,7 @@ from zipfile import ZipFile
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
+from packaging.specifier import SpecifierSet
 from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import Version
@@ -271,7 +272,7 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
     """
     releases = metadata.get("releases", {})
     candidate_versions = sorted(
-        (Version(v) for v in req.specifier.filter(releases)),
+        (Version(v) for v in req.specifier.filter(releases)),  # type: ignore[arg-type]
         reverse=True,
     )
     for ver in candidate_versions:
@@ -332,7 +333,49 @@ class Transaction:
 
         await gather(*requirement_promises)
 
+    def _add_requirement_repodata_package(
+        self, packages: dict[str, Any], name: str, specifier: SpecifierSet | None = None
+    ) -> bool:
+        """
+        Add a requirement if it can be found from repodata.json file.
+
+        Parameters
+        ----------
+        packages : ``Dict[str, Any]``
+            The packages dictionary from repodata.json file.
+        name : ``str``
+            The name of the package.
+        specifier : ``SpecifierSet``, optional
+            The specifier of the package.
+
+        Returns
+        -------
+        success : ``bool``
+            True if the matching package is found inside the repodata.json file, False otherwise.
+        """
+
+        if (
+            name in packages
+            and specifier is not None
+            and specifier.contains(packages[name]["version"], prereleases=True)
+        ):
+            version = packages[name]["version"]
+            self.pyodide_packages.append(
+                PackageMetadata(name=name, version=str(version), source="pyodide")
+            )
+            return True
+
+        return False
+
     async def add_requirement(self, req: str | Requirement) -> None:
+
+        # Normal python packages are not allowed to start with an underscore,
+        # so packaging will consider them invalid. But we have unvendored
+        # stdlib packages that do start with an underscore, so we handle them here.
+        if isinstance(req, str) and req.startswith("_"):
+            if self._add_requirement_repodata_package(REPODATA_PACKAGES, req):
+                return
+
         if isinstance(req, Requirement):
             return await self.add_requirement_inner(req)
 
@@ -420,13 +463,9 @@ class Transaction:
 
         # If there's a Pyodide package that matches the version constraint, use
         # the Pyodide package instead of the one on PyPI
-        if req.name in REPODATA_PACKAGES and req.specifier.contains(
-            REPODATA_PACKAGES[req.name]["version"], prereleases=True
+        if self._add_requirement_repodata_package(
+            REPODATA_PACKAGES, req.name, req.specifier
         ):
-            version = REPODATA_PACKAGES[req.name]["version"]
-            self.pyodide_packages.append(
-                PackageMetadata(name=req.name, version=str(version), source="pyodide")
-            )
             return
 
         metadata = await _get_pypi_json(req.name, self.fetch_kwargs)
