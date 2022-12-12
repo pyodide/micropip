@@ -889,6 +889,16 @@ async def test_install_with_credentials(selenium):
 
 
 @pytest.mark.asyncio
+@run_in_pyodide(packages=["micropip"])
+async def test_install_underscore_stdlib(selenium):
+    import micropip
+
+    await micropip.install("_hashlib")
+
+    assert "_hashlib" in micropip.list()
+
+
+@pytest.mark.asyncio
 async def test_load_binary_wheel1(
     mock_fetch: mock_fetch_cls, mock_importlib: None, mock_platform: None
 ) -> None:
