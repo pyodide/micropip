@@ -60,3 +60,6 @@ repos:
     hooks:
       - id: codespell
         args: ["-L", "te,slowy,aray,ba,nd,classs,crate,feld,lits"]
+
+ci:
+  autoupdate_schedule: "quarterly"
