@@ -421,6 +421,23 @@ async def test_add_requirement_marker(mock_importlib, wheel_base):
 
 
 @pytest.mark.asyncio
+async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch):
+    pytest.importorskip("packaging")
+    from micropip._micropip import Transaction
+
+    async def mock_add_wheel(self, wheel, extras):
+        self.mock_wheel = wheel
+
+    monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
+
+    transaction = create_transaction(Transaction)
+    await transaction.add_requirement(f"{SNOWBALL_WHEEL}?b=1")
+    wheel = transaction.mock_wheel
+    assert wheel.name == "snowballstemmer"
+    assert wheel.filename == SNOWBALL_WHEEL  # without the query params
+
+
+@pytest.mark.asyncio
 async def test_package_with_extra(mock_fetch):
     mock_fetch.add_pkg_version("depa")
     mock_fetch.add_pkg_version("depb")
