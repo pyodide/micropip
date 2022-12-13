@@ -21,7 +21,7 @@ from zipfile import ZipFile
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
-from packaging.specifier import SpecifierSet
+from packaging.specifiers import SpecifierSet
 from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import Version
