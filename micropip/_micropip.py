@@ -354,10 +354,9 @@ class Transaction:
             True if the matching package is found inside the repodata.json file, False otherwise.
         """
 
-        if (
-            name in packages
-            and specifier is not None
-            and specifier.contains(packages[name]["version"], prereleases=True)
+        if name in packages and (
+            specifier is None
+            or specifier.contains(packages[name]["version"], prereleases=True)
         ):
             version = packages[name]["version"]
             self.pyodide_packages.append(
