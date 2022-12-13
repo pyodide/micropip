@@ -877,7 +877,7 @@ def test_list_loaded_from_js(selenium_standalone_micropip):
 
 @pytest.mark.skip_refcount_check
 @run_in_pyodide(packages=["micropip"])
-async def test_install_with_credentials(selenium):
+async def test_install_with_credentials(selenium_standalone_micropip):
     import json
     from unittest.mock import MagicMock, patch
 
@@ -907,7 +907,7 @@ async def test_install_with_credentials(selenium):
 
 @pytest.mark.asyncio
 @run_in_pyodide(packages=["micropip"])
-async def test_install_underscore_stdlib(selenium):
+async def test_install_underscore_stdlib(selenium_standalone_micropip):
     import micropip
 
     await micropip.install("_hashlib")
@@ -926,7 +926,7 @@ async def test_load_binary_wheel1(
 
 @pytest.mark.skip_refcount_check
 @run_in_pyodide(packages=["micropip"])
-async def test_load_binary_wheel2(selenium):
+async def test_load_binary_wheel2(selenium_standalone_micropip):
     from pyodide_js._api import repodata_packages
 
     import micropip
