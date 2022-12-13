@@ -4,11 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2022/12/12
 
 ### Added
 
 - Support for adding mock packages, for use where something is a dependency and you don't need it, or you need only a limited subset of the package. This is done using `micropip.add_mock_package`, `micropip.remove_mock_package` and `micropip.list_mock_packages`. Packages installed like this will be skipped by dependency resolution when you later install real packages.
+  [#26](https://github.com/pyodide/micropip/pull/26)
+
 
 ### Fixed
 
@@ -18,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   For example, if a package has two pure Python wheels, one tagged `py30` and
   another tagged `py35`, the `py35` wheel will now always get installed.
   [#34](https://github.com/pyodide/micropip/pull/34)
+- `micropip.install` now supports installing packages by URLs with query parameters
+  [#33](https://github.com/pyodide/micropip/pull/33)
+
 
 ## [0.1.0] - 2022/09/18
 
