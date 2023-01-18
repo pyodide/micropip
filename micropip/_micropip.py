@@ -48,7 +48,7 @@ async def _get_pypi_json(pkgname: str, fetch_kwargs: dict[str, str]) -> Any:
         metadata = await fetch_string(url, fetch_kwargs)
     except OSError as e:
         raise ValueError(
-            f"Can't fetch metadata for '{pkgname}' from PyPI. "
+            f"Can't fetch metadata for {pkgname!r} from PyPI. "
             "Please make sure you have entered a correct package name."
         ) from e
     return json.loads(metadata)
@@ -117,8 +117,8 @@ class WheelInfo:
         tag: Tag = next(iter(self.tags))
         if "emscripten" not in tag.platform:
             raise ValueError(
-                f"Wheel platform '{tag.platform}' is not compatible with "
-                f"Pyodide's platform '{get_platform()}'"
+                f"Wheel platform {tag.platform!r} is not compatible with "
+                f"Pyodide's platform {get_platform()!r}"
             )
 
         def platform_to_version(platform: str) -> str:
@@ -149,11 +149,11 @@ class WheelInfo:
         if abi_incompatible:
             abis_string = ",".join({tag.abi for tag in self.tags})
             raise ValueError(
-                f"Wheel abi '{abis_string}' is not supported. Supported abis are 'abi3' and 'cp{version}'."
+                f"Wheel abi {abis_string!r} is not supported. Supported abis are 'abi3' and 'cp{version}'."
             )
 
         raise ValueError(
-            f"Wheel interpreter version '{tag.interpreter}' is not supported."
+            f"Wheel interpreter version {tag.interpreter!r} is not supported."
         )
 
     async def _fetch_bytes(self, fetch_kwargs):
@@ -167,7 +167,7 @@ class WheelInfo:
                 raise e
             else:
                 raise ValueError(
-                    f"Can't fetch wheel from '{self.url}'. "
+                    f"Can't fetch wheel from {self.url!r}. "
                     "One common reason for this is when the server blocks "
                     "Cross-Origin Resource Sharing (CORS). "
                     "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
@@ -278,7 +278,7 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
         if str(ver) not in releases:
             pkg_name = metadata.get("info", {}).get("name", "UNKNOWN")
             warnings.warn(
-                f"The package '{pkg_name}' contains an invalid version: '{ver}'. This version will be skipped"
+                f"The package {pkg_name!r} contains an invalid version: {ver!r}. This version will be skipped"
             )
             continue
 

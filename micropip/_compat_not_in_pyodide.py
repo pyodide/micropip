@@ -95,7 +95,7 @@ def wheel_dist_info_dir(source: ZipFile, name: str) -> str:
 
 class pyodide_js_:
     def __get__(self, attr):
-        raise RuntimeError(f"Attempted to access property '{attr}' on pyodide_js dummy")
+        raise RuntimeError(f"Attempted to access property {attr!r} on pyodide_js dummy")
 
 
 REPODATA_INFO: dict[str, str] = {}
