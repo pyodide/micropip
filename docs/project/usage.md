@@ -21,7 +21,7 @@ it will not have a pure Python wheel on PyPI.
 
 Trying to install such a package with {any}`micropip.install` will result in an error like:
 
-```python
+```
 ValueError: Can't find a pure Python 3 wheel for 'tensorflow'.
 See: https://pyodide.org/en/stable/usage/faq.html#micropip-can-t-find-a-pure-python-wheel
 You can use `micropip.install(..., keep_going=True)`to get a list of all packages with missing wheels.
