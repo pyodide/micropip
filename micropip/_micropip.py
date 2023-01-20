@@ -98,8 +98,7 @@ class WheelInfo:
 
         Returns
         -------
-        ``int | None``
-            The index, or ``None`` if this wheel has no compatible tags.
+        The index, or ``None`` if this wheel has no compatible tags.
         """
         for index, tag in enumerate(sys_tags()):
             if tag in self.tags:
@@ -484,7 +483,7 @@ async def install(
 
     Parameters
     ----------
-    requirements : ``str | List[str]``
+    requirements :
 
         A requirement or list of requirements to install. Each requirement is a
         string, which should be either a package name or a wheel URI:
@@ -500,7 +499,7 @@ async def install(
 
         - If a wheel URI starts with ``emfs:``, it will be interpreted as a path
           in the Emscripten file system (Pyodide's file system). E.g.,
-          `emfs:../relative/path/wheel.whl` or `emfs:/absolute/path/wheel.whl`.
+          ``emfs:../relative/path/wheel.whl`` or ``emfs:/absolute/path/wheel.whl``.
           In this case, only .whl files are supported.
 
         - If a wheel URI requirement starts with ``http:`` or ``https:`` it will
@@ -509,7 +508,7 @@ async def install(
         - In node, you can access the native file system using a URI that starts
           with ``file:``. In the browser this will not work.
 
-    keep_going : ``bool``, default: False
+    keep_going :
 
         This parameter decides the behavior of the micropip when it encounters a
         Python package without a pure Python wheel while doing dependency
@@ -521,12 +520,12 @@ async def install(
         - If ``True``, the micropip will keep going after the first error, and
           report a list of errors at the end.
 
-    deps : ``bool``, default: True
+    deps :
 
         If ``True``, install dependencies specified in METADATA file for each
         package. Otherwise do not install dependencies.
 
-    credentials : ``Optional[str]``
+    credentials :
 
         This parameter specifies the value of ``credentials`` when calling the
         `fetch() <https://developer.mozilla.org/en-US/docs/Web/API/fetch>`__
@@ -534,17 +533,11 @@ async def install(
 
         When not specified, ``fetch()`` is called without ``credentials``.
 
-    pre : ``bool``, default: False
+    pre :
 
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
-    Returns
-    -------
-    ``Future``
-
-        A ``Future`` that resolves to ``None`` when all packages have been
-        downloaded and installed.
     """
     ctx = default_environment()
     if isinstance(requirements, str):
@@ -614,12 +607,12 @@ def freeze() -> str:
     ``repodata.json`` lock file.
 
     If you later load Pyodide with this lock file, you can use
-    `pyodide.loadPackage` to load packages that were loaded with `micropip`
-    this time. Loading packages with `pyodide.loadPackage` is much faster
+    :js:func:`pyodide.loadPackage` to load packages that were loaded with :py:mod:`micropip`
+    this time. Loading packages with :js:func:`~pyodide.loadPackage` is much faster
     and you will always get consistent versions of all your dependencies.
 
     You can use your custom lock file by passing an appropriate url to the
-    `lockFileURL` argument to `loadPyodide`.
+    ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
     """
     from copy import deepcopy
 
@@ -666,7 +659,6 @@ def _list() -> PackageDict:
     Returns
     -------
     ``PackageDict``
-
         A dictionary of installed packages.
 
         >>> import micropip
@@ -725,7 +717,11 @@ MOCK_INSTALL_NAME_PERSISTENT = "micropip mock package"
 
 
 def add_mock_package(
-    name: str, version: str, *, modules: dict | None = None, persistent: bool = False
+    name: str,
+    version: str,
+    *,
+    modules: dict[str, str] | None = None,
+    persistent: bool = False,
 ) -> None:
     """
     Add a mock version of a package to the package dictionary.
@@ -768,22 +764,22 @@ def add_mock_package(
 
     Parameters
     ----------
-    name : ``str``
+    name :
 
         Package name to add
 
-    version : ``str``
+    version :
 
         Version of the package. This should be a semantic version string,
         e.g. 1.2.3
 
-    modules : ``Optional(dict)``
+    modules :
 
         Dictionary of module_name:string pairs.
         The string contains the source of the mock module or is blank for
         an empty module.
 
-    persistent: ``boolean``
+    persistent :
 
         If this is True, modules will be written to the file system, so they
         persist between runs of python (assuming the file system persists).
