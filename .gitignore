@@ -3,3 +3,4 @@ micropip/_version.py
 *.egg-info
 dist/
 build/
+.venv*
