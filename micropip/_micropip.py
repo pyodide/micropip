@@ -720,7 +720,7 @@ def add_mock_package(
     name: str,
     version: str,
     *,
-    modules: dict[str, str] | None = None,
+    modules: dict[str, str | None] | None = None,
     persistent: bool = False,
 ) -> None:
     """
