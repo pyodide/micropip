@@ -20,7 +20,9 @@ def _format_table(headers: list[str], table: Iterable[Iterable[Any]]) -> str:
     """
 
     def format_row(values, widths, filler=""):
-        row = " | ".join(f"{x:{filler}<{w}}" for x, w in zip(values, widths, strict=True))
+        row = " | ".join(
+            f"{x:{filler}<{w}}" for x, w in zip(values, widths, strict=True)
+        )
         return row.rstrip()
 
     col_width = [max(len(x) for x in col) for col in zip(headers, *table, strict=True)]
