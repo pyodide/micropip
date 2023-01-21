@@ -13,7 +13,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dynamic = ["version"]
-dependencies = ["packaging==21.3"]
+dependencies = ["packaging>=23.0"]
 [project.optional-dependencies]
 test = [
   "pytest-pyodide",
