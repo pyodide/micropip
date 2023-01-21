@@ -11,13 +11,23 @@ copyright = "2019-2022, Pyodide contributors and Mozilla"
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "myst_parser",
+    "sphinx_autodoc_typehints",
 ]
 
-templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3.10", None),
+    "pyodide": ("https://pyodide.org/en/stable/", None),
+}
 
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".*"]
+
+html_css_files = [
+    "css/pyodide.css",
+]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
