@@ -19,7 +19,7 @@ extensions = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.10", None),
-    "pyodide": (f"https://pyodide.org/en/stable/", None),
+    "pyodide": ("https://pyodide.org/en/stable/", None),
 }
 
 templates_path = ["_templates"]
