@@ -23,7 +23,7 @@ intersphinx_mapping = {
 }
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".*"]
 
 html_css_files = [
     "css/pyodide.css",
@@ -45,13 +45,3 @@ except importlib_metadata.PackageNotFoundError:
     release = "0.0.0"
 
 version = release
-
-import sys
-
-sys.path.append(".")
-
-from napoleon_fixes import process_docstring
-
-
-def setup(app):
-    app.connect("autodoc-process-docstring", process_docstring)
