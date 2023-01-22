@@ -2,9 +2,8 @@ from io import BytesIO
 from typing import IO
 from urllib.parse import urlparse
 
-from pyodide._core import IN_BROWSER
 from pyodide._package_loader import get_dynlibs, wheel_dist_info_dir
-from pyodide.ffi import to_js
+from pyodide.ffi import to_js, IN_BROWSER
 from pyodide.http import pyfetch
 
 try:
