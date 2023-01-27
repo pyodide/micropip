@@ -33,6 +33,9 @@ requires = ["setuptools>=42", "setuptools_scm[toml]>=6.2", "wheel"]
 
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+package-dir = {"micropip" = "micropip"}
+
 # Evable versioning via setuptools_scm
 [tool.setuptools_scm]
 write_to = "micropip/_version.py"
