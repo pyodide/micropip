@@ -38,4 +38,8 @@ def uninstall(packages: str | list[str]) -> None:
 
         for directory in directories_to_remove:
             path = root / directory
-            shutil.rmtree(path, ignore_errors=True)
+            try:
+                shutil.rmtree(path, ignore_errors=False)
+            # File not found error is okay, while other errors need to be reported
+            except FileNotFoundError:
+                pass
