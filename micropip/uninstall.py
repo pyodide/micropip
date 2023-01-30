@@ -3,6 +3,8 @@ import warnings
 from importlib.metadata import Distribution
 from pathlib import Path
 
+from ._importlib_helpers import _top_level_declared, _top_level_inferred
+
 
 def uninstall(packages: str | list[str]) -> None:
     """Uninstall packages.
@@ -43,8 +45,8 @@ def uninstall(packages: str | list[str]) -> None:
 
         # TODO: also remove directories that are not under sitepackages directory? (e.g. data_files?)
         directories_to_remove = set(dist._path.name)  # type: ignore[attr-defined]
-        directories_to_remove |= set(importlib.metadata._top_level_declared(dist))  # type: ignore[attr-defined]
-        directories_to_remove |= set(importlib.metadata._top_level_inferred(dist))  # type: ignore[attr-defined]
+        directories_to_remove |= set(_top_level_declared(dist))
+        directories_to_remove |= set(_top_level_inferred(dist))
 
         for directory in directories_to_remove:
             directory_abs = root / directory
