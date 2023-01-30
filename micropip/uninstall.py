@@ -2,6 +2,7 @@ import importlib.metadata
 import warnings
 from importlib.metadata import Distribution
 from pathlib import Path
+import shutil
 
 from ._importlib_helpers import _top_level_declared, _top_level_inferred
 
@@ -27,21 +28,8 @@ def uninstall(packages: str | list[str]) -> None:
             raise RuntimeError(f"The package '{package}' is not installed") from None
 
     for dist in distributions:
-        files = dist.files or []
         # Distribution._path points to .dist-info directory
         root = dist._path.parent  # type: ignore[attr-defined]
-
-        # 1) Remove files
-
-        for file in files:
-            file_path = Path(file.locate())
-            try:
-                file_path.unlink()
-            except FileNotFoundError:
-                # File was removed manually by user?
-                continue
-
-        # 2) Remove directories
 
         # TODO: also remove directories that are not under sitepackages directory? (e.g. data_files?)
         directories_to_remove = set(dist._path.name)  # type: ignore[attr-defined]
@@ -49,14 +37,5 @@ def uninstall(packages: str | list[str]) -> None:
         directories_to_remove |= set(_top_level_inferred(dist))
 
         for directory in directories_to_remove:
-            directory_abs = root / directory
-            if not directory_abs.is_dir():
-                continue
-
-            try:
-                directory_abs.rmdir()
-            except OSError:
-                warnings.warn(
-                    f"The directory '{file_path.parent}' is not empty. The directory will not be removed."
-                )
-                continue
+            path = root / directory
+            shutil.rmtree(path, ignore_errors=True)
