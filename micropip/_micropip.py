@@ -682,12 +682,8 @@ def _list() -> PackageDict:
             # source is None if PYODIDE_SOURCE does not exist. In this case the
             # wheel was installed manually, not via `pyodide.loadPackage` or
             # `micropip`.
-            #
-            # tzdata is a funny special case: we install it with pip and then
-            # vendor it into our standard library. We should probably remove
-            # tzdata's dist-info because it's kind of weird to have dist-info in
-            # the stdlib.
             continue
+        
         packages[name] = PackageMetadata(
             name=name,
             version=version,

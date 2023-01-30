@@ -1,3 +1,4 @@
+import importlib
 import importlib.metadata
 import warnings
 from importlib.metadata import Distribution
@@ -36,10 +37,12 @@ def uninstall(packages: str | list[str]) -> None:
         directories_to_remove |= set(_top_level_declared(dist))
         directories_to_remove |= set(_top_level_inferred(dist))
 
-        for directory in directories_to_remove:
-            path = root / directory
-            try:
+        try:
+            for directory in directories_to_remove:
+                path = root / directory
                 shutil.rmtree(path, ignore_errors=False)
-            # File not found error is okay, while other errors need to be reported
-            except FileNotFoundError:
-                pass
+        # File not found error is okay, while other errors need to be reported
+        except FileNotFoundError:
+            pass
+        finally:
+            importlib.invalidate_caches()
