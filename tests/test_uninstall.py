@@ -48,16 +48,16 @@ async def test_uninstall_files(selenium_standalone_micropip, wheel_server_url):
         files = dist.files
 
         for file in files:
-            assert file.locate().is_file()
+            assert file.locate().is_file(), f"{file.locate()} is not a file"
 
-        assert dist._path.is_dir()
+        assert dist._path.is_dir(), f"{dist._path} is not a directory"
 
         micropip.uninstall("snowballstemmer")
 
         for file in files:
-            assert not file.locate().is_file()
+            assert not file.locate().is_file(), f"{file.locate()} still exists after removal"
 
-        assert not dist._path.is_dir()
+        assert not dist._path.is_dir(), f"{dist._path} still exists after removal"
 
     await run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
 
