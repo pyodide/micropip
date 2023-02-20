@@ -37,13 +37,27 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "micropip/_version.py"
 
-[tool.pycln]
-all = true
+[tool.ruff]
+select = [
+  "E",     # pycodestyles
+  "W",     # pycodestyles
+  "F",     # pyflakes
+  "B0",    # bugbear (all B0* checks enabled by default)
+  "B904",  # bugbear (Within an except clause, raise exceptions with raise ... from err)
+  "B905",  # bugbear (zip() without an explicit strict= parameter set.)
+  "UP",    # pyupgrade
+  "I",     # isort
+  "PGH",   # pygrep-hooks
+]
+# Remove E999 once pattern matching is supported
+# https://github.com/charliermarsh/ruff/issues/282
+ignore = ["E402", "E501", "E731", "E741", "E999"]
+target-version = "py311"
 
-[tool.isort]
-profile = "black"
-known_first_party = [
-  "micropip",
+
+[tool.ruff.isort]
+known-first-party = [
+  "micropip"
 ]
 
 [tool.mypy]
