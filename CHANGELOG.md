@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.2.2] - 2023/03/04
+
+### Fixed
+
+- When there is an invalid version on PyPi (defined as unparsable
+  by [`packaging.version.Version`](https://packaging.pypa.io/en/stable/version.html))
+  that version is now skipped. Otherwise a single invalid version would
+  make the package uninstallable, following removal of `LegacyVersion` in
+  [packaging#407](https://github.com/pypa/packaging/pull/407).
+
+### Fixed
+
 ## [0.2.1] - 2023/02/20
 
 ### Changed
