@@ -23,7 +23,7 @@ from packaging.markers import default_environment
 from packaging.requirements import Requirement
 from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
 
 from . import _mock_package
 from ._compat import (
@@ -268,7 +268,17 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
     ver : Version or None
         The version of the Python wheel, or None if there is no pure Python wheel.
     """
-    releases = metadata.get("releases", {})
+    releases_raw = metadata.get("releases", {})
+    releases = {}
+    # Skip unparsable versions
+    for key, val in releases_raw.items():
+        try:
+            Version(key)
+        except InvalidVersion:
+            continue
+
+        releases[key] = val
+
     candidate_versions = sorted(
         (Version(v) for v in req.specifier.filter(releases)),
         reverse=True,
