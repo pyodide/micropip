@@ -494,6 +494,27 @@ def test_last_version_from_pypi():
     assert str(wheel.version) == "0.15.5"
 
 
+def test_find_wheel_invalid_version():
+    """Check that if the one version on PyPi is unparsable
+
+    it should be skipped instead of producing an error
+    """
+    pytest.importorskip("packaging")
+    from packaging.requirements import Requirement
+
+    from micropip._micropip import find_wheel
+
+    requirement = Requirement("dummy_module")
+    versions = ["0.0.1", "0.15.5", "0.9.1", "2004d"]
+
+    metadata = _pypi_metadata("dummy_module", {v: ["py3"] for v in versions})
+
+    # get version number from find_wheel
+    wheel = find_wheel(metadata, requirement)
+
+    assert str(wheel.version) == "0.15.5"
+
+
 _best_tag_test_cases = (
     "package, version, incompatible_tags, compatible_tags",
     # Tests assume that `compatible_tags` is sorted from least to most compatible:
