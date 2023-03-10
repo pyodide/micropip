@@ -44,12 +44,12 @@ def always_iterable(obj, base_type=(str, bytes)):
 
 
 def _top_level_declared(dist):
-    return (dist.read_text('top_level.txt') or '').split()
+    return (dist.read_text("top_level.txt") or "").split()
 
 
 def _top_level_inferred(dist):
     return {
-        f.parts[0] if len(f.parts) > 1 else f.with_suffix('').name
+        f.parts[0] if len(f.parts) > 1 else f.with_suffix("").name
         for f in always_iterable(dist.files)
         if f.suffix == ".py"
     }

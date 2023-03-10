@@ -1,9 +1,7 @@
 import importlib
 import importlib.metadata
-import warnings
-from importlib.metadata import Distribution
-from pathlib import Path
 import shutil
+from importlib.metadata import Distribution
 
 from ._compat import loadedPackages
 from ._importlib_helpers import _top_level_declared, _top_level_inferred
@@ -11,7 +9,7 @@ from ._importlib_helpers import _top_level_declared, _top_level_inferred
 
 def uninstall(packages: str | list[str]) -> None:
     """Uninstall packages.
-    
+
     We do a lot simpler version of uninstallation than pip does.
     We just remove all files that are listed in the distribution metadata.
 
@@ -49,9 +47,8 @@ def uninstall(packages: str | list[str]) -> None:
             except FileNotFoundError:
                 # FileNotFoundError is okay, while other errors need to be reported
                 pass
-    
+
         if hasattr(loadedPackages, name):
             delattr(loadedPackages, name)
-        
+
     importlib.invalidate_caches()
-    

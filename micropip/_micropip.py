@@ -693,7 +693,7 @@ def _list() -> PackageDict:
             # wheel was installed manually, not via `pyodide.loadPackage` or
             # `micropip`.
             continue
-        
+
         packages[name] = PackageMetadata(
             name=name,
             version=version,

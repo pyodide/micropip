@@ -1,4 +1,5 @@
-import pytest
+# isort: skip_file
+
 from pytest_pyodide import run_in_pyodide
 
 SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
@@ -7,9 +8,10 @@ SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
 def test_uninstall_basic(selenium_standalone_micropip, wheel_server_url):
     @run_in_pyodide()
     async def run(selenium, wheel, wheel_server_url):
-        import micropip
-        import sys
         import importlib.metadata
+        import sys
+
+        import micropip
 
         wheel_url = wheel_server_url + wheel
         await micropip.install(wheel_url)
@@ -33,7 +35,7 @@ def test_uninstall_basic(selenium_standalone_micropip, wheel_server_url):
         for dist in importlib.metadata.distributions():
             if dist.name == "snowballstemmer":
                 raise AssertionError("snowballstemmer should not be available")
-        
+
         # 3. Check that the module is not available with micropip.list()
         assert "snowballstemmer" not in micropip.list()
 
@@ -67,7 +69,9 @@ def test_uninstall_files(selenium_standalone_micropip, wheel_server_url):
         micropip.uninstall("snowballstemmer")
 
         for file in files:
-            assert not file.locate().is_file(), f"{file.locate()} still exists after removal"
+            assert (
+                not file.locate().is_file()
+            ), f"{file.locate()} still exists after removal"
 
         assert not dist._path.is_dir(), f"{dist._path} still exists after removal"
 
@@ -78,8 +82,11 @@ def test_uninstall_install_again(selenium_standalone_micropip, wheel_server_url)
     """
     Check that uninstalling and installing again works.
     """
+
     @run_in_pyodide()
     async def run(selenium, wheel, wheel_server_url):
+        import sys
+
         import micropip
 
         wheel_url = wheel_server_url + wheel
@@ -87,14 +94,24 @@ def test_uninstall_install_again(selenium_standalone_micropip, wheel_server_url)
 
         assert "snowballstemmer" in micropip.list()
 
+        __import__("snowballstemmer")
+
         micropip.uninstall("snowballstemmer")
 
         assert "snowballstemmer" not in micropip.list()
 
+        del sys.modules["snowballstemmer"]
+
+        try:
+            __import__("snowballstemmer")
+        except ImportError:
+            pass
+        else:
+            raise AssertionError("snowballstemmer should not be available")
+
         await micropip.install(wheel_url)
 
         assert "snowballstemmer" in micropip.list()
-
-        import snowballstemmer
+        __import__("snowballstemmer")
 
     run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
