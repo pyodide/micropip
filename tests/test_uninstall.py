@@ -4,35 +4,47 @@ from pytest_pyodide import run_in_pyodide
 SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
 
 
-@pytest.mark.asyncio
-async def test_uninstall_basic(selenium_standalone_micropip, wheel_server_url):
+def test_uninstall_basic(selenium_standalone_micropip, wheel_server_url):
     @run_in_pyodide()
     async def run(selenium, wheel, wheel_server_url):
         import micropip
+        import sys
+        import importlib.metadata
 
         wheel_url = wheel_server_url + wheel
         await micropip.install(wheel_url)
 
         assert "snowballstemmer" in micropip.list()
+        assert "snowballstemmer" not in sys.modules
 
         micropip.uninstall("snowballstemmer")
 
-        assert "snowballstemmer" not in micropip.list()
-
+        # 1. Check that the module is not available with import statement
         try:
             import snowballstemmer
 
-            snowballstemmer.__module__
+            print(snowballstemmer.__file__)
         except ImportError:
             pass
         else:
             raise AssertionError("snowballstemmer should not be available")
 
-    await run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
+        # 2. Check that the module is not available with importlib.metadata
+        for dist in importlib.metadata.distributions():
+            if dist.name == "snowballstemmer":
+                raise AssertionError("snowballstemmer should not be available")
+        
+        # 3. Check that the module is not available with micropip.list()
+        assert "snowballstemmer" not in micropip.list()
+
+    run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
 
 
-@pytest.mark.asyncio
-async def test_uninstall_files(selenium_standalone_micropip, wheel_server_url):
+def test_uninstall_files(selenium_standalone_micropip, wheel_server_url):
+    """
+    Check all files are removed after uninstallation.
+    """
+
     @run_in_pyodide()
     async def run(selenium, wheel, wheel_server_url):
         import importlib.metadata
@@ -59,11 +71,13 @@ async def test_uninstall_files(selenium_standalone_micropip, wheel_server_url):
 
         assert not dist._path.is_dir(), f"{dist._path} still exists after removal"
 
-    await run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
+    run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
 
 
-@pytest.mark.asyncio
-async def test_uninstall_install_again(selenium_standalone_micropip, wheel_server_url):
+def test_uninstall_install_again(selenium_standalone_micropip, wheel_server_url):
+    """
+    Check that uninstalling and installing again works.
+    """
     @run_in_pyodide()
     async def run(selenium, wheel, wheel_server_url):
         import micropip
@@ -83,6 +97,4 @@ async def test_uninstall_install_again(selenium_standalone_micropip, wheel_serve
 
         import snowballstemmer
 
-        snowballstemmer.__module__
-
-    await run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
+    run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
