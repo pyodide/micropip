@@ -4,20 +4,34 @@ import pytest
 from pytest_pyodide import spawn_web_server
 
 
-@pytest.fixture(scope="module")
-def wheel_path(tmp_path_factory):
-    # Build a micropip wheel for testing
+def _build(build_dir, dist_dir):
     import build
     from build.env import IsolatedEnvBuilder
 
-    output_dir = tmp_path_factory.mktemp("wheel")
-
     with IsolatedEnvBuilder() as env:
-        builder = build.ProjectBuilder(Path(__file__).parent.parent)
+        builder = build.ProjectBuilder(build_dir)
         builder.python_executable = env.executable
         builder.scripts_dir = env.scripts_dir
         env.install(builder.build_system_requires)
-        builder.build("wheel", output_directory=output_dir)
+        builder.build("wheel", output_directory=dist_dir)
+
+
+@pytest.fixture(scope="session")
+def wheel_path(tmp_path_factory):
+    # Build a micropip wheel for testing
+    output_dir = tmp_path_factory.mktemp("wheel")
+
+    _build(Path(__file__).parent.parent, output_dir)
+
+    yield output_dir
+
+
+@pytest.fixture(scope="session")
+def test_wheel_path(tmp_path_factory):
+    # Build a test wheel for testing
+    output_dir = tmp_path_factory.mktemp("wheel")
+
+    _build(Path(__file__).parent / "test_data" / "test_wheel_uninstall", output_dir)
 
     yield output_dir
 
@@ -47,13 +61,3 @@ def selenium_standalone_micropip(selenium_standalone, wheel_path):
         )
 
     yield selenium_standalone
-
-
-@pytest.fixture(scope="module")
-def wheel_server_url():
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
-        server_hostname, server_port, _ = server
-
-        base_url = f"http://{server_hostname}:{server_port}/"
-
-        yield base_url
