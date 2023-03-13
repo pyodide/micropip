@@ -2,75 +2,9 @@ import importlib
 import importlib.metadata
 import warnings
 from importlib.metadata import Distribution
-from pathlib import Path
 
 from ._compat import loadedPackages
-
-
-def _get_dist_info(dist: Distribution) -> Path:
-    """
-    Get the .dist-info directory of a distribution.
-    """
-    return dist._path  # type: ignore[attr-defined]
-
-
-def _get_root(dist: Distribution) -> Path:
-    """
-    Get the root directory where a package is installed.
-    This is normally the site-packages directory.
-    """
-    return _get_dist_info(dist).parent
-
-
-def _get_files_in_distribution(dist: Distribution) -> set[Path]:
-    """
-    Get a list of files in a distribution, using the metadata.
-
-    Parameters
-    ----------
-    dist
-        Distribution to get files from.
-
-    Returns
-    -------
-    A list of directories in the distribution. This list is sorted
-    in a reverse-hierarchical order, so that directories are listed after
-    files that are in them, making it easier to remove directories
-    that are empty after uninstallation.
-    """
-
-    root = _get_root(dist)
-    dist_info = _get_dist_info(dist)
-
-    files_to_remove = set()
-    pkg_files = dist.files or []
-    metadata_files = dist_info.glob("*")
-
-    for file in pkg_files:
-        abspath = (root / file).resolve()
-
-        if not abspath.is_file():
-            if not abspath.is_relative_to(root):
-                # This file is not in the site-packages directory. Probably one of:
-                # - data_files
-                # - scripts
-                # - entry_points
-                # Since we don't support these, we can ignore them (except for data_files (TODO))
-                continue
-
-            warnings.warn(
-                f"WARNING: A file '{abspath}' listed in the metadata of '{dist.name}' does not exist."
-            )
-
-            continue
-
-        files_to_remove.add(abspath)
-
-    # Also add all files in the .dist-info directory.
-    # Since micropip adds some extra files there, we need to remove them too.
-    files_to_remove.update(metadata_files)
-
-    return files_to_remove
+from .utils import get_files_in_distribution, get_root
 
 
 def uninstall(packages: str | list[str]) -> None:
@@ -101,11 +35,26 @@ def uninstall(packages: str | list[str]) -> None:
         #       dist.name uses metadata file to get the name
         name = dist.name
 
-        root = _get_root(dist)
-        files = _get_files_in_distribution(dist)
+        root = get_root(dist)
+        files = get_files_in_distribution(dist)
         directories = set()
 
         for file in files:
+            if not file.is_file():
+                if not file.is_relative_to(root):
+                    # This file is not in the site-packages directory. Probably one of:
+                    # - data_files
+                    # - scripts
+                    # - entry_points
+                    # Since we don't support these, we can ignore them (except for data_files (TODO))
+                    continue
+
+                warnings.warn(
+                    f"WARNING: A file '{file}' listed in the metadata of '{dist.name}' does not exist."
+                )
+
+                continue
+
             file.unlink()
 
             if file.parent != root:
