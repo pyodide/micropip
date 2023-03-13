@@ -1,6 +1,7 @@
 import importlib
 import importlib.metadata
 import shutil
+import warnings
 from importlib.metadata import Distribution
 
 from ._compat import loadedPackages
@@ -28,7 +29,7 @@ def uninstall(packages: str | list[str]) -> None:
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            raise RuntimeError(f"The package '{package}' is not installed") from None
+            warnings.warn(f"WARNING: Skipping '{package}' as it is not installed.")
 
     for dist in distributions:
         # Distribution._path points to .dist-info directory

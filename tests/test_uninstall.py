@@ -115,3 +115,23 @@ def test_uninstall_install_again(selenium_standalone_micropip, wheel_server_url)
         __import__("snowballstemmer")
 
     run(selenium_standalone_micropip, SNOWBALL_WHEEL, wheel_server_url)
+
+
+def test_uninstall_not_installed(selenium_standalone_micropip):
+    """
+    Test uninstalling a package that is not installed.
+    """
+
+    @run_in_pyodide()
+    async def run(selenium):
+        import micropip
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            micropip.uninstall("no-such-package")
+
+            assert len(w) == 1
+            assert "not installed" in str(w[-1].message)
+
+    run(selenium_standalone_micropip)
