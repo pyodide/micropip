@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `micropip.uninstall` to uninstall packages
-  [#55](https://github.com/pyodide/micropip/pull/25)
+  [#55](https://github.com/pyodide/micropip/pull/55)
 
 ## [0.2.2] - 2023/03/04
 
