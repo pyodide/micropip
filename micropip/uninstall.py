@@ -62,6 +62,8 @@ def _get_files_in_distribution(dist: Distribution) -> set[Path]:
                 f"WARNING: A file '{abspath}' listed in the metadata of '{dist.name}' does not exist."
             )
 
+            continue
+
         files_to_remove.add(abspath)
 
     # Also add all files in the .dist-info directory.
@@ -115,9 +117,9 @@ def uninstall(packages: str | list[str]) -> None:
                 directory.rmdir()
             except OSError:
                 warnings.warn(
-                    f"WARNING: A directory '{directory}' is not empty after uninstallation of '{name}'."
+                    f"WARNING: A directory '{directory}' is not empty after uninstallation of '{name}'. "
+                    "This might cause problems when installing a new version of the package. "
                 )
-                print(list(directory.glob("*")))
 
         if hasattr(loadedPackages, name):
             delattr(loadedPackages, name)
