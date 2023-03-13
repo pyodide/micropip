@@ -1,0 +1,17 @@
+[project]
+name = "test_wheel_uninstall"
+description = "Test wheel uninstall"
+requires-python = ">=3.10"
+version = "1.0.0"
+
+[tool.setuptools]
+packages = ["deep", "deep.deep", "shallow", "test_wheel_uninstall"]
+py-modules = ["top_level"]
+
+[tool.setuptools.package-data]
+deep = ["data/*.txt"]
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+
+build-backend = "setuptools.build_meta"
