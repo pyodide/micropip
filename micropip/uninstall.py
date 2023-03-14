@@ -8,10 +8,15 @@ from .utils import get_files_in_distribution, get_root
 
 
 def uninstall(packages: str | list[str]) -> None:
-    """Uninstall packages.
+    """Uninstall the given packages.
 
-    We do a lot simpler version of uninstallation than pip does.
-    We just remove all files that are listed in the distribution metadata.
+    This function only supports uninstalling packages that are installed
+    using a wheel file, i.e. packages that have distribution metadata.
+
+    It is possible to reinstall a package after uninstalling it, but
+    note that modules / functions that are already imported will not be
+    automatically removed from the namespace. So make sure to reload
+    the module after reinstalling by e.g. running `importlib.reload(module)`.
 
     Parameters
     ----------
