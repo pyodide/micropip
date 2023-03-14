@@ -1,8 +1,8 @@
-from ._micropip import _list as list
-from ._micropip import (
+from .freeze import freeze
+from .install import install
+from .list import _list as list
+from .mock_package import (
     add_mock_package,
-    freeze,
-    install,
     list_mock_packages,
     remove_mock_package,
 )
