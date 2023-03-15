@@ -4,7 +4,6 @@ import json
 import warnings
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
-from importlib.metadata import version as importlib_version
 from pathlib import Path
 from sysconfig import get_platform
 from typing import IO, Any
@@ -16,6 +15,7 @@ from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import InvalidVersion, Version
 
+from . import _utils
 from ._compat import (
     REPODATA_PACKAGES,
     fetch_bytes,
@@ -263,7 +263,7 @@ class Transaction:
     def check_version_satisfied(self, req: Requirement) -> bool:
         ver = None
         try:
-            ver = importlib_version(req.name)
+            ver = _utils.importlib_version(req.name)
         except PackageNotFoundError:
             pass
         if req.name in self.locked:
