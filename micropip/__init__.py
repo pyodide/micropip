@@ -6,6 +6,7 @@ from ._micropip import (
     list_mock_packages,
     remove_mock_package,
 )
+from .uninstall import uninstall
 
 try:
     from ._version import __version__
@@ -19,5 +20,6 @@ __all__ = [
     "add_mock_package",
     "list_mock_packages",
     "remove_mock_package",
+    "uninstall",
     "__version__",
 ]
