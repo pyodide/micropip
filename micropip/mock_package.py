@@ -5,10 +5,10 @@ import shutil
 import site
 import sys
 from collections.abc import Callable
-from importlib.metadata import distribution as importlib_distribution
-from importlib.metadata import distributions as importlib_distributions
 from pathlib import Path
 from textwrap import dedent
+
+from ._utils import importlib_distribution, importlib_distributions
 
 MOCK_INSTALL_NAME_MEMORY = "micropip in-memory mock package"
 MOCK_INSTALL_NAME_PERSISTENT = "micropip mock package"

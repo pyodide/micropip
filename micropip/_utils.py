@@ -47,3 +47,33 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     files_to_remove.update(metadata_files)
 
     return files_to_remove
+
+
+def importlib_distribution(distribution_name) -> Distribution:
+    """
+    This is a wrapper around importlib.metadata.distribution(),
+    we need to wrap it because we need to mock it in tests.
+    """
+    from importlib.metadata import distribution
+
+    return distribution(distribution_name)
+
+
+def importlib_distributions() -> list[Distribution]:
+    """
+    This is a wrapper around importlib.metadata.distributions(),
+    we need to wrap it because we need to mock it in tests.
+    """
+    from importlib.metadata import distributions
+
+    return list(distributions())
+
+
+def importlib_version(distibution_name: str) -> str:
+    """
+    This is a wrapper around importlib.metadata.version(),
+    we need to wrap it because we need to mock it in tests.
+    """
+    from importlib.metadata import version
+
+    return version(distibution_name)
