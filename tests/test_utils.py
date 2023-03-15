@@ -1,18 +1,18 @@
 from importlib.metadata import distribution
 
-import micropip.utils as utils
+import micropip._utils as _utils
 
 
 def test_get_root():
     dist = distribution("pytest")
-    root = utils.get_root(dist)
+    root = _utils.get_root(dist)
 
     assert (root / "pytest").is_dir()
 
 
 def test_get_dist_info():
     dist = distribution("pytest")
-    dist_info = utils.get_dist_info(dist)
+    dist_info = _utils.get_dist_info(dist)
 
     assert dist_info.is_dir()
     assert dist_info.name.endswith(".dist-info")
@@ -22,7 +22,7 @@ def test_get_dist_info():
 
 def test_get_files_in_distribution():
     dist = distribution("pytest")
-    files = utils.get_files_in_distribution(dist)
+    files = _utils.get_files_in_distribution(dist)
 
     assert files
     for file in files:
@@ -32,6 +32,6 @@ def test_get_files_in_distribution():
     for file in dist_files:
         assert file.locate().resolve() in files, f"{file.locate()} not found"
 
-    dist_info = utils.get_dist_info(dist)
+    dist_info = _utils.get_dist_info(dist)
     for file in dist_info.iterdir():
         assert file in files, f"{file} not found"

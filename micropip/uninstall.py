@@ -4,7 +4,7 @@ import warnings
 from importlib.metadata import Distribution
 
 from ._compat import loadedPackages
-from .utils import get_files_in_distribution, get_root
+from ._utils import get_files_in_distribution, get_root
 
 
 def uninstall(packages: str | list[str]) -> None:
