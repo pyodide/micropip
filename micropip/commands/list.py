@@ -1,6 +1,6 @@
-from . import _utils
-from ._compat import REPODATA_PACKAGES, loadedPackages
-from .package import PackageDict, PackageMetadata
+from .. import _utils
+from .._compat import REPODATA_PACKAGES, loadedPackages
+from ..package import PackageDict, PackageMetadata
 
 
 def _list() -> PackageDict:

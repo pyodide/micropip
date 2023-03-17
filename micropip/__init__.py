@@ -1,12 +1,12 @@
-from .freeze import freeze
-from .install import install
-from .list import _list as list
-from .mock_package import (
+from .commands.freeze import freeze
+from .commands.install import install
+from .commands.list import _list as list
+from .commands.mock_package import (
     add_mock_package,
     list_mock_packages,
     remove_mock_package,
 )
-from .uninstall import uninstall
+from .commands.uninstall import uninstall
 
 try:
     from ._version import __version__

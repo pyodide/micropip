@@ -4,8 +4,8 @@ from typing import Any
 
 from packaging.utils import canonicalize_name
 
-from . import _utils
-from ._compat import REPODATA_INFO, REPODATA_PACKAGES
+from .. import _utils
+from .._compat import REPODATA_INFO, REPODATA_PACKAGES
 
 
 def freeze() -> str:

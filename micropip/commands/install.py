@@ -4,9 +4,9 @@ from pathlib import Path
 
 from packaging.markers import default_environment
 
-from ._compat import loadPackage, to_js
-from .constants import FAQ_URLS
-from .transaction import Transaction
+from .._compat import loadPackage, to_js
+from ..constants import FAQ_URLS
+from ..transaction import Transaction
 
 
 async def install(
