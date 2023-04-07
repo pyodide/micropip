@@ -29,7 +29,7 @@ class MockDistribution(importlib.metadata.Distribution):
         return None
 
 
-_mock_modules: "dict[str,str|Callable]" = {}
+_mock_modules: dict[str, str | Callable] = {}
 _mock_distributions: dict[str, MockDistribution] = {}
 
 
@@ -78,7 +78,7 @@ class _MockModuleFinder(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 _finder = _MockModuleFinder()
 
 
-def add_in_memory_distribution(name, metafiles, modules):
+def _add_in_memory_distribution(name, metafiles, modules):
     if _finder not in sys.meta_path:
         sys.meta_path = [_finder] + sys.meta_path
     _mock_distributions[name] = MockDistribution(metafiles, modules)
@@ -90,7 +90,7 @@ def _add_mock_module(name, obj):
     _mock_modules[name] = obj
 
 
-def remove_in_memory_distribution(name):
+def _remove_in_memory_distribution(name):
     if name in _mock_distributions:
         for module in _mock_distributions[name].modules.keys():
             if module in sys.modules:
