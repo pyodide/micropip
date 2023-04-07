@@ -1,9 +1,9 @@
 import asyncio
 import hashlib
+import importlib.metadata
 import json
 import warnings
 from dataclasses import dataclass, field
-import importlib.metadata
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from sysconfig import get_platform
@@ -16,7 +16,6 @@ from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import InvalidVersion, Version
 
-from . import _utils
 from ._compat import (
     REPODATA_PACKAGES,
     fetch_bytes,
