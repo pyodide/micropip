@@ -8,7 +8,6 @@ TEST_PACKAGE_NAME = "test_wheel_uninstall"
 
 @pytest.fixture(scope="module")
 def test_wheel_url(test_wheel_path):
-
     wheel_file = next(test_wheel_path.glob(f"{TEST_PACKAGE_NAME}-*.whl")).name
 
     with spawn_web_server(test_wheel_path) as server:
