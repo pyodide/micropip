@@ -22,7 +22,7 @@ def freeze() -> str:
     """
 
     packages = deepcopy(REPODATA_PACKAGES)
-    for dist in importlib.metadata.importlib_distributions():
+    for dist in importlib.metadata.distributions():
         name = dist.name
         version = dist.version
         url = dist.read_text("PYODIDE_URL")
