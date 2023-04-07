@@ -47,8 +47,3 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     files_to_remove.update(metadata_files)
 
     return files_to_remove
-
-
-from importlib.metadata import distribution as importlib_distribution
-from importlib.metadata import distributions as importlib_distributions
-from importlib.metadata import version as importlib_version
