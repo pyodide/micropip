@@ -57,9 +57,3 @@ def importlib_distribution(distribution_name) -> Distribution:
     from importlib.metadata import distribution
 
     return distribution(distribution_name)
-
-
-from importlib.metadata import distributions as importlib_distributions
-
-
-from importlib.metadata import version as importlib_version

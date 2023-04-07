@@ -145,7 +145,6 @@ async def test_package_with_extra(mock_fetch):
 
 @pytest.mark.asyncio
 async def test_package_with_extra_all(mock_fetch):
-
     mock_fetch.add_pkg_version("depa")
     mock_fetch.add_pkg_version("depb")
     mock_fetch.add_pkg_version("depc")
