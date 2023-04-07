@@ -3,6 +3,7 @@ import hashlib
 import json
 import warnings
 from dataclasses import dataclass, field
+import importlib.metadata
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from sysconfig import get_platform
@@ -263,7 +264,7 @@ class Transaction:
     def check_version_satisfied(self, req: Requirement) -> bool:
         ver = None
         try:
-            ver = _utils.importlib_version(req.name)
+            ver = importlib.metadata.version(req.name)
         except PackageNotFoundError:
             pass
         if req.name in self.locked:

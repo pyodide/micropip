@@ -1,4 +1,5 @@
 import importlib
+import importlib.metadata
 import shutil
 import site
 import sys
@@ -6,7 +7,6 @@ from pathlib import Path
 from textwrap import dedent
 
 from .._mock_package import _add_in_memory_distribution, _remove_in_memory_distribution
-from .._utils import importlib_distribution, importlib_distributions
 
 MOCK_INSTALL_NAME_MEMORY = "micropip in-memory mock package"
 MOCK_INSTALL_NAME_PERSISTENT = "micropip mock package"
@@ -139,7 +139,7 @@ Author-email: {name}@micro.pip.non-working-fake-host
 
 def list_mock_packages() -> list[str]:
     packages = []
-    for dist in importlib_distributions():
+    for dist in importlib.metadata.distributions():
         installer = dist.read_text("INSTALLER")
         if installer is not None and (
             installer == MOCK_INSTALL_NAME_PERSISTENT
@@ -150,7 +150,7 @@ def list_mock_packages() -> list[str]:
 
 
 def remove_mock_package(name: str) -> None:
-    d = importlib_distribution(name)
+    d = importlib.metadata.distribution(name)
     installer = d.read_text("INSTALLER")
     if installer == MOCK_INSTALL_NAME_MEMORY:
         _remove_in_memory_distribution(name)

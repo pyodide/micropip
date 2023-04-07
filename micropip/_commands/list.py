@@ -1,4 +1,5 @@
-from .. import _utils
+import importlib.metadata
+
 from .._compat import REPODATA_PACKAGES, loadedPackages
 from ..package import PackageDict, PackageMetadata
 
@@ -24,7 +25,7 @@ def _list() -> PackageDict:
 
     # Add packages that are loaded through pyodide.loadPackage
     packages = PackageDict()
-    for dist in _utils.importlib_distributions():
+    for dist in importlib.metadata.distributions():
         name = dist.name
         version = dist.version
         source = dist.read_text("PYODIDE_SOURCE")

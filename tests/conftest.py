@@ -96,7 +96,7 @@ def wheel_base(monkeypatch):
 
 @pytest.fixture
 def mock_importlib(monkeypatch, wheel_base):
-    from micropip import _utils
+    import importlib.metadata
 
     def _mock_importlib_version(name: str) -> str:
         dists = _mock_importlib_distributions()
@@ -108,9 +108,9 @@ def mock_importlib(monkeypatch, wheel_base):
     def _mock_importlib_distributions():
         return (Distribution.at(p) for p in wheel_base.glob("*.dist-info"))  # type: ignore[union-attr]
 
-    monkeypatch.setattr(_utils, "importlib_version", _mock_importlib_version)
+    monkeypatch.setattr(importlib.metadata, "version", _mock_importlib_version)
     monkeypatch.setattr(
-        _utils, "importlib_distributions", _mock_importlib_distributions
+        importlib.metadata, "distributions", _mock_importlib_distributions
     )
 
 

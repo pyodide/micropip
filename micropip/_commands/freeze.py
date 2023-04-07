@@ -1,3 +1,4 @@
+import importlib.metadata
 import json
 from copy import deepcopy
 from typing import Any
@@ -22,7 +23,7 @@ def freeze() -> str:
     """
 
     packages = deepcopy(REPODATA_PACKAGES)
-    for dist in _utils.importlib_distributions():
+    for dist in importlib.metadata.importlib_distributions():
         name = dist.name
         version = dist.version
         url = dist.read_text("PYODIDE_URL")
