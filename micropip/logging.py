@@ -1,7 +1,8 @@
+import contextlib
 import logging
 import sys
-from typing import Generator, Any
-import contextlib
+from collections.abc import Generator
+from typing import Any
 
 _logger: logging.Logger | None = None
 _indentation: int = 0
@@ -70,8 +71,8 @@ class IndentingFormatter(logging.Formatter):
         formatted = "".join([prefix + line for line in formatted.splitlines(True)])
         return formatted
 
-def _set_formatter_once():
 
+def _set_formatter_once():
     global _logger
 
     if _logger is not None:
@@ -87,7 +88,6 @@ def _set_formatter_once():
 
 
 def setup_logging(verbosity: int | bool) -> logging.Logger:
-
     _set_formatter_once()
 
     if verbosity >= 2:
