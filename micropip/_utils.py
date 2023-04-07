@@ -49,17 +49,6 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     return files_to_remove
 
 
-def importlib_distribution(distribution_name) -> Distribution:
-    """
-    This is a wrapper around importlib.metadata.distribution(),
-    we need to wrap it because we need to mock it in tests.
-    """
-    from importlib.metadata import distribution
-
-    return distribution(distribution_name)
-
-
+from importlib.metadata import distribution as importlib_distribution
 from importlib.metadata import distributions as importlib_distributions
-
-
 from importlib.metadata import version as importlib_version
