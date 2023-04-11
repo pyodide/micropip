@@ -1,5 +1,6 @@
 import importlib
 import importlib.metadata
+import warnings
 from importlib.metadata import Distribution
 
 from .._compat import loadedPackages
@@ -39,7 +40,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            logger.warn(f"Skipping '{package}' as it is not installed.", stacklevel=1)
+            warnings.warn(f"Skipping '{package}' as it is not installed.", stacklevel=1)
 
     for dist in distributions:
         # Note: this value needs to be retrieved before removing files, as
@@ -48,7 +49,6 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
         version = dist.version
 
         logger.info(f"Found existing installation: {name} {version}")
-        logger.info(f"Uninstalling {name}-{version}")
 
         root = get_root(dist)
         files = get_files_in_distribution(dist)
@@ -64,7 +64,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                     # Since we don't support these, we can ignore them (except for data_files (TODO))
                     continue
 
-                logger.warn(
+                warnings.warn(
                     f"A file '{file}' listed in the metadata of '{dist.name}' does not exist.",
                     stacklevel=1,
                 )
@@ -81,7 +81,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             try:
                 directory.rmdir()
             except OSError:
-                logger.warn(
+                warnings.warn(
                     f"A directory '{directory}' is not empty after uninstallation of '{name}'. "
                     "This might cause problems when installing a new version of the package. ",
                     stacklevel=1,
@@ -91,7 +91,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             delattr(loadedPackages, name)
         else:
             # This should not happen, but just in case
-            logger.warn(
+            warnings.warn(
                 f"a package '{name}' was not found in loadedPackages.",
                 stacklevel=1,
             )

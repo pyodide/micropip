@@ -30,7 +30,7 @@ from .constants import FAQ_URLS
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageMetadata
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("micropip")
 
 
 @dataclass

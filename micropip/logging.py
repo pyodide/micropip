@@ -72,13 +72,13 @@ class IndentingFormatter(logging.Formatter):
         return formatted
 
 
-def _set_formatter_once():
+def _set_formatter_once() -> None:
     global _logger
 
     if _logger is not None:
         return
 
-    _logger = logging.getLogger(__name__)
+    _logger = logging.getLogger("micropip")
 
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.NOTSET)
