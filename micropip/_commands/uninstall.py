@@ -1,13 +1,13 @@
 import importlib
 import importlib.metadata
-import warnings
 from importlib.metadata import Distribution
 
 from .._compat import loadedPackages
 from .._utils import get_files_in_distribution, get_root
+from ..logging import setup_logging
 
 
-def uninstall(packages: str | list[str]) -> None:
+def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None:
     """Uninstall the given packages.
 
     This function only supports uninstalling packages that are installed
@@ -22,7 +22,13 @@ def uninstall(packages: str | list[str]) -> None:
     ----------
     packages
         Packages to uninstall.
+
+    verbose
+        Print more information about the process.
+        By default, micropip is silent. Setting ``verbose=True`` will print
+        similar information as pip.
     """
+    logger = setup_logging(verbose)
 
     if isinstance(packages, str):
         packages = [packages]
@@ -33,14 +39,16 @@ def uninstall(packages: str | list[str]) -> None:
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            warnings.warn(
-                f"WARNING: Skipping '{package}' as it is not installed.", stacklevel=1
-            )
+            logger.warn(f"Skipping '{package}' as it is not installed.", stacklevel=1)
 
     for dist in distributions:
         # Note: this value needs to be retrieved before removing files, as
         #       dist.name uses metadata file to get the name
         name = dist.name
+        version = dist.version
+
+        logger.info(f"Found existing installation: {name} {version}")
+        logger.info(f"Uninstalling {name}-{version}")
 
         root = get_root(dist)
         files = get_files_in_distribution(dist)
@@ -56,8 +64,8 @@ def uninstall(packages: str | list[str]) -> None:
                     # Since we don't support these, we can ignore them (except for data_files (TODO))
                     continue
 
-                warnings.warn(
-                    f"WARNING: A file '{file}' listed in the metadata of '{dist.name}' does not exist.",
+                logger.warn(
+                    f"A file '{file}' listed in the metadata of '{dist.name}' does not exist.",
                     stacklevel=1,
                 )
 
@@ -73,8 +81,8 @@ def uninstall(packages: str | list[str]) -> None:
             try:
                 directory.rmdir()
             except OSError:
-                warnings.warn(
-                    f"WARNING: A directory '{directory}' is not empty after uninstallation of '{name}'. "
+                logger.warn(
+                    f"A directory '{directory}' is not empty after uninstallation of '{name}'. "
                     "This might cause problems when installing a new version of the package. ",
                     stacklevel=1,
                 )
@@ -83,9 +91,11 @@ def uninstall(packages: str | list[str]) -> None:
             delattr(loadedPackages, name)
         else:
             # This should not happen, but just in case
-            warnings.warn(
-                f"WARNING: a package '{name}' was not found in loadedPackages.",
+            logger.warn(
+                f"a package '{name}' was not found in loadedPackages.",
                 stacklevel=1,
             )
+
+        logger.info(f"Successfully uninstalled {name}-{version}")
 
     importlib.invalidate_caches()

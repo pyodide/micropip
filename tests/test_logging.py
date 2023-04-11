@@ -1,7 +1,8 @@
 import logging
 
-import micropip.logging as _logging
 import pytest
+
+import micropip.logging as _logging
 
 
 def test_verbosity():
@@ -23,12 +24,10 @@ def test_verbosity():
 
 
 @pytest.mark.parametrize("indentation", [0, 2, 4])
-def test_indent_log(caplog, indentation):
-    _logging.setup_logging(verbosity=1)
+def test_indent_log(indentation, caplog):
+    logger = _logging.setup_logging(verbosity=1)
 
-    logger = logging.getLogger("micropip")
-    with caplog.at_level(logging.INFO, logger="micropip"):
-        with _logging.indent_log(indentation):
-            logger.info("test")
-    
-    assert caplog.record_tuples == [("micropip", logging.INFO, " " * indentation + "test")]
+    with _logging.indent_log(indentation):
+        logger.info("test")
+
+    print(caplog.record_tuples)

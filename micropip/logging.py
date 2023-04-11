@@ -81,7 +81,7 @@ def _set_formatter_once():
     _logger = logging.getLogger(__name__)
 
     ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.WARNING)
+    ch.setLevel(logging.NOTSET)
     ch.setFormatter(IndentingFormatter())
 
     _logger.addHandler(ch)

@@ -89,7 +89,7 @@ async def install(
     verbose :
         Print more information about the process.
         By default, micropip is silent. Setting ``verbose=True`` will print
-        mostly the same information as pip.
+        similar information as pip.
     """
     logger = setup_logging(verbose)
 
