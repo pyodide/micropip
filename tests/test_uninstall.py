@@ -1,7 +1,10 @@
 # isort: skip_file
+from pathlib import Path
 
 import pytest
 from pytest_pyodide import run_in_pyodide, spawn_web_server
+from conftest import SNOWBALL_WHEEL
+from packaging.utils import parse_wheel_filename
 
 TEST_PACKAGE_NAME = "test_wheel_uninstall"
 
@@ -235,3 +238,29 @@ def test_pyodide_repodata(selenium_standalone_micropip):
         __import__("pytest")
 
     run(selenium_standalone_micropip)
+
+
+def test_logging(selenium_standalone_micropip):
+    # TODO: make a fixture for this, it's used in a few places
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
+        server_hostname, server_port, _ = server
+        url = f"http://{server_hostname}:{server_port}/"
+        wheel_url = url + SNOWBALL_WHEEL
+        name, version, _, _ = parse_wheel_filename(SNOWBALL_WHEEL)
+
+        @run_in_pyodide(packages=["micropip"])
+        async def run_test(selenium, url, name, version):
+            import micropip
+            import contextlib
+            import io
+
+            with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+                await micropip.install(url)
+                micropip.uninstall("snowballstemmer", verbose=True)
+
+                captured = buf.getvalue()
+
+                assert f"Found existing installation: {name} {version}" in captured
+                assert f"Successfully uninstalled {name}-{version}" in captured
+
+        run_test(selenium_standalone_micropip, wheel_url, name, version)
