@@ -130,7 +130,9 @@ async def install(
     package_names = [pkg.name for pkg in transaction.pyodide_packages] + [
         pkg.name for pkg in transaction.wheels
     ]
-    logger.info("Installing collected packages: " + ", ".join(package_names))
+
+    if package_names:
+        logger.info("Installing collected packages: " + ", ".join(package_names))
 
     wheel_promises = []
     # Install built-in packages
@@ -155,6 +157,8 @@ async def install(
     packages = [f"{pkg.name}-{pkg.version}" for pkg in transaction.pyodide_packages] + [
         f"{pkg.name}-{pkg.version}" for pkg in transaction.wheels
     ]
-    logger.info("Successfully installed " + ", ".join(packages))
+
+    if packages:
+        logger.info("Successfully installed " + ", ".join(packages))
 
     importlib.invalidate_caches()

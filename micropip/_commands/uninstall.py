@@ -64,7 +64,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                     continue
 
                 logger.warn(
-                    f"A file '{file}' listed in the metadata of '{dist.name}' does not exist.",
+                    f"A file '{file}' listed in the metadata of '{name}' does not exist.",
                 )
 
                 continue
