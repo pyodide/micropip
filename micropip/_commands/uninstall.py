@@ -39,7 +39,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            logger.warn(f"Skipping '{package}' as it is not installed.")
+            logger.warning(f"Skipping '{package}' as it is not installed.")
 
     for dist in distributions:
         # Note: this value needs to be retrieved before removing files, as
@@ -63,7 +63,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                     # Since we don't support these, we can ignore them (except for data_files (TODO))
                     continue
 
-                logger.warn(
+                logger.warning(
                     f"A file '{file}' listed in the metadata of '{name}' does not exist.",
                 )
 
@@ -79,7 +79,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             try:
                 directory.rmdir()
             except OSError:
-                logger.warn(
+                logger.warning(
                     f"A directory '{directory}' is not empty after uninstallation of '{name}'. "
                     "This might cause problems when installing a new version of the package. ",
                 )
@@ -88,7 +88,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             delattr(loadedPackages, name)
         else:
             # This should not happen, but just in case
-            logger.warn(
+            logger.warning(
                 f"a package '{name}' was not found in loadedPackages.",
             )
 
