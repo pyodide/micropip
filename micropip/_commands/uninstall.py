@@ -1,6 +1,5 @@
 import importlib
 import importlib.metadata
-import warnings
 from importlib.metadata import Distribution
 
 from .._compat import loadedPackages
@@ -40,7 +39,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            warnings.warn(f"Skipping '{package}' as it is not installed.", stacklevel=1)
+            logger.warn(f"Skipping '{package}' as it is not installed.")
 
     for dist in distributions:
         # Note: this value needs to be retrieved before removing files, as
@@ -64,9 +63,8 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                     # Since we don't support these, we can ignore them (except for data_files (TODO))
                     continue
 
-                warnings.warn(
+                logger.warn(
                     f"A file '{file}' listed in the metadata of '{dist.name}' does not exist.",
-                    stacklevel=1,
                 )
 
                 continue
@@ -81,19 +79,17 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             try:
                 directory.rmdir()
             except OSError:
-                warnings.warn(
+                logger.warn(
                     f"A directory '{directory}' is not empty after uninstallation of '{name}'. "
                     "This might cause problems when installing a new version of the package. ",
-                    stacklevel=1,
                 )
 
         if hasattr(loadedPackages, name):
             delattr(loadedPackages, name)
         else:
             # This should not happen, but just in case
-            warnings.warn(
+            logger.warn(
                 f"a package '{name}' was not found in loadedPackages.",
-                stacklevel=1,
             )
 
         logger.info(f"Successfully uninstalled {name}-{version}")
