@@ -338,7 +338,7 @@ class Transaction:
 
         satisfied, ver = self.check_version_satisfied(req)
         if satisfied:
-            logger.info(f"Requirement already satisfied: {req}{req.specifier} ({ver})")
+            logger.info(f"Requirement already satisfied: {req} ({ver})")
             return
 
         # If there's a Pyodide package that matches the version constraint, use
