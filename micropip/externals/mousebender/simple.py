@@ -19,12 +19,9 @@ import html.parser
 import json
 import urllib.parse
 import warnings
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Literal, TypeAlias, TypedDict
 
 import packaging.utils
-
-# Python 3.8+ only.
-from typing_extensions import Literal, TypeAlias, TypedDict
 
 ACCEPT_JSON_LATEST = "application/vnd.pypi.simple.latest+json"
 """The ``Accept`` header value for the latest version of the JSON API.
