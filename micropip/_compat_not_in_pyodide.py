@@ -22,13 +22,15 @@ def _fetch(url: str, kwargs: dict[str, str]) -> addinfourl:
 
 
 async def fetch_bytes(url: str, kwargs: dict[str, str]) -> IO[bytes]:
-    response = _fetch(url, headers=kwargs)
+    response = _fetch(url, kwargs=kwargs)
     return BytesIO(response.read())
 
 
-async def fetch_string_and_headers(url: str, kwargs: dict[str, str]) -> tuple[str, dict[str, str]]:
-    response = _fetch(url, headers=kwargs)
-    return response.read().decode(), response.headers
+async def fetch_string_and_headers(
+    url: str, kwargs: dict[str, str]
+) -> tuple[str, dict[str, str]]:
+    response = _fetch(url, kwargs=kwargs)
+    return response.read().decode(), dict(response.headers)
 
 
 async def loadDynlib(dynlib: str, is_shared_lib: bool) -> None:

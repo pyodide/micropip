@@ -3,6 +3,7 @@ import hashlib
 import importlib.metadata
 import json
 import warnings
+from collections import defaultdict
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
@@ -26,8 +27,8 @@ from ._compat import (
 )
 from ._simpleapi import fetch_project_details
 from .constants import FAQ_URLS
-from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .externals.mousebender.simple import ProjectDetails, ProjectFileDetails_1_0
+from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageMetadata
 
 
@@ -345,7 +346,8 @@ class Transaction:
             )
             return
 
-        metadata = await fetch_project_details(req.name, self.fetch_kwargs)
+        # TODO: support alternative indexes
+        metadata = await fetch_project_details(req.name, None, self.fetch_kwargs)
 
         try:
             wheel = find_wheel(metadata, req)
@@ -393,8 +395,10 @@ def find_wheel(metadata: ProjectDetails, req: Requirement) -> WheelInfo:
     -------
     wheel : ``WheelInfo``
     """
-    files = metadata.files
-    releases: dict[str, ProjectFileDetails_1_0] = {}
+    files = metadata["files"]
+    name = metadata["name"]
+
+    releases: defaultdict[Version, list[ProjectFileDetails_1_0]] = defaultdict(list)
 
     for file in files:
         filename = file["filename"]
@@ -402,34 +406,29 @@ def find_wheel(metadata: ProjectDetails, req: Requirement) -> WheelInfo:
         if not filename.endswith(".whl"):
             continue
 
-        version = parse_wheel_filename(filename)[1]
-        
         # Skip unparsable versions
         try:
-            Version(version)
+            version = parse_wheel_filename(filename)[1]
         except InvalidVersion:
-            continue
-
-        releases[version] = file
-
-    candidate_versions = sorted(
-        (Version(v) for v in req.specifier.filter(releases)),
-        reverse=True,
-    )
-    for ver in candidate_versions:
-        if str(ver) not in releases:
-            pkg_name = metadata.get("info", {}).get("name", "UNKNOWN")
             warnings.warn(
-                f"The package '{pkg_name}' contains an invalid version: '{ver}'. This version will be skipped",
+                f"The package '{name}' contains an invalid version: '{filename}'. This version will be skipped",
                 stacklevel=1,
             )
             continue
 
+        releases[version].append(file)
+
+    candidate_versions = sorted(
+        req.specifier.filter(releases),
+        reverse=True,
+    )
+    for version in candidate_versions:
         best_wheel = None
         best_tag_index = float("infinity")
 
-        release = releases[str(ver)]
-        for fileinfo in release:
+        fileinfos = releases[version]
+
+        for fileinfo in fileinfos:
             url = fileinfo["url"]
             if not url.endswith(".whl"):
                 continue
