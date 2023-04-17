@@ -10,6 +10,7 @@ try:
     import pyodide_js
     from pyodide_js import loadedPackages, loadPackage
     from pyodide_js._api import loadBinaryFile, loadDynlib  # type: ignore[import]
+    from js import Object
 
     REPODATA_PACKAGES = pyodide_js._api.repodata_packages.to_py()
     REPODATA_INFO = pyodide_js._api.repodata_info.to_py()
@@ -30,13 +31,20 @@ async def fetch_bytes(url: str, kwargs: dict[str, str]) -> IO[bytes]:
     return BytesIO(result_bytes)
 
 
-async def fetch_string(url: str, kwargs: dict[str, str]) -> str:
-    return await (await pyfetch(url, **kwargs)).string()
+async def fetch_string_and_headers(url: str, kwargs: dict[str, str]) -> tuple[str, dict[str, str]]:
+    # TODO: pyfetch needs a better way to get headers...
+    #       (https://github.com/pyodide/pyodide/pull/2078)
+
+    response = await pyfetch(url, **kwargs)
+    headers: dict[str, str] = Object.fromEntries(response.js_response.headers.entries()).to_py()
+    content = await response.string()
+
+    return content, headers
 
 
 __all__ = [
     "fetch_bytes",
-    "fetch_string",
+    "fetch_string_and_headers",
     "REPODATA_INFO",
     "REPODATA_PACKAGES",
     "loadedPackages",

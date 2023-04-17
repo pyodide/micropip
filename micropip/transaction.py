@@ -19,14 +19,15 @@ from packaging.version import InvalidVersion, Version
 from ._compat import (
     REPODATA_PACKAGES,
     fetch_bytes,
-    fetch_string,
     get_dynlibs,
     loadDynlib,
     loadedPackages,
     wheel_dist_info_dir,
 )
+from ._simpleapi import fetch_project_details
 from .constants import FAQ_URLS
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
+from .externals.mousebender.simple import ProjectDetails, ProjectFileDetails_1_0
 from .package import PackageMetadata
 
 
@@ -344,7 +345,7 @@ class Transaction:
             )
             return
 
-        metadata = await _get_pypi_json(req.name, self.fetch_kwargs)
+        metadata = await fetch_project_details(req.name, self.fetch_kwargs)
 
         try:
             wheel = find_wheel(metadata, req)
@@ -380,32 +381,36 @@ class Transaction:
         self.wheels.append(wheel)
 
 
-def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
+def find_wheel(metadata: ProjectDetails, req: Requirement) -> WheelInfo:
     """Parse metadata to find the latest version of pure python wheel.
     Parameters
     ----------
-    metadata : ``Dict[str, Any]``
+    metadata : ``ProjectDetails``
 
-        Package search result from PyPI,
-        See: https://warehouse.pypa.io/api-reference/json.html
+        Package search result from PyPI simple API.
 
     Returns
     -------
-    fileinfo : Dict[str, Any] or None
-        The metadata of the Python wheel, or None if there is no pure Python wheel.
-    ver : Version or None
-        The version of the Python wheel, or None if there is no pure Python wheel.
+    wheel : ``WheelInfo``
     """
-    releases_raw = metadata.get("releases", {})
-    releases = {}
-    # Skip unparsable versions
-    for key, val in releases_raw.items():
+    files = metadata.files
+    releases: dict[str, ProjectFileDetails_1_0] = {}
+
+    for file in files:
+        filename = file["filename"]
+
+        if not filename.endswith(".whl"):
+            continue
+
+        version = parse_wheel_filename(filename)[1]
+        
+        # Skip unparsable versions
         try:
-            Version(key)
+            Version(version)
         except InvalidVersion:
             continue
 
-        releases[key] = val
+        releases[version] = file
 
     candidate_versions = sorted(
         (Version(v) for v in req.specifier.filter(releases)),
@@ -431,7 +436,7 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
             wheel = WheelInfo.from_url(url)
             tag_index = wheel.best_compatible_tag_index()
             if tag_index is not None and tag_index < best_tag_index:
-                wheel.digests = fileinfo["digests"]
+                wheel.digests = fileinfo["hashes"]
                 best_wheel = wheel
                 best_tag_index = tag_index
 
@@ -444,18 +449,6 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
         "You can use `micropip.install(..., keep_going=True)`"
         "to get a list of all packages with missing wheels."
     )
-
-
-async def _get_pypi_json(pkgname: str, fetch_kwargs: dict[str, str]) -> Any:
-    url = f"https://pypi.org/pypi/{pkgname}/json"
-    try:
-        metadata = await fetch_string(url, fetch_kwargs)
-    except OSError as e:
-        raise ValueError(
-            f"Can't fetch metadata for '{pkgname}' from PyPI. "
-            "Please make sure you have entered a correct package name."
-        ) from e
-    return json.loads(metadata)
 
 
 def _generate_package_hash(data: IO[bytes]) -> str:

@@ -14,14 +14,21 @@ class loadedPackages:
 
 
 from urllib.request import Request, urlopen
+from urllib.response import addinfourl
+
+
+def _fetch(url: str, kwargs: dict[str, str]) -> addinfourl:
+    return urlopen(Request(url, headers=kwargs))
 
 
 async def fetch_bytes(url: str, kwargs: dict[str, str]) -> IO[bytes]:
-    return BytesIO(urlopen(Request(url, headers=kwargs)).read())
+    response = _fetch(url, headers=kwargs)
+    return BytesIO(response.read())
 
 
-async def fetch_string(url: str, kwargs: dict[str, str]) -> str:
-    return (await fetch_bytes(url, kwargs)).read().decode()
+async def fetch_string_and_headers(url: str, kwargs: dict[str, str]) -> tuple[str, dict[str, str]]:
+    response = _fetch(url, headers=kwargs)
+    return response.read().decode(), response.headers
 
 
 async def loadDynlib(dynlib: str, is_shared_lib: bool) -> None:
@@ -108,7 +115,7 @@ def loadPackage(packages: str | list[str]) -> None:
 __all__ = [
     "loadDynlib",
     "fetch_bytes",
-    "fetch_string",
+    "fetch_string_and_headers",
     "REPODATA_INFO",
     "REPODATA_PACKAGES",
     "loadedPackages",
