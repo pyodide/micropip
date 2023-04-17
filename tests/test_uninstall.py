@@ -136,14 +136,17 @@ def test_warning_not_installed(selenium_standalone_micropip):
     @run_in_pyodide()
     async def run(selenium):
         import micropip
-        import warnings
 
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        import contextlib
+        import io
+
+        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
             micropip.uninstall("no-such-package")
 
-            assert len(w) == 1
-            assert "not installed" in str(w[-1].message)
+            captured = buf.getvalue()
+            logs = captured.strip().split("\n")
+            assert len(logs) == 1
+            assert "Skipping 'no-such-package' as it is not installed." in logs[0]
 
     run(selenium_standalone_micropip)
 
@@ -157,28 +160,30 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
     async def run(selenium, pkg_name, wheel_url):
         from importlib.metadata import distribution
         import micropip
+        import contextlib
+        import io
 
-        await micropip.install(wheel_url)
+        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+            await micropip.install(wheel_url)
 
-        assert pkg_name in micropip.list()
+            assert pkg_name in micropip.list()
 
-        dist = distribution(pkg_name)
-        files = dist.files
-        file1 = files[0]
-        file2 = files[1]
+            dist = distribution(pkg_name)
+            files = dist.files
+            file1 = files[0]
+            file2 = files[1]
 
-        file1.locate().unlink()
-        file2.locate().unlink()
+            file1.locate().unlink()
+            file2.locate().unlink()
 
-        import warnings
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
             micropip.uninstall(pkg_name)
 
-            assert len(w) == 2
-            assert "does not exist" in str(w[-1].message)
-            assert "does not exist" in str(w[-2].message)
+            captured = buf.getvalue()
+            logs = captured.strip().split("\n")
+
+            assert len(logs) == 2
+            assert "does not exist" in logs[-1]
+            assert "does not exist" in logs[-2]
 
     run(selenium_standalone_micropip, TEST_PACKAGE_NAME, test_wheel_url)
 
@@ -192,21 +197,23 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
     async def run(selenium, pkg_name, wheel_url):
         from importlib.metadata import distribution
         import micropip
+        import contextlib
+        import io
 
-        await micropip.install(wheel_url)
-        assert pkg_name in micropip.list()
+        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+            await micropip.install(wheel_url)
+            assert pkg_name in micropip.list()
 
-        pkg_dir = distribution(pkg_name)._path.parent / "deep"
-        (pkg_dir / "extra-file.txt").touch()
+            pkg_dir = distribution(pkg_name)._path.parent / "deep"
+            (pkg_dir / "extra-file.txt").touch()
 
-        import warnings
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
             micropip.uninstall(pkg_name)
 
-            assert len(w) == 1
-            assert "is not empty after uninstallation" in str(w[-1].message)
+            captured = buf.getvalue()
+            logs = captured.strip().split("\n")
+
+            assert len(logs) == 1
+            assert "is not empty after uninstallation" in logs[0]
 
     run(selenium_standalone_micropip, TEST_PACKAGE_NAME, test_wheel_url)
 
