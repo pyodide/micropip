@@ -1,7 +1,6 @@
 from ._compat import fetch_string_and_headers
+from .constants import DEFAULT_INDEX_URL
 from .externals.mousebender import simple
-
-DEFAULT_INDEX_URL = "https://pypi.org/simple/"
 
 
 async def fetch_project_details(

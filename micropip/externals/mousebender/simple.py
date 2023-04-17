@@ -12,8 +12,6 @@ This module implements :pep:`503`, :pep:`592`, :pep:`629`, :pep:`658`,
 :external:ref:`Simple repository API <simple-repository-api>`.
 
 """
-from __future__ import annotations
-
 import html
 import html.parser
 import json
