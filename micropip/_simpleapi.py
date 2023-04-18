@@ -3,6 +3,15 @@ from .constants import DEFAULT_INDEX_URL
 from .externals.mousebender import simple
 
 
+def _parse_project_details(
+    content: str, content_type: str, project_name: str
+) -> simple.ProjectDetails:
+    """
+    Parse response of simple API and return a dict of project details.
+    """
+    return simple.parse_project_details(content, content_type, project_name)
+
+
 async def fetch_project_details(
     project_name: str,
     index_url: str | list[str] | None = None,
@@ -61,7 +70,7 @@ async def fetch_project_details(
         )
 
     try:
-        details = simple.parse_project_details(content, content_type, project_name)
+        details = _parse_project_details(content, content_type, project_name)
     except simple.UnsupportedMIMEType:
         raise ValueError(
             f"Invalid content type '{content_type}' for '{project_name}' from index '{url}'. "
