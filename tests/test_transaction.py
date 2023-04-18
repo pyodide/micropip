@@ -163,19 +163,21 @@ def _pypi_metadata(package, versions_to_tags):
     #
     # `versions` is a mapping with version strings as
     # keys and iterables of tag strings as values.
-    releases = {}
+    files = []
     for version, tags in versions_to_tags.items():
-        release = []
         for tag in tags:
             wheel_name = f"{package}-{version}-{tag}-none-any.whl"
             wheel_info = {
                 "filename": wheel_name,
                 "url": wheel_name,
-                "digests": None,
+                "hashes": {},
             }
-            release.append(wheel_info)
-        releases[version] = release
-    return {"releases": releases}
+            files.append(wheel_info)
+    return {
+        "meta": None,
+        "name": package,
+        "files": files,
+    }
 
 
 def test_last_version_from_pypi():

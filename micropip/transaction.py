@@ -14,7 +14,7 @@ from zipfile import ZipFile
 
 from packaging.requirements import Requirement
 from packaging.tags import Tag, sys_tags
-from packaging.utils import canonicalize_name, parse_wheel_filename
+from packaging.utils import canonicalize_name, parse_wheel_filename, InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
 
 from ._compat import (
@@ -25,7 +25,7 @@ from ._compat import (
     loadedPackages,
     wheel_dist_info_dir,
 )
-from ._simpleapi import fetch_project_details
+from . import _simpleapi
 from .constants import FAQ_URLS
 from .externals.mousebender.simple import ProjectDetails, ProjectFileDetails_1_0
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
@@ -347,7 +347,7 @@ class Transaction:
             return
 
         # TODO: support alternative indexes
-        metadata = await fetch_project_details(req.name, None, self.fetch_kwargs)
+        metadata = await _simpleapi.fetch_project_details(req.name, None, self.fetch_kwargs)
 
         try:
             wheel = find_wheel(metadata, req)
@@ -408,8 +408,9 @@ def find_wheel(metadata: ProjectDetails, req: Requirement) -> WheelInfo:
 
         # Skip unparsable versions
         try:
+            # breakpoint()
             version = parse_wheel_filename(filename)[1]
-        except InvalidVersion:
+        except (InvalidVersion, InvalidWheelFilename):
             warnings.warn(
                 f"The package '{name}' contains an invalid version: '{filename}'. This version will be skipped",
                 stacklevel=1,

@@ -163,18 +163,18 @@ class mock_fetch_cls:
         if top_level is None:
             top_level = []
         if name not in self.releases_map:
-            self.releases_map[name] = {"releases": {}}
-        releases = self.releases_map[name]["releases"]
+            self.releases_map[name] = {"files": [], "name": name}
+        releases = self.releases_map[name]["files"]
         filename = self._make_wheel_filename(name, version, platform)
-        releases[version] = [
+        releases.append(
             {
                 "filename": filename,
                 "url": filename,
-                "digests": {
+                "hashes": {
                     "sha256": Wildcard(),
                 },
             }
-        ]
+        )
         metadata = [("Name", name), ("Version", version)] + [
             ("Requires-Dist", req) for req in requirements
         ]
@@ -185,7 +185,7 @@ class mock_fetch_cls:
         self.metadata_map[filename] = metadata
         self.top_level_map[filename] = top_level
 
-    async def _get_pypi_json(self, pkgname, kwargs):
+    async def fetch_project_details(self, pkgname, index_urls, kwargs):
         try:
             return self.releases_map[pkgname]
         except KeyError as e:
@@ -227,8 +227,9 @@ class mock_fetch_cls:
 def mock_fetch(monkeypatch, mock_importlib):
     pytest.importorskip("packaging")
     from micropip import transaction
+    from micropip import _simpleapi
 
     result = mock_fetch_cls()
-    monkeypatch.setattr(transaction, "_get_pypi_json", result._get_pypi_json)
+    monkeypatch.setattr(_simpleapi, "fetch_project_details", result.fetch_project_details)
     monkeypatch.setattr(transaction, "fetch_bytes", result._fetch_bytes)
     return result

@@ -250,7 +250,7 @@ async def test_install_pre(
 
 @pytest.mark.asyncio
 @pytest.mark.filterwarnings("ignore::Warning")
-@pytest.mark.parametrize("version_invalid", ["1.2.3-1", "2.3.1-post1", "3.2.1-pre1"])
+@pytest.mark.parametrize("version_invalid", ["2.3.1-post1", "3.2.1-pre1", "2000a"])
 async def test_install_version_invalid_pep440(
     mock_fetch: mock_fetch_cls,
     version_invalid: str,
