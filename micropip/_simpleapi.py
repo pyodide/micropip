@@ -12,6 +12,28 @@ def _parse_project_details(
     return simple.parse_project_details(content, content_type, project_name)
 
 
+def _get_content_type(headers: dict[str, str]) -> str:
+    """
+    Get the content-type header from the headers,
+    and make sure it's a valid content-type that can be returned from the simple API.
+
+    Borrowed from: https://github.com/pypa/pip/blob/main/src/pip/_internal/index/collector.py
+    """
+    content_type = headers.get("content-type", "Unknown")
+
+    content_type_l = content_type.lower()
+    if content_type_l.startswith(
+        (
+            "text/html",
+            "application/vnd.pypi.simple.v1+html",
+            "application/vnd.pypi.simple.v1+json",
+        )
+    ):
+        return content_type_l
+
+    raise ValueError(f"Invalid content-type: {content_type}")
+
+
 async def fetch_project_details(
     project_name: str,
     index_url: str | list[str] | None = None,
@@ -59,7 +81,7 @@ async def fetch_project_details(
             content, headers = await fetch_string_and_headers(
                 project_url, _fetch_kwargs
             )
-            content_type = headers["Content-Type"]
+            content_type = _get_content_type(headers)
             break
         except OSError:
             continue

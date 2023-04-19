@@ -226,10 +226,11 @@ class mock_fetch_cls:
 @pytest.fixture
 def mock_fetch(monkeypatch, mock_importlib):
     pytest.importorskip("packaging")
-    from micropip import transaction
-    from micropip import _simpleapi
+    from micropip import _simpleapi, transaction
 
     result = mock_fetch_cls()
-    monkeypatch.setattr(_simpleapi, "fetch_project_details", result.fetch_project_details)
+    monkeypatch.setattr(
+        _simpleapi, "fetch_project_details", result.fetch_project_details
+    )
     monkeypatch.setattr(transaction, "fetch_bytes", result._fetch_bytes)
     return result
