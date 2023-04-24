@@ -24,7 +24,7 @@ Trying to install such a package with {any}`micropip.install` will result in an 
 ```
 ValueError: Can't find a pure Python 3 wheel for 'tensorflow'.
 See: https://pyodide.org/en/stable/usage/faq.html#micropip-can-t-find-a-pure-python-wheel
-You can use `micropip.install(..., keep_going=True)`to get a list of all packages with missing wheels.
+You can use `micropip.install(..., keep_going=True)` to get a list of all packages with missing wheels.
 ```
 
 To install such a package, you need to first build a Python wheels for WASM/Emscripten for it.

@@ -441,7 +441,7 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
     raise ValueError(
         f"Can't find a pure Python 3 wheel for '{req}'.\n"
         f"See: {FAQ_URLS['cant_find_wheel']}\n"
-        "You can use `micropip.install(..., keep_going=True)`"
+        "You can use `micropip.install(..., keep_going=True)` "
         "to get a list of all packages with missing wheels."
     )
 
