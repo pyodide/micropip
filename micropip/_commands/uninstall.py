@@ -4,11 +4,10 @@ import warnings
 from collections.abc import Iterable
 from importlib.metadata import Distribution
 
-from .._compat import loadedPackages
-from .._utils import get_files_in_distribution, get_root
+from .._uninstall import _uninstall
 
 
-def uninstall(packages: str | Iterable[str], *, ignore_missing: bool = False) -> None:
+def uninstall(packages: str | Iterable[str]) -> None:
     """Uninstall the given packages.
 
     This function only supports uninstalling packages that are installed
@@ -23,9 +22,6 @@ def uninstall(packages: str | Iterable[str], *, ignore_missing: bool = False) ->
     ----------
     packages
         Packages to uninstall.
-
-    _ignore_missing
-        If ``True``, suppress warnings when a package is not installed.
     """
 
     if isinstance(packages, str):
@@ -37,61 +33,11 @@ def uninstall(packages: str | Iterable[str], *, ignore_missing: bool = False) ->
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            if not ignore_missing:  # TODO: Can we utilize log level here?
-                warnings.warn(
-                    f"WARNING: Skipping '{package}' as it is not installed.",
-                    stacklevel=1,
-                )
-
-    for dist in distributions:
-        # Note: this value needs to be retrieved before removing files, as
-        #       dist.name uses metadata file to get the name
-        name = dist.name
-
-        root = get_root(dist)
-        files = get_files_in_distribution(dist)
-        directories = set()
-
-        for file in files:
-            if not file.is_file():
-                if not file.is_relative_to(root):
-                    # This file is not in the site-packages directory. Probably one of:
-                    # - data_files
-                    # - scripts
-                    # - entry_points
-                    # Since we don't support these, we can ignore them (except for data_files (TODO))
-                    continue
-
-                warnings.warn(
-                    f"WARNING: A file '{file}' listed in the metadata of '{dist.name}' does not exist.",
-                    stacklevel=1,
-                )
-
-                continue
-
-            file.unlink()
-
-            if file.parent != root:
-                directories.add(file.parent)
-
-        # Remove directories in reverse hierarchical order
-        for directory in sorted(directories, key=lambda x: len(x.parts), reverse=True):
-            try:
-                directory.rmdir()
-            except OSError:
-                warnings.warn(
-                    f"WARNING: A directory '{directory}' is not empty after uninstallation of '{name}'. "
-                    "This might cause problems when installing a new version of the package. ",
-                    stacklevel=1,
-                )
-
-        if hasattr(loadedPackages, name):
-            delattr(loadedPackages, name)
-        else:
-            # This should not happen, but just in case
             warnings.warn(
-                f"WARNING: a package '{name}' was not found in loadedPackages.",
+                f"WARNING: Skipping '{package}' as it is not installed.",
                 stacklevel=1,
             )
+
+    _uninstall(distributions)
 
     importlib.invalidate_caches()

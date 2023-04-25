@@ -5,9 +5,9 @@ from pathlib import Path
 from packaging.markers import default_environment
 
 from .._compat import loadPackage, to_js
+from .._uninstall import _uninstall
 from ..constants import FAQ_URLS
 from ..transaction import Transaction
-from .uninstall import uninstall
 
 
 async def install(
@@ -128,7 +128,14 @@ async def install(
         [pkg.name for pkg in transaction.pyodide_packages]
     )
 
-    uninstall(packages_all, ignore_missing=True)
+    distributions = []
+    for pkg_name in packages_all:
+        try:
+            distributions.append(importlib.metadata.distribution(pkg_name))
+        except importlib.metadata.PackageNotFoundError:
+            pass
+
+    _uninstall(distributions)
 
     wheel_promises = []
     # Install built-in packages
