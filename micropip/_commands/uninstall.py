@@ -8,7 +8,7 @@ from .._compat import loadedPackages
 from .._utils import get_files_in_distribution, get_root
 
 
-def uninstall(packages: str | Iterable[str], *, _ignore_missing: bool = False) -> None:
+def uninstall(packages: str | Iterable[str], *, ignore_missing: bool = False) -> None:
     """Uninstall the given packages.
 
     This function only supports uninstalling packages that are installed
@@ -37,7 +37,7 @@ def uninstall(packages: str | Iterable[str], *, _ignore_missing: bool = False) -
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            if not _ignore_missing:  # TODO: Can we utilize log level here?
+            if not ignore_missing:  # TODO: Can we utilize log level here?
                 warnings.warn(
                     f"WARNING: Skipping '{package}' as it is not installed.",
                     stacklevel=1,

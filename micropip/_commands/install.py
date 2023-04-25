@@ -124,11 +124,11 @@ async def install(
         )
 
     # uninstall packages that are installed
-    uninstall_packages = set([pkg.name for pkg in transaction.wheels]) | set(
+    packages_all = set([pkg.name for pkg in transaction.wheels]) | set(
         [pkg.name for pkg in transaction.pyodide_packages]
     )
 
-    uninstall(uninstall_packages, _ignore_missing=True)
+    uninstall(packages_all, ignore_missing=True)
 
     wheel_promises = []
     # Install built-in packages

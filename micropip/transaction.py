@@ -358,7 +358,7 @@ class Transaction:
             else:
                 return
 
-        if self.check_version_satisfied(req):
+        if not self.force_reinstall and self.check_version_satisfied(req):
             # Maybe while we were downloading pypi_json some other branch
             # installed the wheel?
             return

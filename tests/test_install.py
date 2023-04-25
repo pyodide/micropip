@@ -360,3 +360,62 @@ def test_emfs(selenium_standalone_micropip):
             ]
 
         run_test(selenium_standalone_micropip, url, SNOWBALL_WHEEL)
+
+
+@pytest.mark.asyncio
+async def test_reinstall_different_version(
+    mock_fetch: mock_fetch_cls,
+    mock_importlib,
+) -> None:
+    import importlib.metadata
+
+    dummy = "dummy"
+    version_old = "1.0.0"
+    version_new = "2.0.0"
+
+    mock_fetch.add_pkg_version(dummy, version_old)
+    mock_fetch.add_pkg_version(dummy, version_new)
+
+    await micropip.install(f"{dummy}=={version_old}")
+    assert micropip.list()[dummy].version == version_old
+    assert importlib.metadata.version(dummy) == version_old
+
+    await micropip.install(f"{dummy}=={version_new}")
+    assert micropip.list()[dummy].version == version_new
+    assert importlib.metadata.version(dummy) == version_new
+
+    await micropip.install(f"{dummy}=={version_old}")
+    assert micropip.list()[dummy].version == version_old
+    assert importlib.metadata.version(dummy) == version_old
+
+
+@pytest.mark.asyncio
+async def test_force_reinstall(
+    mock_fetch: mock_fetch_cls,
+    mock_importlib,
+) -> None:
+    import importlib.metadata
+
+    dummy = "dummy"
+    version_old = "1.0.0"
+
+    mock_fetch.add_pkg_version(dummy, version_old)
+
+    await micropip.install(f"{dummy}=={version_old}")
+    assert micropip.list()[dummy].version == version_old
+    assert importlib.metadata.version(dummy) == version_old
+
+    dist_path = importlib.metadata.distribution(dummy)._path  # type: ignore[attr-defined]
+    assert dist_path.exists()
+
+    # create a dummy file in the dist_info directory, then force reinstall
+    # the package. The dummy file should be removed.
+    dummy_file = dist_path / "dummy"
+    dummy_file.touch()
+    assert dummy_file.exists()
+
+    await micropip.install(f"{dummy}=={version_old}", force_reinstall=True)
+    assert micropip.list()[dummy].version == version_old
+    assert importlib.metadata.version(dummy) == version_old
+
+    assert not dummy_file.exists()
