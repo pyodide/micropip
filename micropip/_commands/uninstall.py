@@ -4,7 +4,7 @@ import warnings
 from collections.abc import Iterable
 from importlib.metadata import Distribution
 
-from .._uninstall import _uninstall
+from .._uninstall import uninstall_distributions
 
 
 def uninstall(packages: str | Iterable[str]) -> None:
@@ -38,6 +38,6 @@ def uninstall(packages: str | Iterable[str]) -> None:
                 stacklevel=1,
             )
 
-    _uninstall(distributions)
+    uninstall_distributions(distributions)
 
     importlib.invalidate_caches()

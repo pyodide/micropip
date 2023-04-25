@@ -5,7 +5,7 @@ from pathlib import Path
 from packaging.markers import default_environment
 
 from .._compat import loadPackage, to_js
-from .._uninstall import _uninstall
+from .._uninstall import uninstall_distributions
 from ..constants import FAQ_URLS
 from ..transaction import Transaction
 
@@ -135,7 +135,7 @@ async def install(
         except importlib.metadata.PackageNotFoundError:
             pass
 
-    _uninstall(distributions)
+    uninstall_distributions(distributions)
 
     wheel_promises = []
     # Install built-in packages

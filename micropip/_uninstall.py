@@ -1,5 +1,3 @@
-import importlib
-import importlib.metadata
 import warnings
 from collections.abc import Iterable
 from importlib.metadata import Distribution
@@ -8,7 +6,7 @@ from ._compat import loadedPackages
 from ._utils import get_files_in_distribution, get_root
 
 
-def _uninstall(distributions: Iterable[Distribution]) -> None:
+def uninstall_distributions(distributions: Iterable[Distribution]) -> None:
     """Uninstall the given package distributions.
 
     This function does not do any checks, so make sure that the distributions
@@ -74,5 +72,3 @@ def _uninstall(distributions: Iterable[Distribution]) -> None:
                 f"WARNING: a package '{name}' was not found in loadedPackages.",
                 stacklevel=1,
             )
-
-    importlib.invalidate_caches()
