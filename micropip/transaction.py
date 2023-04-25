@@ -230,6 +230,7 @@ class Transaction:
     keep_going: bool
     deps: bool
     pre: bool
+    force_reinstall: bool
     fetch_kwargs: dict[str, str]
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
@@ -261,6 +262,10 @@ class Transaction:
         await self.add_wheel(wheel, extras=set())
 
     def check_version_satisfied(self, req: Requirement) -> bool:
+        """
+        Check if the installed version of a package satisfies the requirement.
+        Returns True if the requirement is satisfied, False otherwise.
+        """
         ver = None
         try:
             ver = importlib.metadata.version(req.name)
@@ -276,9 +281,7 @@ class Transaction:
             # installed version matches, nothing to do
             return True
 
-        raise ValueError(
-            f"Requested '{req}', " f"but {req.name}=={ver} is already installed"
-        )
+        return False
 
     async def add_requirement_inner(
         self,
@@ -330,7 +333,7 @@ class Transaction:
                 return
         # Is some version of this package is already installed?
         req.name = canonicalize_name(req.name)
-        if self.check_version_satisfied(req):
+        if not self.force_reinstall and self.check_version_satisfied(req):
             return
 
         # If there's a Pyodide package that matches the version constraint, use

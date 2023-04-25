@@ -7,6 +7,7 @@ from packaging.markers import default_environment
 from .._compat import loadPackage, to_js
 from ..constants import FAQ_URLS
 from ..transaction import Transaction
+from .uninstall import uninstall
 
 
 async def install(
@@ -15,6 +16,7 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
+    force_reinstall: bool = False,
 ) -> None:
     """Install the given package and all of its dependencies.
 
@@ -83,6 +85,9 @@ async def install(
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
+    force_reinstall :
+
+        If ``True``, reinstall all packages even if they are already up-to-date.
     """
     ctx = default_environment()
     if isinstance(requirements, str):
@@ -106,6 +111,7 @@ async def install(
         keep_going=keep_going,
         deps=deps,
         pre=pre,
+        force_reinstall=force_reinstall,
         fetch_kwargs=fetch_kwargs,
     )
     await transaction.gather_requirements(requirements)
@@ -116,6 +122,13 @@ async def install(
             f"Can't find a pure Python 3 wheel for: {failed_requirements}\n"
             f"See: {FAQ_URLS['cant_find_wheel']}\n"
         )
+
+    # uninstall packages that are installed
+    uninstall_packages = set([pkg.name for pkg in transaction.wheels]) | set(
+        [pkg.name for pkg in transaction.pyodide_packages]
+    )
+
+    uninstall(uninstall_packages, _ignore_missing=True)
 
     wheel_promises = []
     # Install built-in packages

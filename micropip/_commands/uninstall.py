@@ -1,13 +1,14 @@
 import importlib
 import importlib.metadata
 import warnings
+from collections.abc import Iterable
 from importlib.metadata import Distribution
 
 from .._compat import loadedPackages
 from .._utils import get_files_in_distribution, get_root
 
 
-def uninstall(packages: str | list[str]) -> None:
+def uninstall(packages: str | Iterable[str], *, _ignore_missing: bool = False) -> None:
     """Uninstall the given packages.
 
     This function only supports uninstalling packages that are installed
@@ -22,6 +23,9 @@ def uninstall(packages: str | list[str]) -> None:
     ----------
     packages
         Packages to uninstall.
+
+    _ignore_missing
+        If ``True``, suppress warnings when a package is not installed.
     """
 
     if isinstance(packages, str):
@@ -33,9 +37,11 @@ def uninstall(packages: str | list[str]) -> None:
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            warnings.warn(
-                f"WARNING: Skipping '{package}' as it is not installed.", stacklevel=1
-            )
+            if not _ignore_missing:  # TODO: Can we utilize log level here?
+                warnings.warn(
+                    f"WARNING: Skipping '{package}' as it is not installed.",
+                    stacklevel=1,
+                )
 
     for dist in distributions:
         # Note: this value needs to be retrieved before removing files, as
