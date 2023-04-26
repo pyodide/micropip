@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from conftest import SNOWBALL_WHEEL, mock_fetch_cls
+from packaging.utils import parse_wheel_filename
 from pytest_pyodide import run_in_pyodide, spawn_web_server
 
 import micropip
@@ -360,3 +361,31 @@ def test_emfs(selenium_standalone_micropip):
             ]
 
         run_test(selenium_standalone_micropip, url, SNOWBALL_WHEEL)
+
+
+def test_logging(selenium_standalone_micropip):
+    # TODO: make a fixture for this, it's used in a few places
+    with spawn_web_server(Path(__file__).parent / "dist") as server:
+        server_hostname, server_port, _ = server
+        url = f"http://{server_hostname}:{server_port}/"
+        wheel_url = url + SNOWBALL_WHEEL
+        name, version, _, _ = parse_wheel_filename(SNOWBALL_WHEEL)
+
+        @run_in_pyodide(packages=["micropip"])
+        async def run_test(selenium, url, name, version):
+            import contextlib
+            import io
+
+            import micropip
+
+            with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+                await micropip.install(url, verbose=True)
+
+                captured = buf.getvalue()
+
+                assert f"Collecting {name}" in captured
+                assert f"  Downloading {name}" in captured
+                assert f"Installing collected packages: {name}" in captured
+                assert f"Successfully installed {name}-{version}" in captured
+
+        run_test(selenium_standalone_micropip, wheel_url, name, version)
