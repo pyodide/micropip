@@ -6,6 +6,7 @@ from packaging.markers import default_environment
 
 from .._compat import loadPackage, to_js
 from ..constants import FAQ_URLS
+from ..logging import setup_logging
 from ..transaction import Transaction
 
 
@@ -15,6 +16,8 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
+    *,
+    verbose: bool | int = False,
 ) -> None:
     """Install the given package and all of its dependencies.
 
@@ -83,7 +86,13 @@ async def install(
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
+    verbose :
+        Print more information about the process.
+        By default, micropip is silent. Setting ``verbose=True`` will print
+        similar information as pip.
     """
+    logger = setup_logging(verbose)
+
     ctx = default_environment()
     if isinstance(requirements, str):
         requirements = [requirements]
@@ -107,6 +116,7 @@ async def install(
         deps=deps,
         pre=pre,
         fetch_kwargs=fetch_kwargs,
+        verbose=verbose,
     )
     await transaction.gather_requirements(requirements)
 
@@ -116,6 +126,13 @@ async def install(
             f"Can't find a pure Python 3 wheel for: {failed_requirements}\n"
             f"See: {FAQ_URLS['cant_find_wheel']}\n"
         )
+
+    package_names = [pkg.name for pkg in transaction.pyodide_packages] + [
+        pkg.name for pkg in transaction.wheels
+    ]
+
+    if package_names:
+        logger.info("Installing collected packages: " + ", ".join(package_names))
 
     wheel_promises = []
     # Install built-in packages
@@ -136,4 +153,12 @@ async def install(
         wheel_promises.append(wheel.install(wheel_base))
 
     await asyncio.gather(*wheel_promises)
+
+    packages = [f"{pkg.name}-{pkg.version}" for pkg in transaction.pyodide_packages] + [
+        f"{pkg.name}-{pkg.version}" for pkg in transaction.wheels
+    ]
+
+    if packages:
+        logger.info("Successfully installed " + ", ".join(packages))
+
     importlib.invalidate_caches()

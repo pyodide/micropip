@@ -130,7 +130,7 @@ async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch
     pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
-    async def mock_add_wheel(self, wheel, extras):
+    async def mock_add_wheel(self, wheel, extras, *, specifier=""):
         self.mock_wheel = wheel
 
     monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
