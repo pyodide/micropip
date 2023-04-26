@@ -47,9 +47,3 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     files_to_remove.update(metadata_files)
 
     return files_to_remove
-
-
-def log(message: str, verbose: bool = False):
-    # TODO: use logging instead of print
-    if verbose:
-        print(message)

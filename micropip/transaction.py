@@ -379,6 +379,24 @@ class Transaction:
         *,
         specifier: str = "",
     ) -> None:
+        """
+        Download a wheel, and add its dependencies to the transaction.
+
+        Parameters
+        ----------
+        wheel
+            The wheel to add.
+
+        extras
+            Markers for optional dependencies.
+            For example, `micropip.install("pkg[test]")`
+            will pass `{"test"}` as the extras argument.
+
+        specifier
+            Requirement specifier, used only for logging.
+            For example, `micropip.install("pkg>=1.0.0,!=2.0.0")`
+            will pass `>=1.0.0,!=2.0.0` as the specifier argument.
+        """
         normalized_name = canonicalize_name(wheel.name)
         self.locked[normalized_name] = PackageMetadata(
             name=wheel.name,
