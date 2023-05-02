@@ -7,6 +7,10 @@ on:
         description: "Docker image tag"
         required: true
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
