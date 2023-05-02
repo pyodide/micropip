@@ -31,7 +31,7 @@ elif [ -z "$DEVPI_ROOT_PASSWORD" ]; then
 fi
 
 echo "ENTRYPOINT: Starting devpi-server"
-devpi-server --host 0.0.0.0 --port 3141 --offline-mode "$@" &
+devpi-server --host 0.0.0.0 --port 3141 --offline-mode --absolute-urls "$@" &
 
 timeout 10 bash -c 'until printf "" 2>>/dev/null >>/dev/tcp/$0/$1; do sleep 1; done' localhost 3141
 
