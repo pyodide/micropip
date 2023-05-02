@@ -53,6 +53,10 @@ devpi upload /tmp/packages/*
 
 devpi logoff
 
+# Create a token that tells initialization is done
+# This is used in docker-compose to wait for devpi to be ready
+touch "/tmp/.devpi-ready"
+
 echo "ENTRYPOINT: Watching devpi-server"
 PID=$(pgrep devpi-server)
 
