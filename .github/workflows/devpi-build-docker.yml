@@ -24,11 +24,14 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v2
+      - uses: docker/build-push-action@v4
         with:
           context: "{{defaultContext}}:devpi"
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/devpi:${{ github.event.inputs.tag }}
+
+      - name: Image digest
+        run: echo ${{ steps.build.outputs.digest }}
