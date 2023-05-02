@@ -35,6 +35,7 @@ repos:
         args: []
         additional_dependencies: &mypy-deps
           - pytest
+          - types-requests
 
 
   - repo: https://github.com/codespell-project/codespell

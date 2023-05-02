@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
+import requests
 from pytest_pyodide import spawn_web_server
 
 SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
@@ -232,3 +233,50 @@ def mock_fetch(monkeypatch, mock_importlib):
     monkeypatch.setattr(transaction, "_get_pypi_json", result._get_pypi_json)
     monkeypatch.setattr(transaction, "fetch_bytes", result._fetch_bytes)
     return result
+
+
+@pytest.fixture(scope="session")
+def docker_compose_file():
+    return str(Path(__file__).parent.parent / "devpi/docker-compose.yml")
+
+
+@pytest.fixture(scope="session")
+def devpi(docker_ip, docker_services):
+    """Ensure that HTTP service is up and responsive."""
+
+    # `port_for` takes a container port and returns the corresponding host port
+    port = docker_services.port_for("cors-proxy", 13141)
+    url = f"http://{docker_ip}:{port}"
+    root_url = url + "/devpi/"
+    index_url = url + "/devpi/root/dev/"
+
+    def is_responsive(url):
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                return True
+        except ConnectionError:
+            return False
+
+    docker_services.wait_until_responsive(
+        timeout=30.0,
+        pause=0.1,
+        check=lambda: is_responsive(root_url) and is_responsive(index_url),
+    )
+
+    return url
+
+
+@pytest.fixture(scope="session")
+def devpi_simple_root(devpi):
+    return devpi + "/devpi/root/dev/+simple/"
+
+
+@pytest.fixture(scope="session")
+def devpi_simple_detail(devpi_simple_root):
+    return devpi_simple_root + "{package_name}/"
+
+
+@pytest.fixture(scope="session")
+def devpi_json_detail(devpi):
+    return devpi + "/devpi/root/dev/{package_name}/json"
