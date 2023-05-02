@@ -10,7 +10,7 @@ services:
       devpi:
         condition: service_healthy
   devpi:
-    image: ghcr.io/ryanking13/micropip/devpi:230502_2  # TODO: use pyodide organization
+    image: ghcr.io/ryanking13/micropip/devpi:230502_3  # TODO: use pyodide organization
     ports:
       - 3141:3141
     environment:
