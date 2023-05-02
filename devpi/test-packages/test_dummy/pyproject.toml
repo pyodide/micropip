@@ -1,0 +1,10 @@
+[project]
+name = "test_dummy"
+description = "Dummy"
+requires-python = ">=3.10"
+version = "1.0.0"
+
+[build-system]
+requires = ["setuptools>=42"]
+
+build-backend = "setuptools.build_meta"

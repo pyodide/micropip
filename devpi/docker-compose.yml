@@ -1,0 +1,14 @@
+version: "2"
+services:
+  cors-proxy:
+    image: nginx:alpine
+    ports:
+      - 13141:13141
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+  devpi:
+    image: devpitest:latest
+    ports:
+      - 3141:3141
+    environment:
+      - BASE_URL=http://localhost:13141/devpi/
