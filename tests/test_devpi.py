@@ -129,8 +129,9 @@ def test_devpi_warehouse_json_detail(devpi_json_detail):
     assert isinstance(content["releases"], dict)
     assert len(content["releases"]) > 0
 
-    for release in content["releases"].values():
-        assert "filename" in release
-        assert "url" in release
-        assert "digests" in release
-        assert "sha256" in release["digests"]
+    for releases in content["releases"].values():
+        for release in releases:
+            assert "filename" in release
+            assert "url" in release
+            assert "digests" in release
+            assert "sha256" in release["digests"]
