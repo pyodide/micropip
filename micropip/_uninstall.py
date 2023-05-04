@@ -1,9 +1,11 @@
-import warnings
+import logging
 from collections.abc import Iterable
 from importlib.metadata import Distribution
 
 from ._compat import loadedPackages
 from ._utils import get_files_in_distribution, get_root
+
+logger = logging.getLogger("micropip")
 
 
 def uninstall_distributions(distributions: Iterable[Distribution]) -> None:
@@ -26,6 +28,9 @@ def uninstall_distributions(distributions: Iterable[Distribution]) -> None:
         # Note: this value needs to be retrieved before removing files, as
         #       dist.name uses metadata file to get the name
         name = dist.name
+        version = dist.version
+
+        logger.info(f"Found existing installation: {name} {version}")
 
         root = get_root(dist)
         files = get_files_in_distribution(dist)
@@ -41,9 +46,8 @@ def uninstall_distributions(distributions: Iterable[Distribution]) -> None:
                     # Since we don't support these, we can ignore them (except for data_files (TODO))
                     continue
 
-                warnings.warn(
-                    f"WARNING: A file '{file}' listed in the metadata of '{dist.name}' does not exist.",
-                    stacklevel=1,
+                logger.warning(
+                    f"A file '{file}' listed in the metadata of '{name}' does not exist.",
                 )
 
                 continue
@@ -58,17 +62,17 @@ def uninstall_distributions(distributions: Iterable[Distribution]) -> None:
             try:
                 directory.rmdir()
             except OSError:
-                warnings.warn(
-                    f"WARNING: A directory '{directory}' is not empty after uninstallation of '{name}'. "
+                logger.warning(
+                    f"A directory '{directory}' is not empty after uninstallation of '{name}'. "
                     "This might cause problems when installing a new version of the package. ",
-                    stacklevel=1,
                 )
 
         if hasattr(loadedPackages, name):
             delattr(loadedPackages, name)
         else:
             # This should not happen, but just in case
-            warnings.warn(
-                f"WARNING: a package '{name}' was not found in loadedPackages.",
-                stacklevel=1,
+            logger.warning(
+                f"a package '{name}' was not found in loadedPackages.",
             )
+
+        logger.info(f"Successfully uninstalled {name}-{version}")

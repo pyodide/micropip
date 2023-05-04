@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import importlib.metadata
 import json
+import logging
 import warnings
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
@@ -28,6 +29,8 @@ from ._compat import (
 from .constants import FAQ_URLS
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageMetadata
+
+logger = logging.getLogger("micropip")
 
 
 @dataclass
@@ -238,6 +241,8 @@ class Transaction:
     pyodide_packages: list[PackageMetadata] = field(default_factory=list)
     failed: list[Requirement] = field(default_factory=list)
 
+    verbose: bool | int = False
+
     async def gather_requirements(
         self,
         requirements: list[str],
@@ -259,9 +264,9 @@ class Transaction:
         wheel = WheelInfo.from_url(req)
         wheel.check_compatible()
 
-        await self.add_wheel(wheel, extras=set())
+        await self.add_wheel(wheel, extras=set(), specifier="")
 
-    def check_version_satisfied(self, req: Requirement) -> bool:
+    def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
         """
         Check if the installed version of a package satisfies the requirement.
         Returns True if the requirement is satisfied, False otherwise.
@@ -275,13 +280,13 @@ class Transaction:
             ver = self.locked[req.name].version
 
         if not ver:
-            return False
+            return False, ""
 
         if req.specifier.contains(ver, prereleases=True):
             # installed version matches, nothing to do
-            return True
+            return True, ver
 
-        return False
+        return False, ""
 
     async def add_requirement_inner(
         self,
@@ -333,7 +338,11 @@ class Transaction:
                 return
         # Is some version of this package is already installed?
         req.name = canonicalize_name(req.name)
-        if not self.force_reinstall and self.check_version_satisfied(req):
+
+        satisfied, ver = self.check_version_satisfied(req)
+
+        if not self.force_reinstall and satisfied:
+            logger.info(f"Requirement already satisfied: {req} ({ver})")
             return
 
         # If there's a Pyodide package that matches the version constraint, use
@@ -358,23 +367,48 @@ class Transaction:
             else:
                 return
 
-        if not self.force_reinstall and self.check_version_satisfied(req):
+        satisfied, ver = self.check_version_satisfied(req)
+        if not self.force_reinstall and satisfied:
             # Maybe while we were downloading pypi_json some other branch
             # installed the wheel?
+            logger.info(f"Requirement already satisfied: {req} ({ver})")
             return
 
-        await self.add_wheel(wheel, req.extras)
+        await self.add_wheel(wheel, req.extras, specifier=str(req.specifier))
 
     async def add_wheel(
         self,
         wheel: WheelInfo,
         extras: set[str],
+        *,
+        specifier: str = "",
     ) -> None:
+        """
+        Download a wheel, and add its dependencies to the transaction.
+
+        Parameters
+        ----------
+        wheel
+            The wheel to add.
+
+        extras
+            Markers for optional dependencies.
+            For example, `micropip.install("pkg[test]")`
+            will pass `{"test"}` as the extras argument.
+
+        specifier
+            Requirement specifier, used only for logging.
+            For example, `micropip.install("pkg>=1.0.0,!=2.0.0")`
+            will pass `>=1.0.0,!=2.0.0` as the specifier argument.
+        """
         normalized_name = canonicalize_name(wheel.name)
         self.locked[normalized_name] = PackageMetadata(
             name=wheel.name,
             version=str(wheel.version),
         )
+
+        logger.info(f"Collecting {wheel.name}{specifier}")
+        logger.info(f"  Downloading {wheel.url.split('/')[-1]}")
 
         await wheel.download(self.fetch_kwargs)
         if self.deps:

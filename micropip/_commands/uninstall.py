@@ -1,13 +1,12 @@
 import importlib
 import importlib.metadata
-import warnings
-from collections.abc import Iterable
 from importlib.metadata import Distribution
 
 from .._uninstall import uninstall_distributions
+from ..logging import setup_logging
 
 
-def uninstall(packages: str | Iterable[str]) -> None:
+def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None:
     """Uninstall the given packages.
 
     This function only supports uninstalling packages that are installed
@@ -22,7 +21,13 @@ def uninstall(packages: str | Iterable[str]) -> None:
     ----------
     packages
         Packages to uninstall.
+
+    verbose
+        Print more information about the process.
+        By default, micropip is silent. Setting ``verbose=True`` will print
+        similar information as pip.
     """
+    logger = setup_logging(verbose)
 
     if isinstance(packages, str):
         packages = [packages]
@@ -33,10 +38,7 @@ def uninstall(packages: str | Iterable[str]) -> None:
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            warnings.warn(
-                f"WARNING: Skipping '{package}' as it is not installed.",
-                stacklevel=1,
-            )
+            logger.warning(f"Skipping '{package}' as it is not installed.")
 
     uninstall_distributions(distributions)
 

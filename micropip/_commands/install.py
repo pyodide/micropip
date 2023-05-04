@@ -7,6 +7,7 @@ from packaging.markers import default_environment
 from .._compat import loadPackage, to_js
 from .._uninstall import uninstall_distributions
 from ..constants import FAQ_URLS
+from ..logging import setup_logging
 from ..transaction import Transaction
 
 
@@ -17,6 +18,8 @@ async def install(
     credentials: str | None = None,
     pre: bool = False,
     force_reinstall: bool = False,
+    *,
+    verbose: bool | int = False,
 ) -> None:
     """Install the given package and all of its dependencies.
 
@@ -88,7 +91,14 @@ async def install(
     force_reinstall :
 
         If ``True``, reinstall all packages even if they are already up-to-date.
+
+    verbose :
+        Print more information about the process.
+        By default, micropip is silent. Setting ``verbose=True`` will print
+        similar information as pip.
     """
+    logger = setup_logging(verbose)
+
     ctx = default_environment()
     if isinstance(requirements, str):
         requirements = [requirements]
@@ -113,6 +123,7 @@ async def install(
         pre=pre,
         force_reinstall=force_reinstall,
         fetch_kwargs=fetch_kwargs,
+        verbose=verbose,
     )
     await transaction.gather_requirements(requirements)
 
@@ -137,6 +148,9 @@ async def install(
 
     uninstall_distributions(distributions)
 
+    if packages_all:
+        logger.info("Installing collected packages: " + ", ".join(packages_all))
+
     wheel_promises = []
     # Install built-in packages
     pyodide_packages = transaction.pyodide_packages
@@ -156,4 +170,12 @@ async def install(
         wheel_promises.append(wheel.install(wheel_base))
 
     await asyncio.gather(*wheel_promises)
+
+    packages = [f"{pkg.name}-{pkg.version}" for pkg in transaction.pyodide_packages] + [
+        f"{pkg.name}-{pkg.version}" for pkg in transaction.wheels
+    ]
+
+    if packages:
+        logger.info("Successfully installed " + ", ".join(packages))
+
     importlib.invalidate_caches()
