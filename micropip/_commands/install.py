@@ -7,7 +7,7 @@ from packaging.markers import default_environment
 from .._compat import loadPackage, to_js
 from .._uninstall import uninstall_distributions
 from ..constants import FAQ_URLS
-from ..logging import setup_logging
+from ..logging import indent_log, setup_logging
 from ..transaction import Transaction
 
 
@@ -146,7 +146,8 @@ async def install(
         except importlib.metadata.PackageNotFoundError:
             pass
 
-    uninstall_distributions(distributions)
+    with indent_log():
+        uninstall_distributions(distributions)
 
     if packages_all:
         logger.info("Installing collected packages: " + ", ".join(packages_all))
