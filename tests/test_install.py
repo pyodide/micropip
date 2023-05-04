@@ -390,7 +390,7 @@ async def test_reinstall_different_version(
     with pytest.raises(ValueError, match="already installed"):
         await micropip.install(f"{dummy}=={version_old}", reinstall=False)
 
-    await micropip.install(f"{dummy}=={version_old}", reinstall=False)
+    await micropip.install(f"{dummy}=={version_old}", reinstall=True)
     assert micropip.list()[dummy].version == version_old
     assert importlib.metadata.version(dummy) == version_old
 
