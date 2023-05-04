@@ -17,7 +17,7 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
-    force_reinstall: bool = False,
+    reinstall: bool = False,
     *,
     verbose: bool | int = False,
 ) -> None:
@@ -88,9 +88,9 @@ async def install(
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
-    force_reinstall :
+    reinstall :
 
-        If ``True``, reinstall all packages even if they are already up-to-date.
+        If ``True``, reinstall packages if they are already installed.
 
     verbose :
         Print more information about the process.
@@ -121,7 +121,7 @@ async def install(
         keep_going=keep_going,
         deps=deps,
         pre=pre,
-        force_reinstall=force_reinstall,
+        reinstall=reinstall,
         fetch_kwargs=fetch_kwargs,
         verbose=verbose,
     )
