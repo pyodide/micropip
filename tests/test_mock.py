@@ -51,10 +51,10 @@ def test_persistent_mock(monkeypatch, capsys, tmp_path):
 
     from micropip import add_mock_package
 
-    def _getusersitepackages():
-        return tmp_path
+    def _getsitepackages():
+        return [tmp_path]
 
-    monkeypatch.setattr(site, "getusersitepackages", _getusersitepackages)
+    monkeypatch.setattr(site, "getsitepackages", _getsitepackages)
     monkeypatch.setattr(sys, "path", [tmp_path])
     add_mock_package("test_1", "1.0.0")
     add_mock_package(
