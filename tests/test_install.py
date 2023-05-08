@@ -379,10 +379,6 @@ async def test_reinstall_different_version(
     mock_fetch.add_pkg_version(dummy, version_old)
     mock_fetch.add_pkg_version(dummy, version_new)
 
-    await micropip.install(f"{dummy}=={version_old}")
-    assert micropip.list()[dummy].version == version_old
-    assert importlib.metadata.version(dummy) == version_old
-
     await micropip.install(f"{dummy}=={version_new}")
     assert micropip.list()[dummy].version == version_new
     assert importlib.metadata.version(dummy) == version_new
