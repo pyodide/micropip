@@ -5,12 +5,11 @@ import pytest
 
 import micropip.repository as repository
 
+TEST_TEMPLATES_DIR = Path(__file__).parent / "test_data" / "pypi_response"
 
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_from_json(name):
-    test_templates_dir = Path(__name__).parent / "test_data" / "pypi_response"
-
-    test_file = test_templates_dir / f"{name}_json.json"
+    test_file = TEST_TEMPLATES_DIR / f"{name}_json.json"
     test_data = json.loads(test_file.read_text())
 
     index = repository.ProjectInfo.from_json_api(test_data)
@@ -26,9 +25,7 @@ def test_project_info_from_json(name):
 
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_from_simple_json(name):
-    test_templates_dir = Path(__name__).parent / "test_data" / "pypi_response"
-
-    test_file = test_templates_dir / f"{name}_simple.json"
+    test_file = TEST_TEMPLATES_DIR / f"{name}_simple.json"
     test_data = json.loads(test_file.read_text())
 
     index = repository.ProjectInfo.from_simple_api(test_data)
@@ -45,11 +42,8 @@ def test_project_info_from_simple_json(name):
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_equality(name):
     # The different ways of parsing the same data should result in the same
-
-    test_templates_dir = Path(__name__).parent / "test_data" / "pypi_response"
-
-    test_file_json = test_templates_dir / f"{name}_json.json"
-    test_file_simple_json = test_templates_dir / f"{name}_simple.json"
+    test_file_json = TEST_TEMPLATES_DIR / f"{name}_json.json"
+    test_file_simple_json = TEST_TEMPLATES_DIR / f"{name}_simple.json"
 
     test_data_json = json.loads(test_file_json.read_text())
     test_data_simple_json = json.loads(test_file_simple_json.read_text())
