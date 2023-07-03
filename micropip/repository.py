@@ -3,6 +3,7 @@ from typing import Any
 
 from packaging.utils import (
     parse_wheel_filename,
+    parse_sdist_filename,
 )
 
 
@@ -83,7 +84,7 @@ class ProjectInfo:
         files = []
         for file in data["files"]:
             filename = file["filename"]
-            version = str(parse_wheel_filename(filename)[1])
+            version = _parse_version(filename)[1]
 
             files.append(
                 ProjectInfoFiles(
@@ -103,3 +104,10 @@ class ProjectInfo:
             versions=versions,
             files=files,
         )
+
+
+def _parse_version(filename: str):
+    if filename.endswith(".whl"):
+        return str(parse_wheel_filename(filename)[1])
+    elif filename.endswith(".tar.gz"):
+        return str(parse_sdist_filename(filename)[1])
