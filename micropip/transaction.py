@@ -29,6 +29,7 @@ from ._compat import (
 from .constants import FAQ_URLS
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageMetadata
+from .package_index import ProjectInfo
 
 logger = logging.getLogger("micropip")
 
@@ -352,7 +353,7 @@ class Transaction:
             )
             return
 
-        metadata = await _get_pypi_json(req.name, self.fetch_kwargs)
+        metadata: ProjectInfo = await _get_pypi_json(req.name, self.fetch_kwargs)
 
         try:
             wheel = find_wheel(metadata, req)
@@ -413,42 +414,29 @@ class Transaction:
         self.wheels.append(wheel)
 
 
-def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
+def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
     """Parse metadata to find the latest version of pure python wheel.
     Parameters
     ----------
-    metadata : ``Dict[str, Any]``
-
-        Package search result from PyPI,
-        See: https://warehouse.pypa.io/api-reference/json.html
+    metadata : ProjectInfo
+    req : Requirement
 
     Returns
     -------
-    fileinfo : Dict[str, Any] or None
-        The metadata of the Python wheel, or None if there is no pure Python wheel.
-    ver : Version or None
-        The version of the Python wheel, or None if there is no pure Python wheel.
+    wheel : WheelInfo
     """
-    releases_raw = metadata.get("releases", {})
-    releases = {}
-    # Skip unparsable versions
-    for key, val in releases_raw.items():
-        try:
-            Version(key)
-        except InvalidVersion:
-            continue
 
-        releases[key] = val
+    releases = metadata.releases
 
     candidate_versions = sorted(
-        (Version(v) for v in req.specifier.filter(releases)),
+        req.specifier.filter(releases),
         reverse=True,
     )
+
     for ver in candidate_versions:
-        if str(ver) not in releases:
-            pkg_name = metadata.get("info", {}).get("name", "UNKNOWN")
+        if ver not in releases:
             warnings.warn(
-                f"The package '{pkg_name}' contains an invalid version: '{ver}'. This version will be skipped",
+                f"The package '{metadata.name}' contains an invalid version: '{ver}'. This version will be skipped",
                 stacklevel=1,
             )
             continue
@@ -456,11 +444,13 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
         best_wheel = None
         best_tag_index = float("infinity")
 
-        release = releases[str(ver)]
-        for fileinfo in release:
-            url = fileinfo["url"]
+        files = releases[ver]
+        for fileinfo in files:
+            url = fileinfo.url
+            
             if not url.endswith(".whl"):
                 continue
+
             wheel = WheelInfo.from_url(url)
             tag_index = wheel.best_compatible_tag_index()
             if tag_index is not None and tag_index < best_tag_index:
@@ -479,7 +469,7 @@ def find_wheel(metadata: dict[str, Any], req: Requirement) -> WheelInfo:
     )
 
 
-async def _get_pypi_json(pkgname: str, fetch_kwargs: dict[str, str]) -> Any:
+async def _get_pypi_json(pkgname: str, fetch_kwargs: dict[str, str]) -> ProjectInfo:
     url = f"https://pypi.org/pypi/{pkgname}/json"
     try:
         metadata = await fetch_string(url, fetch_kwargs)
@@ -488,7 +478,7 @@ async def _get_pypi_json(pkgname: str, fetch_kwargs: dict[str, str]) -> Any:
             f"Can't fetch metadata for '{pkgname}' from PyPI. "
             "Please make sure you have entered a correct package name."
         ) from e
-    return json.loads(metadata)
+    return ProjectInfo.from_json_api(json.loads(metadata))
 
 
 def _generate_package_hash(data: IO[bytes]) -> str:

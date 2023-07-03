@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
@@ -5,13 +6,14 @@ from packaging.utils import (
     parse_wheel_filename,
     parse_sdist_filename,
 )
+from packaging.version import InvalidVersion, Version
 
 
 @dataclass
 class ProjectInfoFiles:
     filename: str  # Name of the file
     url: str  # URL to download the file
-    version: str  # Version of the package
+    version: Version  # Version of the package
     sha256: str  # SHA256 hash of the file
 
     # Size of the file in bytes, if available (PEP 700)
@@ -29,15 +31,11 @@ class ProjectInfo:
 
     name: str  # Name of the package
 
-    # List of versions available, if available (PEP 700)
-    # This key is not available in the Simple API HTML response, so this field may be None
-    versions: list[str] | None
-
-    # List of files available for the package, sorted in ascending order by version
+    # List of releases available for the package, sorted in ascending order by version
     # Note that a same version may have multiple files (e.g. source distribution, wheel)
     # and this list may contain non-Pyodide compatible files (e.g. binary wheels or source distributions)
     # so it is the responsibility of the caller to filter the list and find the best file
-    files: list[ProjectInfoFiles]
+    releases: defaultdict[Version, list[ProjectInfoFiles]]
 
     @staticmethod
     def from_json_api(data: dict[str, Any]) -> "ProjectInfo":
@@ -47,14 +45,19 @@ class ProjectInfo:
         https://warehouse.pypa.io/api-reference/json.html
         """
 
-        name = data["info"]["name"]
-        releases = data["releases"]
-        versions = list(releases.keys())
+        name: str = data.get("info", {}).get("name", "UNKNOWN")
+        releases: dict[str, Any] = data["releases"]
 
-        files = []
-        for version, fileinfo in releases.items():
+        files: defaultdict[Version, list[ProjectInfoFiles]] = defaultdict(list)
+        for version_str, fileinfo in releases.items():
+            try:
+                version = Version(version_str)
+            except InvalidVersion:
+                # Ignore non PEP 440 compliant versions
+                continue
+
             for file in fileinfo:
-                files.append(
+                files[version].append(
                     ProjectInfoFiles(
                         filename=file["filename"],
                         url=file["url"],
@@ -66,7 +69,6 @@ class ProjectInfo:
 
         return ProjectInfo(
             name=name,
-            versions=versions,
             files=files,
         )
 
@@ -80,13 +82,16 @@ class ProjectInfo:
         """
 
         name = data["name"]
-        versions = data["versions"] if "versions" in data else None
-        files = []
+        files: defaultdict[Version, list[ProjectInfoFiles]] = defaultdict(list)
         for file in data["files"]:
             filename = file["filename"]
-            version = _parse_version(filename)[1]
+            try:
+                version = _parse_version(filename)
+            except InvalidVersion:
+                # Ignore non PEP 440 compliant versions
+                continue
 
-            files.append(
+            files[version].append(
                 ProjectInfoFiles(
                     filename=filename,
                     url=file["url"],
@@ -101,13 +106,12 @@ class ProjectInfo:
 
         return ProjectInfo(
             name=name,
-            versions=versions,
             files=files,
         )
 
 
-def _parse_version(filename: str):
+def _parse_version(filename: str) -> Version:
     if filename.endswith(".whl"):
-        return str(parse_wheel_filename(filename)[1])
+        return parse_wheel_filename(filename)[1]
     elif filename.endswith(".tar.gz"):
-        return str(parse_sdist_filename(filename)[1])
+        return parse_sdist_filename(filename)[1]
