@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import micropip.repository as repository
+import micropip.package_index as package_index
 
 TEST_TEMPLATES_DIR = Path(__file__).parent / "test_data" / "pypi_response"
 
@@ -13,7 +13,7 @@ def test_project_info_from_json(name):
     test_file = TEST_TEMPLATES_DIR / f"{name}_json.json"
     test_data = json.loads(test_file.read_text())
 
-    index = repository.ProjectInfo.from_json_api(test_data)
+    index = package_index.ProjectInfo.from_json_api(test_data)
     assert index.name == name
     assert index.versions is not None
     assert index.files
@@ -29,7 +29,7 @@ def test_project_info_from_simple_json(name):
     test_file = TEST_TEMPLATES_DIR / f"{name}_simple.json"
     test_data = json.loads(test_file.read_text())
 
-    index = repository.ProjectInfo.from_simple_api(test_data)
+    index = package_index.ProjectInfo.from_simple_api(test_data)
     assert index.name == name
     assert index.versions is not None
     assert index.files
@@ -49,8 +49,8 @@ def test_project_info_equality(name):
     test_data_json = json.loads(test_file_json.read_text())
     test_data_simple_json = json.loads(test_file_simple_json.read_text())
 
-    index_json = repository.ProjectInfo.from_json_api(test_data_json)
-    index_simple_json = repository.ProjectInfo.from_simple_api(test_data_simple_json)
+    index_json = package_index.ProjectInfo.from_json_api(test_data_json)
+    index_simple_json = package_index.ProjectInfo.from_simple_api(test_data_simple_json)
 
     assert index_json.name == index_simple_json.name
     assert index_json.versions == index_simple_json.versions
