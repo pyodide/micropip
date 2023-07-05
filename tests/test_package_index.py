@@ -15,13 +15,15 @@ def test_project_info_from_json(name):
 
     index = package_index.ProjectInfo.from_json_api(test_data)
     assert index.name == name
-    assert index.versions is not None
-    assert index.files
+    assert index.releases
 
-    for file in index.files:
-        assert file.version in index.versions
-        assert file.filename in file.url
-        assert len(file.sha256) == 64
+    versions = list(index.releases.keys())
+    assert versions == sorted(versions)
+
+    for files in index.releases.values():
+        for file in files:
+            assert file.filename in file.url
+            assert len(file.sha256) == 64
 
 
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
@@ -31,17 +33,19 @@ def test_project_info_from_simple_json(name):
 
     index = package_index.ProjectInfo.from_simple_api(test_data)
     assert index.name == name
-    assert index.versions is not None
-    assert index.files
+    assert index.releases
 
-    for file in index.files:
-        assert file.version in index.versions
-        assert file.filename in file.url
-        assert len(file.sha256) == 64
+    versions = list(index.releases.keys())
+    assert versions == sorted(versions)
+
+    for files in index.releases.values():
+        for file in files:
+            assert file.filename in file.url
+            assert len(file.sha256) == 64
 
 
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
-def test_project_info_equality(name):
+def test_project_info_equal(name):
     # The different ways of parsing the same data should result in the same
     test_file_json = TEST_TEMPLATES_DIR / f"{name}_json.json"
     test_file_simple_json = TEST_TEMPLATES_DIR / f"{name}_simple.json"
@@ -53,13 +57,16 @@ def test_project_info_equality(name):
     index_simple_json = package_index.ProjectInfo.from_simple_api(test_data_simple_json)
 
     assert index_json.name == index_simple_json.name
-    assert index_json.versions == index_simple_json.versions
 
-    for f_json, f_simple_json in zip(
-        index_json.files, index_simple_json.files, strict=True
+    for version_json, version_simple_json in zip(
+        index_json.releases, index_simple_json.releases, strict=True
     ):
-        assert f_json.filename == f_simple_json.filename
-        assert f_json.url == f_simple_json.url
-        assert f_json.version == f_simple_json.version
-        assert f_json.sha256 == f_simple_json.sha256
-        assert f_json.size == f_simple_json.size
+        files_json = index_json.releases[version_json]
+        files_simple_json = index_simple_json.releases[version_simple_json]
+
+        assert len(files_json) == len(files_simple_json)
+        for f_json, f_simple_json in zip(files_json, files_simple_json, strict=True):
+            assert f_json.filename == f_simple_json.filename
+            assert f_json.url == f_simple_json.url
+            assert f_json.version == f_simple_json.version
+            assert f_json.sha256 == f_simple_json.sha256

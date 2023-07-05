@@ -187,6 +187,7 @@ class mock_fetch_cls:
 
     async def _get_pypi_json(self, pkgname, kwargs):
         from micropip.package_index import ProjectInfo
+
         try:
             return ProjectInfo.from_json_api(self.releases_map[pkgname])
         except KeyError as e:

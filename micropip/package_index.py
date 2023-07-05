@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from packaging.utils import (
-    parse_sdist_filename,
     parse_wheel_filename,
 )
 from packaging.version import InvalidVersion, Version
@@ -32,10 +31,10 @@ class ProjectInfo:
     name: str  # Name of the package
 
     # List of releases available for the package, sorted in ascending order by version
-    # Note that a same version may have multiple files (e.g. source distribution, wheel)
-    # and this list may contain non-Pyodide compatible files (e.g. binary wheels or source distributions)
-    # so it is the responsibility of the caller to filter the list and find the best file
-    releases: defaultdict[Version, list[ProjectInfoFile]]
+    # This list only contains wheels not sdist, but it does not filter by tags for it might contain
+    # binary wheels for other platforms. So it is up to the caller to filter the list by tags.
+    # TODO: should we filter by tags here? Or should we leave it to the caller?
+    releases: dict[Version, list[ProjectInfoFile]]
 
     @staticmethod
     def from_json_api(data: dict[str, Any]) -> "ProjectInfo":
@@ -48,7 +47,7 @@ class ProjectInfo:
         name: str = data.get("info", {}).get("name", "UNKNOWN")
         _releases: dict[str, Any] = data["releases"]
 
-        releases: defaultdict[Version, list[ProjectInfoFile]] = defaultdict(list)
+        releases: dict[Version, list[ProjectInfoFile]] = defaultdict(list)
         for version_str, fileinfo in _releases.items():
             try:
                 version = Version(version_str)
@@ -57,15 +56,24 @@ class ProjectInfo:
                 continue
 
             for file in fileinfo:
+                filename = file["filename"]
+                if not filename.endswith(".whl"):
+                    continue
+
                 releases[version].append(
                     ProjectInfoFile(
-                        filename=file["filename"],
+                        filename=filename,
                         url=file["url"],
                         version=version,
                         sha256=file["digests"]["sha256"],
                         size=file["size"],
                     )
                 )
+
+        # Unfortunately, the JSON API seems to compare versions as strings...
+        # For example, pytest 3.10.0 is considered newer than 3.2.0.
+        # So we need to sort the releases by version again here.
+        releases = dict(sorted(releases.items()))
 
         return ProjectInfo(
             name=name,
@@ -85,8 +93,11 @@ class ProjectInfo:
         releases: defaultdict[Version, list[ProjectInfoFile]] = defaultdict(list)
         for file in data["files"]:
             filename = file["filename"]
+            if not filename.endswith(".whl"):
+                continue
+
             try:
-                version = _parse_version(filename)
+                version = parse_wheel_filename(filename)[1]
             except InvalidVersion:
                 # Ignore non PEP 440 compliant versions
                 continue
@@ -108,12 +119,3 @@ class ProjectInfo:
             name=name,
             releases=releases,
         )
-
-
-def _parse_version(filename: str) -> Version:
-    if filename.endswith(".whl"):
-        return parse_wheel_filename(filename)[1]
-    elif filename.endswith(".tar.gz"):
-        return parse_sdist_filename(filename)[1]
-    else:
-        raise ValueError(f"Unknown file type: {filename}")
