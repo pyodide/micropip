@@ -3,14 +3,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from packaging.utils import (
-    parse_wheel_filename,
     parse_sdist_filename,
+    parse_wheel_filename,
 )
 from packaging.version import InvalidVersion, Version
 
 
 @dataclass
-class ProjectInfoFiles:
+class ProjectInfoFile:
     filename: str  # Name of the file
     url: str  # URL to download the file
     version: Version  # Version of the package
@@ -35,7 +35,7 @@ class ProjectInfo:
     # Note that a same version may have multiple files (e.g. source distribution, wheel)
     # and this list may contain non-Pyodide compatible files (e.g. binary wheels or source distributions)
     # so it is the responsibility of the caller to filter the list and find the best file
-    releases: defaultdict[Version, list[ProjectInfoFiles]]
+    releases: defaultdict[Version, list[ProjectInfoFile]]
 
     @staticmethod
     def from_json_api(data: dict[str, Any]) -> "ProjectInfo":
@@ -46,10 +46,10 @@ class ProjectInfo:
         """
 
         name: str = data.get("info", {}).get("name", "UNKNOWN")
-        releases: dict[str, Any] = data["releases"]
+        _releases: dict[str, Any] = data["releases"]
 
-        files: defaultdict[Version, list[ProjectInfoFiles]] = defaultdict(list)
-        for version_str, fileinfo in releases.items():
+        releases: defaultdict[Version, list[ProjectInfoFile]] = defaultdict(list)
+        for version_str, fileinfo in _releases.items():
             try:
                 version = Version(version_str)
             except InvalidVersion:
@@ -57,8 +57,8 @@ class ProjectInfo:
                 continue
 
             for file in fileinfo:
-                files[version].append(
-                    ProjectInfoFiles(
+                releases[version].append(
+                    ProjectInfoFile(
                         filename=file["filename"],
                         url=file["url"],
                         version=version,
@@ -69,7 +69,7 @@ class ProjectInfo:
 
         return ProjectInfo(
             name=name,
-            files=files,
+            releases=releases,
         )
 
     @staticmethod
@@ -82,7 +82,7 @@ class ProjectInfo:
         """
 
         name = data["name"]
-        files: defaultdict[Version, list[ProjectInfoFiles]] = defaultdict(list)
+        releases: defaultdict[Version, list[ProjectInfoFile]] = defaultdict(list)
         for file in data["files"]:
             filename = file["filename"]
             try:
@@ -91,8 +91,8 @@ class ProjectInfo:
                 # Ignore non PEP 440 compliant versions
                 continue
 
-            files[version].append(
-                ProjectInfoFiles(
+            releases[version].append(
+                ProjectInfoFile(
                     filename=filename,
                     url=file["url"],
                     version=version,
@@ -106,7 +106,7 @@ class ProjectInfo:
 
         return ProjectInfo(
             name=name,
-            files=files,
+            releases=releases,
         )
 
 
@@ -115,3 +115,5 @@ def _parse_version(filename: str) -> Version:
         return parse_wheel_filename(filename)[1]
     elif filename.endswith(".tar.gz"):
         return parse_sdist_filename(filename)[1]
+    else:
+        raise ValueError(f"Unknown file type: {filename}")

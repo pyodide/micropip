@@ -15,7 +15,7 @@ from zipfile import ZipFile
 from packaging.requirements import Requirement
 from packaging.tags import Tag, sys_tags
 from packaging.utils import canonicalize_name, parse_wheel_filename
-from packaging.version import InvalidVersion, Version
+from packaging.version import Version
 
 from ._compat import (
     REPODATA_PACKAGES,
@@ -29,7 +29,7 @@ from ._compat import (
 from .constants import FAQ_URLS
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageMetadata
-from .package_index import ProjectInfo
+from .package_index import ProjectInfo, ProjectInfoFile
 
 logger = logging.getLogger("micropip")
 
@@ -44,7 +44,7 @@ class WheelInfo:
     url: str
     parsed_url: ParseResult
     project_name: str | None = None
-    digests: dict[str, str] | None = None
+    sha256: str | None = None
     data: IO[bytes] | None = None
     _dist: Any = None
     dist_info: Path | None = None
@@ -68,6 +68,14 @@ class WheelInfo:
             url=url,
             parsed_url=parsed_url,
         )
+
+    @staticmethod
+    def from_project_info_file(project_info_file: ProjectInfoFile) -> "WheelInfo":
+        """Extract available metadata from response received from package index"""
+        wheel_info = WheelInfo.from_url(project_info_file.url)
+        wheel_info.sha256 = project_info_file.sha256
+
+        return wheel_info
 
     def best_compatible_tag_index(self) -> int | None:
         """Get the index of the first tag in ``packaging.tags.sys_tags()`` that this wheel has.
@@ -165,14 +173,14 @@ class WheelInfo:
             self.project_name = self.name
 
     def validate(self):
-        if self.digests is None:
+        if self.sha256 is None:
             # No checksums available, e.g. because installing
             # from a different location than PyPI.
             return
-        sha256_expected = self.digests["sha256"]
+
         assert self.data
         sha256_actual = _generate_package_hash(self.data)
-        if sha256_actual != sha256_expected:
+        if sha256_actual != self.sha256:
             raise ValueError("Contents don't match hash")
 
     def extract(self, target: Path) -> None:
@@ -197,7 +205,7 @@ class WheelInfo:
 
     def set_installer(self) -> None:
         assert self.data
-        wheel_source = "pypi" if self.digests is not None else self.url
+        wheel_source = "pypi" if self.sha256 is not None else self.url
 
         self.write_dist_info("PYODIDE_SOURCE", wheel_source)
         self.write_dist_info("PYODIDE_URL", self.url)
@@ -446,15 +454,12 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
 
         files = releases[ver]
         for fileinfo in files:
-            url = fileinfo.url
-            
-            if not url.endswith(".whl"):
+            if not fileinfo.url.endswith(".whl"):
                 continue
 
-            wheel = WheelInfo.from_url(url)
+            wheel = WheelInfo.from_project_info_file(fileinfo)
             tag_index = wheel.best_compatible_tag_index()
             if tag_index is not None and tag_index < best_tag_index:
-                wheel.digests = fileinfo["digests"]
                 best_wheel = wheel
                 best_tag_index = tag_index
 

@@ -7,6 +7,7 @@ import micropip.repository as repository
 
 TEST_TEMPLATES_DIR = Path(__file__).parent / "test_data" / "pypi_response"
 
+
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_from_json(name):
     test_file = TEST_TEMPLATES_DIR / f"{name}_json.json"
