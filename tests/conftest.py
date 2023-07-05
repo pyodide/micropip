@@ -186,8 +186,9 @@ class mock_fetch_cls:
         self.top_level_map[filename] = top_level
 
     async def _get_pypi_json(self, pkgname, kwargs):
+        from micropip.package_index import ProjectInfo
         try:
-            return self.releases_map[pkgname]
+            return ProjectInfo.from_json_api(self.releases_map[pkgname])
         except KeyError as e:
             raise ValueError(
                 f"Can't fetch metadata for '{pkgname}' from PyPI. "
