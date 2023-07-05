@@ -66,7 +66,7 @@ class ProjectInfo:
                         url=file["url"],
                         version=version,
                         sha256=file["digests"]["sha256"],
-                        size=file["size"],
+                        size=file["size"] if "size" in file else None,
                     )
                 )
 
