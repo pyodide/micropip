@@ -11,7 +11,7 @@ TEST_TEMPLATES_DIR = Path(__file__).parent / "test_data" / "pypi_response"
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_from_json(name):
     test_file = TEST_TEMPLATES_DIR / f"{name}_json.json"
-    test_data = json.loads(test_file.read_text())
+    test_data = json.loads(test_file.read_text(encoding="utf-8"))
 
     index = package_index.ProjectInfo.from_json_api(test_data)
     assert index.name == name
@@ -29,7 +29,7 @@ def test_project_info_from_json(name):
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_from_simple_json(name):
     test_file = TEST_TEMPLATES_DIR / f"{name}_simple.json"
-    test_data = json.loads(test_file.read_text())
+    test_data = json.loads(test_file.read_text(encoding="utf-8"))
 
     index = package_index.ProjectInfo.from_simple_api(test_data)
     assert index.name == name
@@ -50,8 +50,10 @@ def test_project_info_equal(name):
     test_file_json = TEST_TEMPLATES_DIR / f"{name}_json.json"
     test_file_simple_json = TEST_TEMPLATES_DIR / f"{name}_simple.json"
 
-    test_data_json = json.loads(test_file_json.read_text())
-    test_data_simple_json = json.loads(test_file_simple_json.read_text())
+    test_data_json = json.loads(test_file_json.read_text(encoding="utf-8"))
+    test_data_simple_json = json.loads(
+        test_file_simple_json.read_text(encoding="utf-8")
+    )
 
     index_json = package_index.ProjectInfo.from_json_api(test_data_json)
     index_simple_json = package_index.ProjectInfo.from_simple_api(test_data_simple_json)

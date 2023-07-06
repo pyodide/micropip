@@ -77,9 +77,9 @@ def selenium_standalone_micropip(selenium_standalone, wheel_path):
 @pytest.fixture
 def mock_platform(monkeypatch):
     monkeypatch.setenv("_PYTHON_HOST_PLATFORM", PLATFORM)
-    from micropip import transaction
+    from micropip import _utils
 
-    monkeypatch.setattr(transaction, "get_platform", lambda: PLATFORM)
+    monkeypatch.setattr(_utils, "get_platform", lambda: PLATFORM)
 
 
 @pytest.fixture

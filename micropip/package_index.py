@@ -2,8 +2,9 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from _utils import is_package_compatible, parse_version
 from packaging.version import InvalidVersion, Version
+
+from ._utils import is_package_compatible, parse_version
 
 
 @dataclass
@@ -48,6 +49,10 @@ class ProjectInfo:
         for version_str, fileinfo in _releases.items():
             try:
                 version = Version(version_str)
+                if str(version) != version_str:
+                    # Ignore non PEP 440 compliant versions
+                    continue
+
             except InvalidVersion:
                 # Ignore non PEP 440 compliant versions
                 continue

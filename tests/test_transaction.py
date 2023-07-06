@@ -1,8 +1,7 @@
-from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
-from conftest import CPVER, EMSCRIPTEN_VER, PLATFORM, SNOWBALL_WHEEL
+from conftest import SNOWBALL_WHEEL
 from packaging.tags import Tag
 from pytest_pyodide import spawn_web_server
 
@@ -25,7 +24,7 @@ def test_parse_wheel_url1(protocol, path):
     wheel = WheelInfo.from_url(url)
     assert wheel.name == "snowballstemmer"
     assert str(wheel.version) == "2.0.0"
-    assert wheel.digests is None
+    assert wheel.sha256 is None
     assert wheel.filename == SNOWBALL_WHEEL
     assert wheel.url == url
     assert wheel.tags == frozenset(
@@ -163,6 +162,8 @@ def _pypi_metadata(package, versions_to_tags):
     #
     # `versions` is a mapping with version strings as
     # keys and iterables of tag strings as values.
+    from micropip.package_index import ProjectInfo
+
     releases = {}
     for version, tags in versions_to_tags.items():
         release = []
@@ -171,11 +172,15 @@ def _pypi_metadata(package, versions_to_tags):
             wheel_info = {
                 "filename": wheel_name,
                 "url": wheel_name,
-                "digests": None,
+                "digests": {
+                    "sha256": "0" * 64,
+                },
             }
             release.append(wheel_info)
         releases[version] = release
-    return {"releases": releases}
+
+    metadata = {"releases": releases}
+    return ProjectInfo.from_json_api(metadata)
 
 
 def test_last_version_from_pypi():
@@ -286,85 +291,3 @@ def test_last_version_and_best_tag_from_pypi(
     wheel = find_wheel(metadata, requirement)
 
     assert str(wheel.version) == new_version
-
-
-@contextmanager
-def does_not_raise():
-    yield
-
-
-def raiseValueError(msg):
-    return pytest.raises(ValueError, match=msg)
-
-
-@pytest.mark.parametrize(
-    "interp, abi, arch,ctx",
-    [
-        (
-            "cp35",
-            "cp35m",
-            "macosx_10_9_intel",
-            raiseValueError(
-                f"Wheel platform 'macosx_10_9_intel' .* Pyodide's platform '{PLATFORM}'"
-            ),
-        ),
-        (
-            "cp35",
-            "cp35m",
-            "emscripten_2_0_27_wasm32",
-            raiseValueError(
-                f"Emscripten v2.0.27 but Pyodide was built with Emscripten v{EMSCRIPTEN_VER}"
-            ),
-        ),
-        (
-            "cp35",
-            "cp35m",
-            PLATFORM,
-            raiseValueError(
-                f"Wheel abi 'cp35m' .* Supported abis are 'abi3' and '{CPVER}'."
-            ),
-        ),
-        ("cp35", "abi3", PLATFORM, does_not_raise()),
-        (CPVER, "abi3", PLATFORM, does_not_raise()),
-        (CPVER, CPVER, PLATFORM, does_not_raise()),
-        (
-            "cp35",
-            CPVER,
-            PLATFORM,
-            raiseValueError("Wheel interpreter version 'cp35' is not supported."),
-        ),
-        (
-            "cp391",
-            "abi3",
-            PLATFORM,
-            raiseValueError("Wheel interpreter version 'cp391' is not supported."),
-        ),
-    ],
-)
-def test_check_compatible(mock_platform, interp, abi, arch, ctx):
-    from micropip.transaction import WheelInfo
-
-    pkg = "scikit_learn-0.22.2.post1"
-    wheel_name = f"{pkg}-{interp}-{abi}-{arch}.whl"
-    with ctx:
-        WheelInfo.from_url(wheel_name).check_compatible()
-
-
-@pytest.mark.parametrize(*_best_tag_test_cases)
-def test_best_compatible_tag(package, version, incompatible_tags, compatible_tags):
-    from micropip.transaction import WheelInfo
-
-    for tag in incompatible_tags:
-        wheel_name = f"{package}-{version}-{tag}-none-any.whl"
-        wheel = WheelInfo.from_url(wheel_name)
-        assert wheel.best_compatible_tag_index() is None
-
-    wheels = []
-    for tag in compatible_tags:
-        wheel_name = f"{package}-{version}-{tag}-none-any.whl"
-        wheel = WheelInfo.from_url(wheel_name)
-        wheels.append(wheel)
-
-    sorted_wheels = sorted(wheels, key=WheelInfo.best_compatible_tag_index)
-    sorted_wheels.reverse()
-    assert sorted_wheels == wheels
