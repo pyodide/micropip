@@ -7,14 +7,13 @@ import warnings
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
-from sysconfig import get_platform
 from typing import IO, Any
 from urllib.parse import ParseResult, urlparse
 from zipfile import ZipFile
 
 from packaging.requirements import Requirement
-from packaging.tags import Tag, sys_tags
-from packaging.utils import canonicalize_name, parse_wheel_filename
+from packaging.tags import Tag
+from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 from ._compat import (
@@ -26,6 +25,7 @@ from ._compat import (
     loadedPackages,
     wheel_dist_info_dir,
 )
+from ._utils import best_compatible_tag_index, check_compatible, parse_wheel_filename
 from .constants import FAQ_URLS
 from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageMetadata
@@ -76,72 +76,6 @@ class WheelInfo:
         wheel_info.sha256 = project_info_file.sha256
 
         return wheel_info
-
-    def best_compatible_tag_index(self) -> int | None:
-        """Get the index of the first tag in ``packaging.tags.sys_tags()`` that this wheel has.
-
-        Since ``packaging.tags.sys_tags()`` is sorted from most specific ("best") to most
-        general ("worst") compatibility, this index douples as a priority rank: given two
-        compatible wheels, the one whose best index is closer to zero should be installed.
-
-        Returns
-        -------
-        The index, or ``None`` if this wheel has no compatible tags.
-        """
-        for index, tag in enumerate(sys_tags()):
-            if tag in self.tags:
-                return index
-        return None
-
-    def is_compatible(self):
-        if self.filename.endswith("py3-none-any.whl"):
-            return True
-        return self.best_compatible_tag_index() is not None
-
-    def check_compatible(self) -> None:
-        if self.is_compatible():
-            return
-        tag: Tag = next(iter(self.tags))
-        if "emscripten" not in tag.platform:
-            raise ValueError(
-                f"Wheel platform '{tag.platform}' is not compatible with "
-                f"Pyodide's platform '{get_platform()}'"
-            )
-
-        def platform_to_version(platform: str) -> str:
-            return (
-                platform.replace("-", "_")
-                .removeprefix("emscripten_")
-                .removesuffix("_wasm32")
-                .replace("_", ".")
-            )
-
-        wheel_emscripten_version = platform_to_version(tag.platform)
-        pyodide_emscripten_version = platform_to_version(get_platform())
-        if wheel_emscripten_version != pyodide_emscripten_version:
-            raise ValueError(
-                f"Wheel was built with Emscripten v{wheel_emscripten_version} but "
-                f"Pyodide was built with Emscripten v{pyodide_emscripten_version}"
-            )
-
-        abi_incompatible = True
-        from sys import version_info
-
-        version = f"{version_info.major}{version_info.minor}"
-        abis = ["abi3", f"cp{version}"]
-        for tag in self.tags:
-            if tag.abi in abis:
-                abi_incompatible = False
-            break
-        if abi_incompatible:
-            abis_string = ",".join({tag.abi for tag in self.tags})
-            raise ValueError(
-                f"Wheel abi '{abis_string}' is not supported. Supported abis are 'abi3' and 'cp{version}'."
-            )
-
-        raise ValueError(
-            f"Wheel interpreter version '{tag.interpreter}' is not supported."
-        )
 
     async def _fetch_bytes(self, fetch_kwargs):
         try:
@@ -270,7 +204,7 @@ class Transaction:
 
         # custom download location
         wheel = WheelInfo.from_url(req)
-        wheel.check_compatible()
+        check_compatible(wheel.filename)
 
         await self.add_wheel(wheel, extras=set(), specifier="")
 
@@ -454,11 +388,8 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
 
         files = releases[ver]
         for fileinfo in files:
-            if not fileinfo.url.endswith(".whl"):
-                continue
-
             wheel = WheelInfo.from_project_info_file(fileinfo)
-            tag_index = wheel.best_compatible_tag_index()
+            tag_index = best_compatible_tag_index(wheel.tags)
             if tag_index is not None and tag_index < best_tag_index:
                 best_wheel = wheel
                 best_tag_index = tag_index

@@ -2,9 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from packaging.utils import (
-    parse_wheel_filename,
-)
+from _utils import is_package_compatible, parse_version
 from packaging.version import InvalidVersion, Version
 
 
@@ -30,10 +28,9 @@ class ProjectInfo:
 
     name: str  # Name of the package
 
-    # List of releases available for the package, sorted in ascending order by version
-    # This list only contains wheels not sdist, but it does not filter by tags for it might contain
-    # binary wheels for other platforms. So it is up to the caller to filter the list by tags.
-    # TODO: should we filter by tags here? Or should we leave it to the caller?
+    # List of releases available for the package, sorted in ascending order by version.
+    # For each version, list of wheels compatible with the current platform are stored.
+    # If no such wheel is available, the list is empty.
     releases: dict[Version, list[ProjectInfoFile]]
 
     @staticmethod
@@ -57,7 +54,9 @@ class ProjectInfo:
 
             for file in fileinfo:
                 filename = file["filename"]
-                if not filename.endswith(".whl"):
+
+                compatible = is_package_compatible(filename)
+                if not compatible:
                     continue
 
                 releases[version].append(
@@ -88,18 +87,21 @@ class ProjectInfo:
         https://peps.python.org/pep-0503/
         https://peps.python.org/pep-0691/
         """
-
         name = data["name"]
         releases: defaultdict[Version, list[ProjectInfoFile]] = defaultdict(list)
         for file in data["files"]:
             filename = file["filename"]
-            if not filename.endswith(".whl"):
+
+            compatible = is_package_compatible(filename)
+            if not compatible:
                 continue
 
             try:
-                version = parse_wheel_filename(filename)[1]
+                version = parse_version(filename)
             except InvalidVersion:
                 # Ignore non PEP 440 compliant versions
+                # This should be filtered out by the is_package_compatible check above,
+                # but just in case...
                 continue
 
             releases[version].append(
