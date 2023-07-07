@@ -1,12 +1,11 @@
-import functools
 from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_platform
 
 from packaging.tags import Tag
-from packaging.tags import sys_tags as sys_tags_orig
-from packaging.utils import BuildTag, InvalidWheelFilename, NormalizedName
-from packaging.utils import parse_wheel_filename as parse_wheel_filename_orig
+from packaging.tags import sys_tags as sys_tags
+from packaging.utils import InvalidWheelFilename
+from packaging.utils import parse_wheel_filename as parse_wheel_filename
 from packaging.version import InvalidVersion, Version
 
 
@@ -57,26 +56,12 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     return files_to_remove
 
 
-@functools.cache
-def parse_wheel_filename(
-    filename: str,
-) -> tuple[NormalizedName, Version, BuildTag, frozenset[Tag]]:
-    """Cached version of ``packaging.utils.parse_wheel_filename``."""
-    return parse_wheel_filename_orig(filename)
-
-
 def parse_version(filename: str) -> Version:
     return parse_wheel_filename(filename)[1]
 
 
 def parse_tags(filename: str) -> frozenset[Tag]:
     return parse_wheel_filename(filename)[3]
-
-
-@functools.cache
-def sys_tags() -> list[Tag]:
-    """Cached version of ``packaging.tags.sys_tags()``."""
-    return list(sys_tags_orig())
 
 
 def best_compatible_tag_index(tags: frozenset[Tag]) -> int | None:

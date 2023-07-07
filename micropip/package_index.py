@@ -7,6 +7,7 @@ from packaging.version import InvalidVersion, Version
 from ._utils import is_package_compatible, parse_version
 
 
+# TODO: Merge this class with WheelInfo
 @dataclass
 class ProjectInfoFile:
     filename: str  # Name of the file
@@ -70,7 +71,7 @@ class ProjectInfo:
                         url=file["url"],
                         version=version,
                         sha256=file["digests"]["sha256"],
-                        size=file["size"] if "size" in file else None,
+                        size=file.get("size"),
                     )
                 )
 
@@ -118,7 +119,7 @@ class ProjectInfo:
                     # This is true for PyPI, but may not be true for other package indexes,
                     # since it is not a hard requirement of PEP503.
                     sha256=file["hashes"]["sha256"],
-                    size=file["size"] if "size" in file else None,
+                    size=file.get("size"),
                 )
             )
 
