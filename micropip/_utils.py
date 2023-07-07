@@ -1,8 +1,10 @@
+import functools
 from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_platform
 
-from packaging.tags import Tag, sys_tags
+from packaging.tags import Tag
+from packaging.tags import sys_tags as sys_tags_orig
 from packaging.utils import InvalidWheelFilename, parse_wheel_filename
 from packaging.version import InvalidVersion, Version
 
@@ -52,6 +54,11 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     files_to_remove.update(metadata_files)
 
     return files_to_remove
+
+
+@functools.lru_cache
+def sys_tags():
+    return list(sys_tags_orig())
 
 
 # TODO: Move these helper functions back to WheelInfo

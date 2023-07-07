@@ -1,7 +1,9 @@
 from collections import defaultdict
+from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
+from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
 
 from ._utils import is_package_compatible, parse_version
@@ -33,7 +35,7 @@ class ProjectInfo:
     # List of releases available for the package, sorted in ascending order by version.
     # For each version, list of wheels compatible with the current platform are stored.
     # If no such wheel is available, the list is empty.
-    releases: dict[Version, list[ProjectInfoFile]]
+    releases: dict[Version, Generator[ProjectInfoFile, None, None]]
 
     @staticmethod
     def from_json_api(data: dict[str, Any]) -> "ProjectInfo":
@@ -44,46 +46,26 @@ class ProjectInfo:
         """
 
         name: str = data.get("info", {}).get("name", "UNKNOWN")
-        _releases: dict[str, Any] = data["releases"]
+        releases_raw: dict[str, list[Any]] = data["releases"]
 
-        releases: dict[Version, list[ProjectInfoFile]] = defaultdict(list)
-        for version_str, fileinfo in _releases.items():
+        # Filter out non PEP 440 compliant versions
+        releases: dict[Version, list[Any]] = {}
+        for version_str, fileinfo in releases_raw.items():
             try:
                 version = Version(version_str)
                 if str(version) != version_str:
-                    # Ignore non PEP 440 compliant versions
                     continue
 
             except InvalidVersion:
-                # Ignore non PEP 440 compliant versions
                 continue
 
-            for file in fileinfo:
-                filename = file["filename"]
+            # Skip empty releases
+            if not fileinfo:
+                continue
 
-                compatible = is_package_compatible(filename)
-                if not compatible:
-                    continue
+            releases[version] = fileinfo
 
-                releases[version].append(
-                    ProjectInfoFile(
-                        filename=filename,
-                        url=file["url"],
-                        version=version,
-                        sha256=file["digests"]["sha256"],
-                        size=file.get("size"),
-                    )
-                )
-
-        # Unfortunately, the JSON API seems to compare versions as strings...
-        # For example, pytest 3.10.0 is considered newer than 3.2.0.
-        # So we need to sort the releases by version again here.
-        releases = dict(sorted(releases.items()))
-
-        return ProjectInfo(
-            name=name,
-            releases=releases,
-        )
+        return ProjectInfo._compatible_only(name, releases)
 
     @staticmethod
     def from_simple_api(data: dict[str, Any]) -> "ProjectInfo":
@@ -94,36 +76,91 @@ class ProjectInfo:
         https://peps.python.org/pep-0691/
         """
         name = data["name"]
-        releases: defaultdict[Version, list[ProjectInfoFile]] = defaultdict(list)
+
+        # List of versions (PEP 700), this key is not critical to find packages
+        # but it is required to ensure that the same class instance is returned
+        # from JSON and Simple APIs.
+        versions = data.get("versions", [])
+
+        # Group files by version
+        releases: dict[Version, list[Any]] = defaultdict(list)
+
+        for version in versions:
+            if not _is_valid_pep440_version(version):
+                continue
+
+            releases[Version(version)] = []
+
         for file in data["files"]:
             filename = file["filename"]
 
-            compatible = is_package_compatible(filename)
-            if not compatible:
-                continue
-
             try:
                 version = parse_version(filename)
-            except InvalidVersion:
-                # Ignore non PEP 440 compliant versions
-                # This should be filtered out by the is_package_compatible check above,
-                # but just in case...
+            except (InvalidVersion, InvalidWheelFilename):
                 continue
 
-            releases[version].append(
-                ProjectInfoFile(
+            releases[version].append(file)
+
+        return ProjectInfo._compatible_only(name, releases)
+
+    @staticmethod
+    def _compatible_only(
+        name: str, releases: dict[Version, list[dict[str, Any]]]
+    ) -> "ProjectInfo":
+        def _compatible_wheels(
+            files: list[dict[str, Any]], version: Version
+        ) -> Generator[ProjectInfoFile, None, None]:
+            """
+            Return a generator of wheels compatible with the current platform.
+            Checking compatibility takes a bit of time, so we use a generator to avoid doing it if not needed.
+            """
+            for file in files:
+                filename = file["filename"]
+
+                # Checking compatibility takes a bit of time,
+                # so we use a generator to avoid doing it for all files.
+                compatible = is_package_compatible(filename)
+                if not compatible:
+                    continue
+
+                # JSON API has a "digests" key, while Simple API has a "hashes" key.
+                hashes = file["digests"] if "digests" in file else file["hashes"]
+
+                # TODO: For now we expect that the sha256 hash is always available.
+                # This is true for PyPI, but may not be true for other package indexes,
+                # since it is not a hard requirement of PEP503.
+                sha256 = hashes["sha256"]
+
+                yield ProjectInfoFile(
                     filename=filename,
                     url=file["url"],
                     version=version,
-                    # TODO: For now we always expect that the sha256 hash is available.
-                    # This is true for PyPI, but may not be true for other package indexes,
-                    # since it is not a hard requirement of PEP503.
-                    sha256=file["hashes"]["sha256"],
+                    sha256=sha256,
                     size=file.get("size"),
                 )
-            )
+
+        releases_compatible = {
+            version: _compatible_wheels(files, version)
+            for version, files in releases.items()
+        }
+
+        # Unfortunately, the JSON API seems to compare versions as strings...
+        # For example, pytest 3.10.0 is considered newer than 3.2.0.
+        # So we need to sort the releases by version again here.
+        releases_compatible = dict(sorted(releases_compatible.items()))
 
         return ProjectInfo(
             name=name,
-            releases=releases,
+            releases=releases_compatible,
         )
+
+
+def _is_valid_pep440_version(version_str: str) -> bool:
+    try:
+        version = Version(version_str)
+        if str(version) != version_str:
+            return False
+
+        return True
+    except InvalidVersion:
+        return False
