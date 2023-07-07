@@ -24,6 +24,7 @@ def test_project_info_from_json(name):
     assert index.releases
 
     versions = list(index.releases.keys())
+    assert versions
     assert versions == sorted(versions)
 
     for files in index.releases.values():
@@ -42,6 +43,7 @@ def test_project_info_from_simple_json(name):
     assert index.releases
 
     versions = list(index.releases.keys())
+    assert versions
     assert versions == sorted(versions)
 
     for files in index.releases.values():
