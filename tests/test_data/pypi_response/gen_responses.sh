@@ -4,6 +4,8 @@ packages=(
     "black"
     "pytest"
     "snowballstemmer"
+    "numpy"
+    "pytz"
 )
 
 for package in "${packages[@]}"

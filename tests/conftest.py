@@ -79,6 +79,7 @@ def mock_platform(monkeypatch):
     monkeypatch.setenv("_PYTHON_HOST_PLATFORM", PLATFORM)
     from micropip import _utils
 
+    _utils.sys_tags.cache_clear()
     monkeypatch.setattr(_utils, "get_platform", lambda: PLATFORM)
 
 

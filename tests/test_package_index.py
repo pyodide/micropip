@@ -14,7 +14,9 @@ def _read_test_data(file: Path) -> dict[str, Any]:
     return json.loads(gzip.decompress(file.read_bytes()))
 
 
-@pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
+@pytest.mark.parametrize(
+    "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
+)
 def test_project_info_from_json(name):
     test_file = TEST_TEMPLATES_DIR / f"{name}_json.json.gz"
     test_data = _read_test_data(test_file)
@@ -33,7 +35,9 @@ def test_project_info_from_json(name):
             assert len(file.sha256) == 64
 
 
-@pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
+@pytest.mark.parametrize(
+    "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
+)
 def test_project_info_from_simple_json(name):
     test_file = TEST_TEMPLATES_DIR / f"{name}_simple.json.gz"
     test_data = _read_test_data(test_file)
@@ -52,7 +56,9 @@ def test_project_info_from_simple_json(name):
             assert len(file.sha256) == 64
 
 
-@pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
+@pytest.mark.parametrize(
+    "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
+)
 def test_project_info_equal(name):
     # The different ways of parsing the same data should result in the same
     test_file_json = TEST_TEMPLATES_DIR / f"{name}_json.json.gz"
@@ -69,8 +75,9 @@ def test_project_info_equal(name):
     for version_json, version_simple_json in zip(
         index_json.releases, index_simple_json.releases, strict=True
     ):
-        files_json = index_json.releases[version_json]
-        files_simple_json = index_simple_json.releases[version_simple_json]
+        assert version_json == version_simple_json
+        files_json = list(index_json.releases[version_json])
+        files_simple_json = list(index_simple_json.releases[version_simple_json])
 
         assert len(files_json) == len(files_simple_json)
         for f_json, f_simple_json in zip(files_json, files_simple_json, strict=True):
