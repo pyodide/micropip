@@ -2,10 +2,8 @@ from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_platform
 
-from packaging.tags import Tag
-from packaging.tags import sys_tags as sys_tags
-from packaging.utils import InvalidWheelFilename
-from packaging.utils import parse_wheel_filename as parse_wheel_filename
+from packaging.tags import Tag, sys_tags
+from packaging.utils import InvalidWheelFilename, parse_wheel_filename
 from packaging.version import InvalidVersion, Version
 
 
@@ -56,6 +54,7 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     return files_to_remove
 
 
+# TODO: Move these helper functions back to WheelInfo
 def parse_version(filename: str) -> Version:
     return parse_wheel_filename(filename)[1]
 
