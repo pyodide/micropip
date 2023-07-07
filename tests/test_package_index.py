@@ -1,5 +1,7 @@
+import gzip
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -8,10 +10,14 @@ import micropip.package_index as package_index
 TEST_TEMPLATES_DIR = Path(__file__).parent / "test_data" / "pypi_response"
 
 
+def _read_test_data(file: Path) -> dict[str, Any]:
+    return json.loads(gzip.decompress(file.read_bytes()))
+
+
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_from_json(name):
-    test_file = TEST_TEMPLATES_DIR / f"{name}_json.json"
-    test_data = json.loads(test_file.read_text(encoding="utf-8"))
+    test_file = TEST_TEMPLATES_DIR / f"{name}_json.json.gz"
+    test_data = _read_test_data(test_file)
 
     index = package_index.ProjectInfo.from_json_api(test_data)
     assert index.name == name
@@ -28,8 +34,8 @@ def test_project_info_from_json(name):
 
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_from_simple_json(name):
-    test_file = TEST_TEMPLATES_DIR / f"{name}_simple.json"
-    test_data = json.loads(test_file.read_text(encoding="utf-8"))
+    test_file = TEST_TEMPLATES_DIR / f"{name}_simple.json.gz"
+    test_data = _read_test_data(test_file)
 
     index = package_index.ProjectInfo.from_simple_api(test_data)
     assert index.name == name
@@ -47,13 +53,11 @@ def test_project_info_from_simple_json(name):
 @pytest.mark.parametrize("name", ["black", "pytest", "snowballstemmer"])
 def test_project_info_equal(name):
     # The different ways of parsing the same data should result in the same
-    test_file_json = TEST_TEMPLATES_DIR / f"{name}_json.json"
-    test_file_simple_json = TEST_TEMPLATES_DIR / f"{name}_simple.json"
+    test_file_json = TEST_TEMPLATES_DIR / f"{name}_json.json.gz"
+    test_file_simple_json = TEST_TEMPLATES_DIR / f"{name}_simple.json.gz"
 
-    test_data_json = json.loads(test_file_json.read_text(encoding="utf-8"))
-    test_data_simple_json = json.loads(
-        test_file_simple_json.read_text(encoding="utf-8")
-    )
+    test_data_json = _read_test_data(test_file_json)
+    test_data_simple_json = _read_test_data(test_file_simple_json)
 
     index_json = package_index.ProjectInfo.from_json_api(test_data_json)
     index_simple_json = package_index.ProjectInfo.from_simple_api(test_data_simple_json)
