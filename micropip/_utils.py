@@ -5,7 +5,8 @@ from sysconfig import get_platform
 
 from packaging.tags import Tag
 from packaging.tags import sys_tags as sys_tags_orig
-from packaging.utils import InvalidWheelFilename, parse_wheel_filename
+from packaging.utils import BuildTag, InvalidWheelFilename
+from packaging.utils import parse_wheel_filename as parse_wheel_filename_orig
 from packaging.version import InvalidVersion, Version
 
 
@@ -57,8 +58,15 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
 
 
 @functools.cache
-def sys_tags():
+def sys_tags() -> list[Tag]:
     return list(sys_tags_orig())
+
+
+@functools.cache
+def parse_wheel_filename(
+    filename: str,
+) -> tuple[str, Version, BuildTag, frozenset[Tag]]:
+    return parse_wheel_filename_orig(filename)
 
 
 # TODO: Move these helper functions back to WheelInfo
