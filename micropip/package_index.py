@@ -2,6 +2,7 @@ from collections import defaultdict
 from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
+import sys
 
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
@@ -94,6 +95,10 @@ class ProjectInfo:
         for file in data["files"]:
             filename = file["filename"]
 
+            if not _fast_check_incompatibility(filename):
+                # parsing a wheel filename is expensive, so we do a quick check first
+                continue
+
             try:
                 version = parse_version(filename)
             except (InvalidVersion, InvalidWheelFilename):
@@ -164,3 +169,20 @@ def _is_valid_pep440_version(version_str: str) -> bool:
         return True
     except InvalidVersion:
         return False
+
+
+def _fast_check_incompatibility(filename: str) -> bool:
+    """
+    This function returns True is the package is incompatible with the current platform.
+    It can be used to quickly filter out incompatible packages before running heavy checks.
+    
+    Note that this function may return False for some packages that are actually incompatible.
+    So it should only be used as a quick check.
+    """
+    if not filename.endswith(".whl"):
+        return False
+    
+    if sys.platform not in filename and not filename.endswith("py3-none-any.whl"):
+        return False
+
+    return True
