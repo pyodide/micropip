@@ -182,7 +182,7 @@ def _fast_check_incompatibility(filename: str) -> bool:
     if not filename.endswith(".whl"):
         return False
 
-    if sys.platform not in filename and not filename.endswith("py3-none-any.whl"):
+    if sys.platform not in filename and not filename.endswith("-none-any.whl"):
         return False
 
     return True
