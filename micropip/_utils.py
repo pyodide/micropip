@@ -56,7 +56,7 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
     return files_to_remove
 
 
-@functools.lru_cache
+@functools.cache
 def sys_tags():
     return list(sys_tags_orig())
 
