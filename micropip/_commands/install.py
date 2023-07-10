@@ -5,8 +5,9 @@ from pathlib import Path
 from packaging.markers import default_environment
 
 from .._compat import loadPackage, to_js
+from .._uninstall import uninstall_distributions
 from ..constants import FAQ_URLS
-from ..logging import setup_logging
+from ..logging import indent_log, setup_logging
 from ..transaction import Transaction
 
 
@@ -16,6 +17,7 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
+    reinstall: bool = False,
     *,
     verbose: bool | int = False,
 ) -> None:
@@ -86,6 +88,10 @@ async def install(
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
+    reinstall :
+
+        If ``True``, reinstall packages if they are already installed.
+
     verbose :
         Print more information about the process.
         By default, micropip is silent. Setting ``verbose=True`` will print
@@ -115,6 +121,7 @@ async def install(
         keep_going=keep_going,
         deps=deps,
         pre=pre,
+        reinstall=reinstall,
         fetch_kwargs=fetch_kwargs,
         verbose=verbose,
     )
@@ -127,12 +134,23 @@ async def install(
             f"See: {FAQ_URLS['cant_find_wheel']}\n"
         )
 
-    package_names = [pkg.name for pkg in transaction.pyodide_packages] + [
-        pkg.name for pkg in transaction.wheels
-    ]
+    # uninstall packages that are installed
+    packages_all = set([pkg.name for pkg in transaction.wheels]) | set(
+        [pkg.name for pkg in transaction.pyodide_packages]
+    )
 
-    if package_names:
-        logger.info("Installing collected packages: " + ", ".join(package_names))
+    distributions = []
+    for pkg_name in packages_all:
+        try:
+            distributions.append(importlib.metadata.distribution(pkg_name))
+        except importlib.metadata.PackageNotFoundError:
+            pass
+
+    with indent_log():
+        uninstall_distributions(distributions)
+
+    if packages_all:
+        logger.info("Installing collected packages: " + ", ".join(packages_all))
 
     wheel_promises = []
     # Install built-in packages

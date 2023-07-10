@@ -363,6 +363,34 @@ def test_emfs(selenium_standalone_micropip):
         run_test(selenium_standalone_micropip, url, SNOWBALL_WHEEL)
 
 
+@pytest.mark.asyncio
+async def test_reinstall_different_version(
+    mock_fetch: mock_fetch_cls,
+    mock_importlib,
+) -> None:
+    import importlib.metadata
+
+    import pytest
+
+    dummy = "dummy"
+    version_old = "1.0.0"
+    version_new = "2.0.0"
+
+    mock_fetch.add_pkg_version(dummy, version_old)
+    mock_fetch.add_pkg_version(dummy, version_new)
+
+    await micropip.install(f"{dummy}=={version_new}")
+    assert micropip.list()[dummy].version == version_new
+    assert importlib.metadata.version(dummy) == version_new
+
+    with pytest.raises(ValueError, match="already installed"):
+        await micropip.install(f"{dummy}=={version_old}", reinstall=False)
+
+    await micropip.install(f"{dummy}=={version_old}", reinstall=True)
+    assert micropip.list()[dummy].version == version_old
+    assert importlib.metadata.version(dummy) == version_old
+
+
 def test_logging(selenium_standalone_micropip):
     # TODO: make a fixture for this, it's used in a few places
     with spawn_web_server(Path(__file__).parent / "dist") as server:

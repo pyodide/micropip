@@ -233,6 +233,7 @@ class Transaction:
     keep_going: bool
     deps: bool
     pre: bool
+    reinstall: bool
     fetch_kwargs: dict[str, str]
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
@@ -265,7 +266,21 @@ class Transaction:
 
         await self.add_wheel(wheel, extras=set(), specifier="")
 
-    def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
+    def check_version_satisfied(
+        self, req: Requirement, *, allow_reinstall: bool = False
+    ) -> tuple[bool, str]:
+        """
+        Check if the installed version of a package satisfies the requirement.
+        Returns True if the requirement is satisfied, False otherwise.
+
+        Parameters
+        ----------
+        req
+            The requirement to check.
+        allow_reinstall
+            If False, this function will raise exception if the package is already installed
+            and the installed version does not satisfy the requirement.
+        """
         ver = None
         try:
             ver = importlib.metadata.version(req.name)
@@ -281,9 +296,16 @@ class Transaction:
             # installed version matches, nothing to do
             return True, ver
 
-        raise ValueError(
-            f"Requested '{req}', " f"but {req.name}=={ver} is already installed"
-        )
+        if allow_reinstall:
+            return False, ""
+        else:
+            raise ValueError(
+                f"Requested '{req}', "
+                f"but {req.name}=={ver} is already installed. "
+                "If you want to reinstall the package with a different version, "
+                "use micropip.install(..., reinstall=True) to force reinstall, "
+                "or micropip.uninstall(...) to uninstall the package first."
+            )
 
     async def add_requirement_inner(
         self,
@@ -336,7 +358,9 @@ class Transaction:
         # Is some version of this package is already installed?
         req.name = canonicalize_name(req.name)
 
-        satisfied, ver = self.check_version_satisfied(req)
+        satisfied, ver = self.check_version_satisfied(
+            req, allow_reinstall=self.reinstall
+        )
         if satisfied:
             logger.info(f"Requirement already satisfied: {req} ({ver})")
             return
@@ -363,10 +387,12 @@ class Transaction:
             else:
                 return
 
-        # Maybe while we were downloading pypi_json some other branch
-        # installed the wheel?
-        satisfied, ver = self.check_version_satisfied(req)
+        satisfied, ver = self.check_version_satisfied(
+            req, allow_reinstall=self.reinstall
+        )
         if satisfied:
+            # Maybe while we were downloading pypi_json some other branch
+            # installed the wheel?
             logger.info(f"Requirement already satisfied: {req} ({ver})")
             return
 

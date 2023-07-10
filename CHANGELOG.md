@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `verbose` parameter to micropip.install and micropip.uninstall
   [#60](https://github.com/pyodide/micropip/pull/60)
 
+- Added `reinstall` parameter to micropip.install to allow reinstalling
+  a package that is already installed
+  [#64](https://github.com/pyodide/micropip/pull/64)
+
 ### Fixed
 
 - Fixed `micropip.add_mock_package` to work with Pyodide>=0.23.0

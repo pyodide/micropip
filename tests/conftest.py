@@ -108,9 +108,19 @@ def mock_importlib(monkeypatch, wheel_base):
     def _mock_importlib_distributions():
         return (Distribution.at(p) for p in wheel_base.glob("*.dist-info"))  # type: ignore[union-attr]
 
+    def _mock_importlib_distribution(name: str) -> Distribution:
+        for dist in _mock_importlib_distributions():
+            if dist.name == name:
+                return dist
+
+        raise PackageNotFoundError(name)
+
     monkeypatch.setattr(importlib.metadata, "version", _mock_importlib_version)
     monkeypatch.setattr(
         importlib.metadata, "distributions", _mock_importlib_distributions
+    )
+    monkeypatch.setattr(
+        importlib.metadata, "distribution", _mock_importlib_distribution
     )
 
 
