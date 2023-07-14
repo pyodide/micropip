@@ -1,11 +1,12 @@
 #!/bin/bash
 
 packages=(
-    "black"
-    "pytest"
+    "numpy"  # A package with a lot of variants
+    "pytest" # A pure Python package with a lot of versions
     "snowballstemmer"
-    "numpy"
-    "pytz"
+    "black"
+    "pytz" # Contains invalid versions
+    "xo-gd" # Contains invalid versions
 )
 
 for package in "${packages[@]}"
