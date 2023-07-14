@@ -16,7 +16,7 @@ class ProjectInfoFile:
     filename: str  # Name of the file
     url: str  # URL to download the file
     version: Version  # Version of the package
-    sha256: str  # SHA256 hash of the file
+    sha256: str | None  # SHA256 hash of the file
 
     # Size of the file in bytes, if available (PEP 700)
     # This key is not available in the Simple API HTML response, so this field may be None
@@ -108,17 +108,18 @@ class ProjectInfo:
 
         return ProjectInfo._compatible_only(name, releases)
 
-    @staticmethod
+    @classmethod
     def _compatible_only(
-        name: str, releases: dict[Version, list[dict[str, Any]]]
+        cls, name: str, releases: dict[Version, list[dict[str, Any]]]
     ) -> "ProjectInfo":
+        """
+        Return a generator of wheels compatible with the current platform.
+        Checking compatibility takes a bit of time, so we use a generator to avoid doing it if not needed.
+        """
+
         def _compatible_wheels(
             files: list[dict[str, Any]], version: Version
         ) -> Generator[ProjectInfoFile, None, None]:
-            """
-            Return a generator of wheels compatible with the current platform.
-            Checking compatibility takes a bit of time, so we use a generator to avoid doing it if not needed.
-            """
             for file in files:
                 filename = file["filename"]
 
@@ -130,11 +131,7 @@ class ProjectInfo:
 
                 # JSON API has a "digests" key, while Simple API has a "hashes" key.
                 hashes = file["digests"] if "digests" in file else file["hashes"]
-
-                # TODO: For now we expect that the sha256 hash is always available.
-                # This is true for PyPI, but may not be true for other package indexes,
-                # since it is not a hard requirement of PEP503.
-                sha256 = hashes["sha256"]
+                sha256 = hashes.get("sha256")
 
                 yield ProjectInfoFile(
                     filename=filename,
@@ -154,7 +151,7 @@ class ProjectInfo:
         # So we need to sort the releases by version again here.
         releases_compatible = dict(sorted(releases_compatible.items()))
 
-        return ProjectInfo(
+        return cls(
             name=name,
             releases=releases_compatible,
         )
