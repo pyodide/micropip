@@ -77,9 +77,10 @@ def selenium_standalone_micropip(selenium_standalone, wheel_path):
 @pytest.fixture
 def mock_platform(monkeypatch):
     monkeypatch.setenv("_PYTHON_HOST_PLATFORM", PLATFORM)
-    from micropip import transaction
+    from micropip import _utils
 
-    monkeypatch.setattr(transaction, "get_platform", lambda: PLATFORM)
+    _utils.sys_tags.cache_clear()
+    monkeypatch.setattr(_utils, "get_platform", lambda: PLATFORM)
 
 
 @pytest.fixture
@@ -186,8 +187,10 @@ class mock_fetch_cls:
         self.top_level_map[filename] = top_level
 
     async def _get_pypi_json(self, pkgname, kwargs):
+        from micropip.package_index import ProjectInfo
+
         try:
-            return self.releases_map[pkgname]
+            return ProjectInfo.from_json_api(self.releases_map[pkgname])
         except KeyError as e:
             raise ValueError(
                 f"Can't fetch metadata for '{pkgname}' from PyPI. "
