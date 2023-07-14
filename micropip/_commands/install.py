@@ -16,6 +16,7 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
+    index_urls: list[str] | str | None = None,
     *,
     verbose: bool | int = False,
 ) -> None:
@@ -86,6 +87,13 @@ async def install(
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
+    index_urls :
+
+        A list of URLs or a single URL to use as the package index.
+        By default, micropip uses the PyPI. The URLs should contain
+        the placeholder {package_name} which will be replaced with
+        the package name when looking up a package.
+
     verbose :
         Print more information about the process.
         By default, micropip is silent. Setting ``verbose=True`` will print
@@ -117,6 +125,7 @@ async def install(
         pre=pre,
         fetch_kwargs=fetch_kwargs,
         verbose=verbose,
+        index_urls=index_urls,
     )
     await transaction.gather_requirements(requirements)
 
