@@ -52,12 +52,8 @@ class ProjectInfo:
         # Filter out non PEP 440 compliant versions
         releases: dict[Version, list[Any]] = {}
         for version_str, fileinfo in releases_raw.items():
-            try:
-                version = Version(version_str)
-                if str(version) != version_str:
-                    continue
-
-            except InvalidVersion:
+            version, ok = _is_valid_pep440_version(version_str)
+            if not ok or not version:
                 continue
 
             # Skip empty releases
@@ -86,11 +82,12 @@ class ProjectInfo:
         # Group files by version
         releases: dict[Version, list[Any]] = defaultdict(list)
 
-        for version in versions:
-            if not _is_valid_pep440_version(version):
+        for version_str in versions:
+            version, ok = _is_valid_pep440_version(version_str)
+            if not ok or not version:
                 continue
 
-            releases[Version(version)] = []
+            releases[version] = []
 
         for file in data["files"]:
             filename = file["filename"]
@@ -157,15 +154,17 @@ class ProjectInfo:
         )
 
 
-def _is_valid_pep440_version(version_str: str) -> bool:
+def _is_valid_pep440_version(version_str: str) -> tuple[Version | None, bool]:
+    """
+    Check if the given string is a valid PEP 440 version.
+    Since parsing a version is expensive, we return the parsed version as well,
+    so that it can be reused if needed.
+    """
     try:
         version = Version(version_str)
-        if str(version) != version_str:
-            return False
-
-        return True
+        return version, True
     except InvalidVersion:
-        return False
+        return None, False
 
 
 def _fast_check_incompatibility(filename: str) -> bool:
