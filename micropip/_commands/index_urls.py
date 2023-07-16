@@ -1,4 +1,5 @@
-from ..package_index import INDEX_URLS, _check_index_url
+from .. import package_index
+
 
 def set_index_urls(urls: list[str] | str) -> None:
     """
@@ -12,13 +13,11 @@ def set_index_urls(urls: list[str] | str) -> None:
     urls
         A list of URLs or a single URL to use as the package index.
     """
-    
-    global INDEX_URLS
 
     if isinstance(urls, str):
         urls = [urls]
 
     for url in urls:
-        _check_index_url(url)
+        package_index._check_index_url(url)
 
-    INDEX_URLS = urls
+    package_index.INDEX_URLS = urls
