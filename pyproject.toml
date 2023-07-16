@@ -16,6 +16,7 @@ dynamic = ["version"]
 dependencies = ["packaging>=23.0"]
 [project.optional-dependencies]
 test = [
+  "pytest-httpserver",
   "pytest-pyodide",
   "pytest-cov",
   "build",
