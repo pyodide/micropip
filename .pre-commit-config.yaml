@@ -1,7 +1,7 @@
 default_language_version:
   python: "3.11"
 
-exclude: (^micropip/externals|^tests/vendored)
+exclude: (^micropip/externals|^tests/vendored|^tests/test_data)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "v4.4.0"
