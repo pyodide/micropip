@@ -1,25 +1,18 @@
-import gzip
 import json
-from pathlib import Path
-from typing import Any
 
 import pytest
+from conftest import TEST_PYPI_RESPONSE_DIR, _read_pypi_response
 
+import micropip._commands.index_urls as index_urls
 import micropip.package_index as package_index
-
-TEST_TEMPLATES_DIR = Path(__file__).parent / "test_data" / "pypi_response"
-
-
-def _read_test_data(file: Path) -> dict[str, Any]:
-    return json.loads(gzip.decompress(file.read_bytes()))
 
 
 @pytest.mark.parametrize(
     "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
 )
 def test_project_info_from_json(name):
-    test_file = TEST_TEMPLATES_DIR / f"{name}_json.json.gz"
-    test_data = _read_test_data(test_file)
+    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
+    test_data = json.loads(_read_pypi_response(test_file))
 
     index = package_index.ProjectInfo.from_json_api(test_data)
     assert index.name == name
@@ -39,8 +32,8 @@ def test_project_info_from_json(name):
     "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
 )
 def test_project_info_from_simple_json(name):
-    test_file = TEST_TEMPLATES_DIR / f"{name}_simple.json.gz"
-    test_data = _read_test_data(test_file)
+    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
+    test_data = json.loads(_read_pypi_response(test_file))
 
     index = package_index.ProjectInfo.from_simple_api(test_data)
     assert index.name == name
@@ -61,11 +54,11 @@ def test_project_info_from_simple_json(name):
 )
 def test_project_info_equal(name):
     # The different ways of parsing the same data should result in the same
-    test_file_json = TEST_TEMPLATES_DIR / f"{name}_json.json.gz"
-    test_file_simple_json = TEST_TEMPLATES_DIR / f"{name}_simple.json.gz"
+    test_file_json = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
+    test_file_simple_json = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
 
-    test_data_json = _read_test_data(test_file_json)
-    test_data_simple_json = _read_test_data(test_file_simple_json)
+    test_data_json = json.loads(_read_pypi_response(test_file_json))
+    test_data_simple_json = json.loads(_read_pypi_response(test_file_simple_json))
 
     index_json = package_index.ProjectInfo.from_json_api(test_data_json)
     index_simple_json = package_index.ProjectInfo.from_simple_api(test_data_simple_json)
@@ -85,3 +78,61 @@ def test_project_info_equal(name):
             assert f_json.url == f_simple_json.url
             assert f_json.version == f_simple_json.version
             assert f_json.sha256 == f_simple_json.sha256
+
+
+def test_set_index_urls():
+    default_index_urls = package_index.DEFAULT_INDEX_URLS
+    assert package_index.INDEX_URLS == default_index_urls
+
+    valid_url1 = "https://pkg-index.com/{package_name}/json/"
+    valid_url2 = "https://another-pkg-index.com/{package_name}"
+    invalid_url = "https://invalid-pkg-index.com/json"
+    try:
+        index_urls.set_index_urls(valid_url1)
+        assert package_index.INDEX_URLS == [valid_url1]
+
+        index_urls.set_index_urls([valid_url1, valid_url2])
+        assert package_index.INDEX_URLS == [valid_url1, valid_url2]
+
+        with pytest.raises(ValueError, match="Invalid index URL"):
+            index_urls.set_index_urls([invalid_url])
+    finally:
+        index_urls.set_index_urls(default_index_urls)
+        assert package_index.INDEX_URLS == default_index_urls
+
+
+@pytest.mark.asyncio
+async def test_search_packages(mock_package_index_json_api):
+    mock_server_snowballstemmer = mock_package_index_json_api(pkgs=["snowballstemmer"])
+    mock_server_pytest = mock_package_index_json_api(pkgs=["pytest"])
+
+    project_info = await package_index.search_packages(
+        "snowballstemmer", index_urls=[mock_server_snowballstemmer]
+    )
+
+    assert project_info.name == "snowballstemmer"
+    assert project_info.releases
+
+    project_info = await package_index.search_packages(
+        "snowballstemmer", index_urls=mock_server_snowballstemmer
+    )
+
+    assert project_info.name == "snowballstemmer"
+    assert project_info.releases
+
+    project_info = await package_index.search_packages(
+        "snowballstemmer", index_urls=[mock_server_pytest, mock_server_snowballstemmer]
+    )
+
+    assert project_info.name == "snowballstemmer"
+    assert project_info.releases
+
+    with pytest.raises(ValueError, match="Can't fetch metadata"):
+        await package_index.search_packages(
+            "snowballstemmer", index_urls=[mock_server_pytest]
+        )
+
+    with pytest.raises(ValueError, match="Invalid index URL"):
+        await package_index.search_packages(
+            "snowballstemmer", index_urls=["http://without-placeholder.com"]
+        )

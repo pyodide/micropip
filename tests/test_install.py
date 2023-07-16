@@ -368,3 +368,7 @@ def test_logging(selenium_standalone_micropip):
                 assert f"Successfully installed {name}-{version}" in captured
 
         run_test(selenium_standalone_micropip, wheel_url, name, version)
+
+
+def test_custom_index_urls():
+    pass

@@ -1,3 +1,5 @@
+import functools
+import gzip
 import io
 import sys
 import zipfile
@@ -13,6 +15,12 @@ SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
 EMSCRIPTEN_VER = "3.1.14"
 PLATFORM = f"emscripten_{EMSCRIPTEN_VER.replace('.', '_')}_wasm32"
 CPVER = f"cp{sys.version_info.major}{sys.version_info.minor}"
+
+TEST_PYPI_RESPONSE_DIR = Path(__file__).parent / "test_data" / "pypi_response"
+
+
+def _read_pypi_response(file: Path) -> bytes:
+    return gzip.decompress(file.read_bytes())
 
 
 def _build(build_dir, dist_dir):
@@ -186,7 +194,7 @@ class mock_fetch_cls:
         self.metadata_map[filename] = metadata
         self.top_level_map[filename] = top_level
 
-    async def _get_pypi_json(self, pkgname, kwargs):
+    async def search_packages(self, pkgname, kwargs, index_urls=None):
         from micropip.package_index import ProjectInfo
 
         try:
@@ -229,9 +237,46 @@ class mock_fetch_cls:
 @pytest.fixture
 def mock_fetch(monkeypatch, mock_importlib):
     pytest.importorskip("packaging")
-    from micropip import transaction
+    from micropip import package_index, transaction
 
     result = mock_fetch_cls()
-    monkeypatch.setattr(transaction, "_get_pypi_json", result._get_pypi_json)
+    monkeypatch.setattr(package_index, "search_packages", result.search_packages)
     monkeypatch.setattr(transaction, "fetch_bytes", result._fetch_bytes)
     return result
+
+
+def _mock_package_index_gen(
+    httpserver,
+    pkgs=("black", "pytest", "numpy", "pytz", "snowballstemmer"),
+    content_type="application/json",
+    suffix="_json.json.gz",
+):
+    # pytest-httpserver is not very good at handling multiple servers
+    # so we run a single server with different endpoints to simulate
+    # multiple package indexes
+    import secrets
+
+    base = secrets.token_hex(16)
+
+    for pkg in pkgs:
+        data = _read_pypi_response(TEST_PYPI_RESPONSE_DIR / f"{pkg}{suffix}")
+        httpserver.expect_request(f"/{base}/{pkg}/").respond_with_data(
+            data,
+            content_type=content_type,
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
+
+    base_url = httpserver.url_for(base)
+    index_url = base_url + "/{package_name}/"
+
+    return index_url
+
+
+@pytest.fixture
+def mock_package_index_json_api(httpserver):
+    return functools.partial(
+        _mock_package_index_gen,
+        httpserver=httpserver,
+        suffix="_json.json.gz",
+        content_type="application/json",
+    )
