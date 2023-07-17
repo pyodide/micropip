@@ -11,7 +11,6 @@ import pytest
 from pytest_pyodide import spawn_web_server
 
 SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
-DUMMY_WHEEL = "dummy-1.0.0-py3-none-any.whl"
 
 EMSCRIPTEN_VER = "3.1.14"
 PLATFORM = f"emscripten_{EMSCRIPTEN_VER.replace('.', '_')}_wasm32"
@@ -279,15 +278,3 @@ def mock_package_index_json_api(httpserver):
         suffix="_json.json.gz",
         content_type="application/json",
     )
-
-
-@pytest.fixture(scope="module")
-def mock_pythonhosted_org():
-    from pytest_httpserver import HTTPServer
-
-    try:
-        server = HTTPServer(host="https://files.pythonhosted.org", port=443)
-        yield server
-    finally:
-        server.clear()
-        server.stop()

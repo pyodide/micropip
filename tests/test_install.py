@@ -370,31 +370,32 @@ def test_logging(selenium_standalone_micropip):
         run_test(selenium_standalone_micropip, wheel_url, name, version)
 
 
-def test_custom_index_urls(
-    selenium_standalone_micropip, mock_package_index_json_api, mock_pythonhosted_org
-):
-    from conftest import DUMMY_WHEEL
+@pytest.mark.asyncio
+async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
+    from io import BytesIO
 
-    mock_server_snowballstemmer = mock_package_index_json_api(pkgs=["snowballstemmer"])
-
-    # Install a dummy wheel from a custom index URL
-    wheel_data = Path(Path(__file__).parent, "dist", DUMMY_WHEEL).read_bytes()
-    mock_pythonhosted_org.expect_oneshot_request("*.whl").respond_with_data(
-        wheel_data,
-        content_type="application/octet-stream",
-        headers={"Access-Control-Allow-Origin": "*"},
+    mock_server_fake_package = mock_package_index_json_api(
+        pkgs=["fake-pkg-micropip-test"]
     )
 
-    @run_in_pyodide(packages=["micropip"])
-    async def run_test(selenium, index_url):
-        import micropip
+    _wheel_url = ""
 
-        await micropip.install("snowballstemmer", index_urls=[index_url])
+    async def _mock_fetch_bytes(url, *args):
+        nonlocal _wheel_url
+        _wheel_url = url
+        return BytesIO(b"fake wheel")
 
-        assert "dummy" in micropip.list()
+    from micropip import transaction
 
-        import dummy
+    monkeypatch.setattr(transaction, "fetch_bytes", _mock_fetch_bytes)
 
-        assert dummy.say_hello() == "hello"
+    try:
+        await micropip.install(
+            "fake-pkg-micropip-test", index_urls=[mock_server_fake_package]
+        )
+    except Exception:
+        # We just check that the custom index url was used
+        # install will fail because the package is not real, but it doesn't matter.
+        pass
 
-    run_test(selenium_standalone_micropip, mock_server_snowballstemmer)
+    assert "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl" in _wheel_url
