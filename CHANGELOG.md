@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `verbose` parameter to micropip.install and micropip.uninstall
   [#60](https://github.com/pyodide/micropip/pull/60)
-
+- Added `index_urls` parameter to micropip.install to support installing
+  from custom package indexes.
+  [#74](https://github.com/pyodide/micropip/pull/74)
+- Added `micropip.set_index_urls` to support installing from custom package
+  indexes.
+  [#74](https://github.com/pyodide/micropip/pull/74)
 ### Fixed
 
 - Fixed `micropip.add_mock_package` to work with Pyodide>=0.23.0
