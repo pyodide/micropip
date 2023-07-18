@@ -264,8 +264,7 @@ def _mock_package_index_gen(
             headers={"Access-Control-Allow-Origin": "*"},
         )
 
-    base_url = httpserver.url_for(base)
-    index_url = base_url + "/{package_name}/"
+    index_url = httpserver.url_for(base)
 
     return index_url
 

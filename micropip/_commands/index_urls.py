@@ -5,8 +5,15 @@ def set_index_urls(urls: list[str] | str) -> None:
     """
     Set the index URLs to use when looking up packages.
 
-    The URLs should contain the placeholder {package_name} which will be
-    replaced with the package name when looking up a package.
+    The index URL may contain the placeholder {package_name} which will be
+    replaced with the package name when looking up a package. If it does not
+    contain the placeholder, the package name will be appended to the URL.
+
+    The index URL should support the
+    [JSON API](https://warehouse.pypa.io/api-reference/json/).
+
+    If a list of URLs is provided, micropip will try each URL in order until
+    it finds a package. If no package is found, an error will be raised.
 
     Parameters
     ----------
@@ -16,8 +23,5 @@ def set_index_urls(urls: list[str] | str) -> None:
 
     if isinstance(urls, str):
         urls = [urls]
-
-    for url in urls:
-        package_index._check_index_url(url)
 
     package_index.INDEX_URLS = urls

@@ -86,41 +86,46 @@ def test_set_index_urls():
 
     valid_url1 = "https://pkg-index.com/{package_name}/json/"
     valid_url2 = "https://another-pkg-index.com/{package_name}"
-    invalid_url = "https://invalid-pkg-index.com/json"
+    valid_url3 = "https://another-pkg-index.com/simple/"
     try:
         index_urls.set_index_urls(valid_url1)
         assert package_index.INDEX_URLS == [valid_url1]
 
-        index_urls.set_index_urls([valid_url1, valid_url2])
-        assert package_index.INDEX_URLS == [valid_url1, valid_url2]
-
-        with pytest.raises(ValueError, match="Invalid index URL"):
-            index_urls.set_index_urls([invalid_url])
+        index_urls.set_index_urls([valid_url1, valid_url2, valid_url3])
+        assert package_index.INDEX_URLS == [valid_url1, valid_url2, valid_url3]
     finally:
         index_urls.set_index_urls(default_index_urls)
         assert package_index.INDEX_URLS == default_index_urls
 
 
+def test_contain_placeholder():
+    assert package_index._contain_placeholder("https://pkg-index.com/{package_name}/")
+    assert package_index._contain_placeholder(
+        "https://pkg-index.com/{placeholder}/", placeholder="placeholder"
+    )
+    assert not package_index._contain_placeholder("https://pkg-index.com/")
+
+
 @pytest.mark.asyncio
-async def test_search_packages(mock_package_index_json_api):
+async def test_query_package(mock_package_index_json_api):
     mock_server_snowballstemmer = mock_package_index_json_api(pkgs=["snowballstemmer"])
     mock_server_pytest = mock_package_index_json_api(pkgs=["pytest"])
 
-    project_info = await package_index.search_packages(
+    project_info = await package_index.query_package(
         "snowballstemmer", index_urls=[mock_server_snowballstemmer]
     )
 
     assert project_info.name == "snowballstemmer"
     assert project_info.releases
 
-    project_info = await package_index.search_packages(
+    project_info = await package_index.query_package(
         "snowballstemmer", index_urls=mock_server_snowballstemmer
     )
 
     assert project_info.name == "snowballstemmer"
     assert project_info.releases
 
-    project_info = await package_index.search_packages(
+    project_info = await package_index.query_package(
         "snowballstemmer", index_urls=[mock_server_pytest, mock_server_snowballstemmer]
     )
 
@@ -128,11 +133,6 @@ async def test_search_packages(mock_package_index_json_api):
     assert project_info.releases
 
     with pytest.raises(ValueError, match="Can't fetch metadata"):
-        await package_index.search_packages(
+        await package_index.query_package(
             "snowballstemmer", index_urls=[mock_server_pytest]
-        )
-
-    with pytest.raises(ValueError, match="Invalid index URL"):
-        await package_index.search_packages(
-            "snowballstemmer", index_urls=["http://without-placeholder.com"]
         )

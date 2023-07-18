@@ -192,14 +192,10 @@ def _fast_check_incompatibility(filename: str) -> bool:
     return True
 
 
-def _check_index_url(url: str) -> None:
+def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
     fields = [parsed[1] for parsed in _formatter.parse(url)]
 
-    if "package_name" not in fields:
-        raise ValueError(
-            f"Invalid index URL: {url!r}. "
-            "Please make sure it contains the placeholder {package_name}."
-        )
+    return placeholder in fields
 
 
 async def query_package(
@@ -234,9 +230,10 @@ async def query_package(
         index_urls = [index_urls]
 
     for url in index_urls:
-        _check_index_url(url)
-
-        url = url.format(package_name=name)
+        if _contain_placeholder(url):
+            url = url.format(package_name=name)
+        else:
+            url = f"{url}/{name}/"
 
         try:
             metadata = await fetch_string(url, fetch_kwargs)
