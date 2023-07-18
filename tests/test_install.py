@@ -368,3 +368,34 @@ def test_logging(selenium_standalone_micropip):
                 assert f"Successfully installed {name}-{version}" in captured
 
         run_test(selenium_standalone_micropip, wheel_url, name, version)
+
+
+@pytest.mark.asyncio
+async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
+    from io import BytesIO
+
+    mock_server_fake_package = mock_package_index_json_api(
+        pkgs=["fake-pkg-micropip-test"]
+    )
+
+    _wheel_url = ""
+
+    async def _mock_fetch_bytes(url, *args):
+        nonlocal _wheel_url
+        _wheel_url = url
+        return BytesIO(b"fake wheel")
+
+    from micropip import transaction
+
+    monkeypatch.setattr(transaction, "fetch_bytes", _mock_fetch_bytes)
+
+    try:
+        await micropip.install(
+            "fake-pkg-micropip-test", index_urls=[mock_server_fake_package]
+        )
+    except Exception:
+        # We just check that the custom index url was used
+        # install will fail because the package is not real, but it doesn't matter.
+        pass
+
+    assert "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl" in _wheel_url

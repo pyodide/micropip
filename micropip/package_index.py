@@ -1,3 +1,5 @@
+import json
+import string
 import sys
 from collections import defaultdict
 from collections.abc import Generator
@@ -7,7 +9,13 @@ from typing import Any
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
 
+from ._compat import fetch_string
 from ._utils import is_package_compatible, parse_version
+
+DEFAULT_INDEX_URLS = ["https://pypi.org/pypi/{package_name}/json"]
+INDEX_URLS = DEFAULT_INDEX_URLS
+
+_formatter = string.Formatter()
 
 
 # TODO: Merge this class with WheelInfo
@@ -182,3 +190,60 @@ def _fast_check_incompatibility(filename: str) -> bool:
         return False
 
     return True
+
+
+def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
+    fields = [parsed[1] for parsed in _formatter.parse(url)]
+
+    return placeholder in fields
+
+
+async def query_package(
+    name: str,
+    fetch_kwargs: dict[str, str] | None = None,
+    index_urls: list[str] | str | None = None,
+) -> ProjectInfo:
+    """
+    Query for a package from package indexes.
+
+    Parameters
+    ----------
+    name
+        Name of the package to search for.
+    fetch_kwargs
+        Keyword arguments to pass to the fetch function.
+    index_urls
+        A list of URLs or a single URL to use as the package index.
+        If None, the default index URL is used.
+
+        If a list of URLs is provided, it will be tried in order until
+        it finds a package. If no package is found, an error will be raised.
+    """
+    global INDEX_URLS
+
+    if not fetch_kwargs:
+        fetch_kwargs = {}
+
+    if index_urls is None:
+        index_urls = INDEX_URLS
+    elif isinstance(index_urls, str):
+        index_urls = [index_urls]
+
+    for url in index_urls:
+        if _contain_placeholder(url):
+            url = url.format(package_name=name)
+        else:
+            url = f"{url}/{name}/"
+
+        try:
+            metadata = await fetch_string(url, fetch_kwargs)
+        except OSError:
+            continue
+
+        return ProjectInfo.from_json_api(json.loads(metadata))
+    else:
+        raise ValueError(
+            f"Can't fetch metadata for '{name}'."
+            "Please make sure you have entered a correct package name "
+            "and correctly specified index_urls (if you changed them)."
+        )

@@ -62,6 +62,7 @@ def create_transaction(Transaction):
         ctx={},
         ctx_extras=[],
         fetch_kwargs={},
+        index_urls=None,
     )
 
 

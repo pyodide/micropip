@@ -16,10 +16,10 @@ from packaging.tags import Tag
 from packaging.utils import canonicalize_name
 from packaging.version import Version
 
+from . import package_index
 from ._compat import (
     REPODATA_PACKAGES,
     fetch_bytes,
-    fetch_string,
     get_dynlibs,
     loadDynlib,
     loadedPackages,
@@ -177,6 +177,7 @@ class Transaction:
     deps: bool
     pre: bool
     fetch_kwargs: dict[str, str]
+    index_urls: list[str] | str | None
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
     wheels: list[WheelInfo] = field(default_factory=list)
@@ -295,7 +296,9 @@ class Transaction:
             )
             return
 
-        metadata: ProjectInfo = await _get_pypi_json(req.name, self.fetch_kwargs)
+        metadata = await package_index.query_package(
+            req.name, self.fetch_kwargs, index_urls=self.index_urls
+        )
 
         try:
             wheel = find_wheel(metadata, req)
@@ -403,18 +406,6 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         "You can use `await micropip.install(..., keep_going=True)` "
         "to get a list of all packages with missing wheels."
     )
-
-
-async def _get_pypi_json(pkgname: str, fetch_kwargs: dict[str, str]) -> ProjectInfo:
-    url = f"https://pypi.org/pypi/{pkgname}/json"
-    try:
-        metadata = await fetch_string(url, fetch_kwargs)
-    except OSError as e:
-        raise ValueError(
-            f"Can't fetch metadata for '{pkgname}' from PyPI. "
-            "Please make sure you have entered a correct package name."
-        ) from e
-    return ProjectInfo.from_json_api(json.loads(metadata))
 
 
 def _generate_package_hash(data: IO[bytes]) -> str:

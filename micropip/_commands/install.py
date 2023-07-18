@@ -16,6 +16,7 @@ async def install(
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
+    index_urls: list[str] | str | None = None,
     *,
     verbose: bool | int = False,
 ) -> None:
@@ -86,6 +87,21 @@ async def install(
         If ``True``, include pre-release and development versions. By default,
         micropip only finds stable versions.
 
+    index_urls :
+
+        A list of URLs or a single URL to use as the package index when looking
+        up packages. If None, *https://pypi.org/pypi/{package_name}/json* is used.
+
+        - The index URL should support the
+          `JSON API <https://warehouse.pypa.io/api-reference/json/>`__ .
+
+        - The index URL may contain the placeholder {package_name} which will be
+          replaced with the package name when looking up a package. If it does not
+          contain the placeholder, the package name will be appended to the URL.
+
+        - If a list of URLs is provided, micropip will try each URL in order until
+          it finds a package. If no package is found, an error will be raised.
+
     verbose :
         Print more information about the process.
         By default, micropip is silent. Setting ``verbose=True`` will print
@@ -117,6 +133,7 @@ async def install(
         pre=pre,
         fetch_kwargs=fetch_kwargs,
         verbose=verbose,
+        index_urls=index_urls,
     )
     await transaction.gather_requirements(requirements)
 
