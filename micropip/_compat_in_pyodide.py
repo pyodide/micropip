@@ -8,6 +8,7 @@ from pyodide.http import pyfetch
 
 try:
     import pyodide_js
+    from js import Object
     from pyodide_js import loadedPackages, loadPackage
     from pyodide_js._api import loadBinaryFile, loadDynlib  # type: ignore[import]
 
@@ -30,13 +31,23 @@ async def fetch_bytes(url: str, kwargs: dict[str, str]) -> IO[bytes]:
     return BytesIO(result_bytes)
 
 
-async def fetch_string(url: str, kwargs: dict[str, str]) -> str:
-    return await (await pyfetch(url, **kwargs)).string()
+async def fetch_string_and_headers(
+    url: str, kwargs: dict[str, str]
+) -> tuple[str, dict[str, str]]:
+    response = await pyfetch(url, **kwargs)
+
+    content = await response.string()
+    # TODO: replace with response.headers when pyodide>= 0.24 is released
+    headers: dict[str, str] = Object.fromEntries(
+        response.js_response.headers.entries()
+    ).to_py()
+
+    return content, headers
 
 
 __all__ = [
     "fetch_bytes",
-    "fetch_string",
+    "fetch_string_and_headers",
     "REPODATA_INFO",
     "REPODATA_PACKAGES",
     "loadedPackages",

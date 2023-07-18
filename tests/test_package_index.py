@@ -1,5 +1,3 @@
-import json
-
 import pytest
 from conftest import TEST_PYPI_RESPONSE_DIR, _read_pypi_response
 
@@ -12,7 +10,7 @@ import micropip.package_index as package_index
 )
 def test_project_info_from_json(name):
     test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
-    test_data = json.loads(_read_pypi_response(test_file))
+    test_data = _read_pypi_response(test_file)
 
     index = package_index.ProjectInfo.from_json_api(test_data)
     assert index.name == name
@@ -33,9 +31,9 @@ def test_project_info_from_json(name):
 )
 def test_project_info_from_simple_json(name):
     test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
-    test_data = json.loads(_read_pypi_response(test_file))
+    test_data = _read_pypi_response(test_file)
 
-    index = package_index.ProjectInfo.from_simple_api(test_data)
+    index = package_index.ProjectInfo.from_simple_json_api(test_data)
     assert index.name == name
     assert index.releases
 
@@ -57,11 +55,13 @@ def test_project_info_equal(name):
     test_file_json = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
     test_file_simple_json = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
 
-    test_data_json = json.loads(_read_pypi_response(test_file_json))
-    test_data_simple_json = json.loads(_read_pypi_response(test_file_simple_json))
+    test_data_json = _read_pypi_response(test_file_json)
+    test_data_simple_json = _read_pypi_response(test_file_simple_json)
 
     index_json = package_index.ProjectInfo.from_json_api(test_data_json)
-    index_simple_json = package_index.ProjectInfo.from_simple_api(test_data_simple_json)
+    index_simple_json = package_index.ProjectInfo.from_simple_json_api(
+        test_data_simple_json
+    )
 
     assert index_json.name == index_simple_json.name
 

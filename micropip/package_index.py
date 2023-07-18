@@ -2,17 +2,19 @@ import json
 import string
 import sys
 from collections import defaultdict
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
 
-from ._compat import fetch_string
+from ._compat import fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
+from .externals.mousebender.simple import from_project_details_html
 
-DEFAULT_INDEX_URLS = ["https://pypi.org/pypi/{package_name}/json"]
+DEFAULT_INDEX_URLS = ["https://pypi.org/simple"]
 INDEX_URLS = DEFAULT_INDEX_URLS
 
 _formatter = string.Formatter()
@@ -47,15 +49,17 @@ class ProjectInfo:
     releases: dict[Version, Generator[ProjectInfoFile, None, None]]
 
     @staticmethod
-    def from_json_api(data: dict[str, Any]) -> "ProjectInfo":
+    def from_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
         """
         Parse JSON API response
 
         https://warehouse.pypa.io/api-reference/json.html
         """
 
-        name: str = data.get("info", {}).get("name", "UNKNOWN")
-        releases_raw: dict[str, list[Any]] = data["releases"]
+        data_dict = json.loads(data) if isinstance(data, str | bytes) else data
+
+        name: str = data_dict.get("info", {}).get("name", "UNKNOWN")
+        releases_raw: dict[str, list[Any]] = data_dict["releases"]
 
         # Filter out non PEP 440 compliant versions
         releases: dict[Version, list[Any]] = {}
@@ -73,19 +77,39 @@ class ProjectInfo:
         return ProjectInfo._compatible_only(name, releases)
 
     @staticmethod
-    def from_simple_api(data: dict[str, Any]) -> "ProjectInfo":
+    def from_simple_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
         """
-        Parse Simple API response
+        Parse Simple JSON API response
 
-        https://peps.python.org/pep-0503/
         https://peps.python.org/pep-0691/
         """
-        name = data["name"]
+
+        data_dict = json.loads(data) if isinstance(data, str | bytes) else data
+        name, releases = ProjectInfo._parse_pep691_response(data_dict)
+        return ProjectInfo._compatible_only(name, releases)
+
+    @staticmethod
+    def from_simple_html_api(data: str, pkgname: str) -> "ProjectInfo":
+        """
+        Parse Simple HTML API response
+
+        https://peps.python.org/pep-0503
+        """
+        project_detail = from_project_details_html(data, pkgname)
+        name, releases = ProjectInfo._parse_pep691_response(project_detail)  # type: ignore[arg-type]
+        return ProjectInfo._compatible_only(name, releases)
+
+    @staticmethod
+    def _parse_pep691_response(
+        resp: dict[str, Any]
+    ) -> tuple[str, dict[Version, list[Any]]]:
+        name = resp["name"]
 
         # List of versions (PEP 700), this key is not critical to find packages
         # but it is required to ensure that the same class instance is returned
-        # from JSON and Simple APIs.
-        versions = data.get("versions", [])
+        # from JSON and Simple JSON APIs.
+        # Note that Simple HTML API does not have this key.
+        versions = resp.get("versions", [])
 
         # Group files by version
         releases: dict[Version, list[Any]] = defaultdict(list)
@@ -97,7 +121,7 @@ class ProjectInfo:
 
             releases[version] = []
 
-        for file in data["files"]:
+        for file in resp["files"]:
             filename = file["filename"]
 
             if not _fast_check_incompatibility(filename):
@@ -111,7 +135,7 @@ class ProjectInfo:
 
             releases[version].append(file)
 
-        return ProjectInfo._compatible_only(name, releases)
+        return name, releases
 
     @classmethod
     def _compatible_only(
@@ -198,6 +222,21 @@ def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
     return placeholder in fields
 
 
+def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectInfo]:
+    """
+    Select the function to parse the response based on the content type.
+    """
+    match content_type:
+        case "application/vnd.pypi.simple.v1+json":
+            return ProjectInfo.from_simple_json_api
+        case "application/json":
+            return ProjectInfo.from_json_api
+        case "application/vnd.pypi.simple.v1+html" | "text/html":
+            return partial(ProjectInfo.from_simple_html_api, pkgname=pkgname)
+        case _:
+            raise ValueError(f"Unsupported content type: {content_type}")
+
+
 async def query_package(
     name: str,
     fetch_kwargs: dict[str, str] | None = None,
@@ -221,8 +260,11 @@ async def query_package(
     """
     global INDEX_URLS
 
-    if not fetch_kwargs:
-        fetch_kwargs = {}
+    # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
+    _fetch_kwargs = fetch_kwargs.copy() if fetch_kwargs else {}
+    _fetch_kwargs.setdefault(
+        "Accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
+    )
 
     if index_urls is None:
         index_urls = INDEX_URLS
@@ -236,11 +278,13 @@ async def query_package(
             url = f"{url}/{name}/"
 
         try:
-            metadata = await fetch_string(url, fetch_kwargs)
+            metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
         except OSError:
             continue
 
-        return ProjectInfo.from_json_api(json.loads(metadata))
+        content_type = headers.get("content-type", "").lower()
+        parser = _select_parser(content_type, name)
+        return parser(metadata)
     else:
         raise ValueError(
             f"Can't fetch metadata for '{name}'."
