@@ -296,7 +296,7 @@ class Transaction:
             )
             return
 
-        metadata = await package_index.search_packages(
+        metadata = await package_index.query_package(
             req.name, self.fetch_kwargs, index_urls=self.index_urls
         )
 

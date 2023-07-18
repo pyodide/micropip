@@ -89,10 +89,18 @@ async def install(
 
     index_urls :
 
-        A list of URLs or a single URL to use as the package index.
-        By default, micropip uses the PyPI. The URLs should contain
-        the placeholder {package_name} which will be replaced with
-        the package name when looking up a package.
+        A list of URLs or a single URL to use as the package index when looking
+        up packages. If None, `https://pypi.org/pypi/{package_name}/json` is used.
+
+        The index URL may contain the placeholder {package_name} which will be
+        replaced with the package name when looking up a package. If it does not
+        contain the placeholder, the package name will be appended to the URL.
+
+        The index URL should support the
+        [JSON API](https://warehouse.pypa.io/api-reference/json/).
+
+        If a list of URLs is provided, micropip will try each URL in order until
+        it finds a package. If no package is found, an error will be raised.
 
     verbose :
         Print more information about the process.

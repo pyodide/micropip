@@ -202,23 +202,26 @@ def _check_index_url(url: str) -> None:
         )
 
 
-async def search_packages(
-    pkg: str,
+async def query_package(
+    name: str,
     fetch_kwargs: dict[str, str] | None = None,
     index_urls: list[str] | str | None = None,
 ) -> ProjectInfo:
     """
-    Search for packages from given index URLs.
+    Query for a package from package indexes.
 
     Parameters
     ----------
-    pkg
+    name
         Name of the package to search for.
     fetch_kwargs
         Keyword arguments to pass to the fetch function.
     index_urls
         A list of URLs or a single URL to use as the package index.
-        If None, the default index URLs are used.
+        If None, the default index URL is used.
+
+        If a list of URLs is provided, it will be tried in order until
+        it finds a package. If no package is found, an error will be raised.
     """
     global INDEX_URLS
 
@@ -233,7 +236,7 @@ async def search_packages(
     for url in index_urls:
         _check_index_url(url)
 
-        url = url.format(package_name=pkg)
+        url = url.format(package_name=name)
 
         try:
             metadata = await fetch_string(url, fetch_kwargs)
@@ -243,6 +246,7 @@ async def search_packages(
         return ProjectInfo.from_json_api(json.loads(metadata))
     else:
         raise ValueError(
-            f"Can't fetch metadata for '{pkg}'."
-            "Please make sure you have entered a correct package name."
+            f"Can't fetch metadata for '{name}'."
+            "Please make sure you have entered a correct package name "
+            "and correctly specified index_urls (if you changed them)."
         )

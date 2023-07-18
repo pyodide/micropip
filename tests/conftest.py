@@ -194,7 +194,7 @@ class mock_fetch_cls:
         self.metadata_map[filename] = metadata
         self.top_level_map[filename] = top_level
 
-    async def search_packages(self, pkgname, kwargs, index_urls=None):
+    async def query_package(self, pkgname, kwargs, index_urls=None):
         from micropip.package_index import ProjectInfo
 
         try:
@@ -240,7 +240,7 @@ def mock_fetch(monkeypatch, mock_importlib):
     from micropip import package_index, transaction
 
     result = mock_fetch_cls()
-    monkeypatch.setattr(package_index, "search_packages", result.search_packages)
+    monkeypatch.setattr(package_index, "query_package", result.query_package)
     monkeypatch.setattr(transaction, "fetch_bytes", result._fetch_bytes)
     return result
 
