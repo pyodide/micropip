@@ -1,5 +1,5 @@
 # Adapted from: https://github.com/brettcannon/mousebender/blob/main/mousebender/simple.py
-# Most of unneeded code is removed.
+# Only relevant parts are included here.
 
 import html
 import html.parser
