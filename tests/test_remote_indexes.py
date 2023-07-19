@@ -2,7 +2,7 @@
 # to ensure that micropip works with real-world package indexes.
 # Since running these tests will send many requests to remote servers,
 # these tests are disabled by default.
-# To run these tests,  the --remote-url-tests option,
+# To run these tests,  the --run-remote-index-tests option,
 # Alternatively, you can run these tests in Github Actions manually.
 import functools
 import random
@@ -42,7 +42,7 @@ def _random_pypi_packages(k: int) -> list[str]:
 
 
 def test_pypi_json_api(selenium_standalone_micropip, pytestconfig):
-    pytestconfig.getoption("--remote-url-tests", skip=True)
+    pytestconfig.getoption("--run-remote-index-tests", skip=True)
     PYPI_PACKAGES = _random_pypi_packages(k=10)
     _query(
         selenium_standalone_micropip,
@@ -53,7 +53,7 @@ def test_pypi_json_api(selenium_standalone_micropip, pytestconfig):
 
 
 def test_pypi_simple_json_api(selenium_standalone_micropip, pytestconfig):
-    pytestconfig.getoption("--remote-url-tests", skip=True)
+    pytestconfig.getoption("--run-remote-index-tests", skip=True)
     PYPI_PACKAGES = _random_pypi_packages(k=10)
     _query(
         selenium_standalone_micropip,
@@ -66,7 +66,7 @@ def test_pypi_simple_json_api(selenium_standalone_micropip, pytestconfig):
 # As of 07/2023, some Simple HTML API responses from PyPI does not contain CORS headers
 
 # def test_pypi_simple_html_api(selenium_standalone_micropip, pytestconfig):
-#     pytestconfig.getoption("--remote-url-tests", skip=True)
+#     pytestconfig.getoption("--run-remote-index-tests", skip=True)
 #     PYPI_PACKAGES = _random_pypi_packages(k=5)
 #     PYPI_PACKAGES=["inflection"]
 #     _query(
@@ -82,7 +82,7 @@ def test_pypi_simple_json_api(selenium_standalone_micropip, pytestconfig):
 # - does not contain CORS headers in its response
 
 # def test_anaconda_simple_html_api(selenium_standalone_micropip, pytestconfig):
-#     pytestconfig.getoption("--remote-url-tests", skip=True)
+#     pytestconfig.getoption("--run-remote-index-tests", skip=True)
 
 #     # One of the indexes in anaconda.org
 #     ANACONDA_INDEX_URL = "https://pypi.anaconda.org/beeware/simple"

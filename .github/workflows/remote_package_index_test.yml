@@ -1,4 +1,4 @@
-name: run remote URL tests
+name: run remote package index tests
 
 on:
   workflow_dispatch:
@@ -52,5 +52,5 @@ jobs:
             --dist-dir=./dist/ \
             --runner=${{ matrix.test-config.runner }} \
             --rt ${{ matrix.test-config.runtime }} \
-            --remote-url-tests \
+            --run-remote-index-tests \
             tests/test_remote_indexes.py

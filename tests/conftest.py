@@ -13,7 +13,7 @@ from pytest_pyodide import spawn_web_server
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--remote-url-tests",
+        "--run-remote-index-tests",
         action="store_true",
         default=None,
         help="Run tests that query remote package indexes.",
