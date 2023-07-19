@@ -17,17 +17,17 @@ from urllib.request import Request, urlopen
 from urllib.response import addinfourl
 
 
-def _fetch(url: str, kwargs: dict[str, str]) -> addinfourl:
-    return urlopen(Request(url, headers=kwargs))
+def _fetch(url: str, kwargs: dict[str, Any]) -> addinfourl:
+    return urlopen(Request(url, **kwargs))
 
 
-async def fetch_bytes(url: str, kwargs: dict[str, str]) -> IO[bytes]:
+async def fetch_bytes(url: str, kwargs: dict[str, Any]) -> IO[bytes]:
     response = _fetch(url, kwargs=kwargs)
     return BytesIO(response.read())
 
 
 async def fetch_string_and_headers(
-    url: str, kwargs: dict[str, str]
+    url: str, kwargs: dict[str, Any]
 ) -> tuple[str, dict[str, str]]:
     response = _fetch(url, kwargs=kwargs)
     headers = {k.lower(): v for k, v in response.headers.items()}
