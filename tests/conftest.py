@@ -277,3 +277,23 @@ def mock_package_index_json_api(httpserver):
         suffix="_json.json.gz",
         content_type="application/json",
     )
+
+
+@pytest.fixture
+def mock_package_index_simple_json_api(httpserver):
+    return functools.partial(
+        _mock_package_index_gen,
+        httpserver=httpserver,
+        suffix="_simple.json.gz",
+        content_type="application/vnd.pypi.simple.v1+json",
+    )
+
+
+@pytest.fixture
+def mock_package_index_simple_html_api(httpserver):
+    return functools.partial(
+        _mock_package_index_gen,
+        httpserver=httpserver,
+        suffix="_simple.html.gz",
+        content_type="text/html",
+    )

@@ -5,6 +5,21 @@ import micropip._commands.index_urls as index_urls
 import micropip.package_index as package_index
 
 
+def _check_project_info(project_info: package_index.ProjectInfo):
+    assert project_info.name
+    assert project_info.releases
+
+    versions = list(project_info.releases.keys())
+    assert versions
+    assert versions == sorted(versions)
+
+    for files in project_info.releases.values():
+        for file in files:
+            assert file.filename in file.url
+            if file.sha256 is not None:
+                assert len(file.sha256) == 64
+
+
 @pytest.mark.parametrize(
     "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
 )
@@ -12,18 +27,8 @@ def test_project_info_from_json(name):
     test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
     test_data = _read_pypi_response(test_file)
 
-    index = package_index.ProjectInfo.from_json_api(test_data)
-    assert index.name == name
-    assert index.releases
-
-    versions = list(index.releases.keys())
-    assert versions
-    assert versions == sorted(versions)
-
-    for files in index.releases.values():
-        for file in files:
-            assert file.filename in file.url
-            assert len(file.sha256) == 64
+    info = package_index.ProjectInfo.from_json_api(test_data)
+    _check_project_info(info)
 
 
 @pytest.mark.parametrize(
@@ -33,18 +38,21 @@ def test_project_info_from_simple_json(name):
     test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
     test_data = _read_pypi_response(test_file)
 
-    index = package_index.ProjectInfo.from_simple_json_api(test_data)
-    assert index.name == name
-    assert index.releases
+    info = package_index.ProjectInfo.from_simple_json_api(test_data)
+    _check_project_info(info)
 
-    versions = list(index.releases.keys())
-    assert versions
-    assert versions == sorted(versions)
 
-    for files in index.releases.values():
-        for file in files:
-            assert file.filename in file.url
-            assert len(file.sha256) == 64
+@pytest.mark.parametrize(
+    "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
+)
+def test_project_info_from_simple_html(name):
+    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.html.gz"
+    test_data = _read_pypi_response(test_file)
+
+    info = package_index.ProjectInfo.from_simple_html_api(
+        test_data.decode("utf-8"), name
+    )
+    _check_project_info(info)
 
 
 @pytest.mark.parametrize(
@@ -52,6 +60,7 @@ def test_project_info_from_simple_json(name):
 )
 def test_project_info_equal(name):
     # The different ways of parsing the same data should result in the same
+    # Simple HTML API does not contain `versions` key, so it is not easy to compare...
     test_file_json = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
     test_file_simple_json = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
 
@@ -106,33 +115,51 @@ def test_contain_placeholder():
     assert not package_index._contain_placeholder("https://pkg-index.com/")
 
 
-@pytest.mark.asyncio
-async def test_query_package(mock_package_index_json_api):
-    mock_server_snowballstemmer = mock_package_index_json_api(pkgs=["snowballstemmer"])
-    mock_server_pytest = mock_package_index_json_api(pkgs=["pytest"])
+async def _test_query_package(pkg1, pkg1_index_url, pkg2, pkg2_index_url):
+    project_info = await package_index.query_package(pkg1, index_urls=[pkg1_index_url])
 
-    project_info = await package_index.query_package(
-        "snowballstemmer", index_urls=[mock_server_snowballstemmer]
-    )
+    assert project_info.name == pkg1
+    assert project_info.releases
 
-    assert project_info.name == "snowballstemmer"
+    project_info = await package_index.query_package(pkg1, index_urls=pkg1_index_url)
+
+    assert project_info.name == pkg1
     assert project_info.releases
 
     project_info = await package_index.query_package(
-        "snowballstemmer", index_urls=mock_server_snowballstemmer
+        pkg1, index_urls=[pkg2_index_url, pkg1_index_url]
     )
 
-    assert project_info.name == "snowballstemmer"
-    assert project_info.releases
-
-    project_info = await package_index.query_package(
-        "snowballstemmer", index_urls=[mock_server_pytest, mock_server_snowballstemmer]
-    )
-
-    assert project_info.name == "snowballstemmer"
+    assert project_info.name == pkg1
     assert project_info.releases
 
     with pytest.raises(ValueError, match="Can't fetch metadata"):
-        await package_index.query_package(
-            "snowballstemmer", index_urls=[mock_server_pytest]
-        )
+        await package_index.query_package(pkg1, index_urls=[pkg2_index_url])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "pkg1, pkg2",
+    [
+        ("snowballstemmer", "pytest"),
+        ("pytest", "snowballstemmer"),
+        ("black", "pytest"),
+        ("numpy", "black"),
+    ],
+)
+async def test_query_package(
+    pkg1,
+    pkg2,
+    mock_package_index_json_api,
+    mock_package_index_simple_json_api,
+    mock_package_index_simple_html_api,
+):
+    for gen_mock_server in (
+        mock_package_index_json_api,
+        mock_package_index_simple_json_api,
+        mock_package_index_simple_html_api,
+    ):
+        mock_server_1 = gen_mock_server(pkgs=[pkg1])
+        mock_server_2 = gen_mock_server(pkgs=[pkg2])
+
+        await _test_query_package(pkg1, mock_server_1, pkg2, mock_server_2)
