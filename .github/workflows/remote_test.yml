@@ -43,6 +43,7 @@ jobs:
         shell: bash -l {0}
         run: |
           python3 -m pip install -e .[test]
+          python3 -m pip install requests
 
       - name: Run tests
         shell: bash -l {0}
