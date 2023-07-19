@@ -239,7 +239,7 @@ def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectIn
 
 async def query_package(
     name: str,
-    fetch_kwargs: dict[str, str] | None = None,
+    fetch_kwargs: dict[str, Any] | None = None,
     index_urls: list[str] | str | None = None,
 ) -> ProjectInfo:
     """
@@ -260,10 +260,14 @@ async def query_package(
     """
     global INDEX_URLS
 
-    # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
     _fetch_kwargs = fetch_kwargs.copy() if fetch_kwargs else {}
-    _fetch_kwargs.setdefault(
-        "Accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
+
+    if "headers" not in _fetch_kwargs:
+        _fetch_kwargs["headers"] = {}
+
+    # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
+    _fetch_kwargs["headers"].setdefault(
+        "accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
     )
 
     if index_urls is None:
@@ -287,7 +291,7 @@ async def query_package(
         return parser(metadata)
     else:
         raise ValueError(
-            f"Can't fetch metadata for '{name}'."
+            f"Can't fetch metadata for '{name}'. "
             "Please make sure you have entered a correct package name "
             "and correctly specified index_urls (if you changed them)."
         )
