@@ -10,6 +10,16 @@ from tempfile import TemporaryDirectory
 import pytest
 from pytest_pyodide import spawn_web_server
 
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--remote-url-tests",
+        action="store_true",
+        default=None,
+        help="Run tests that query remote package indexes.",
+    )
+
+
 SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
 
 EMSCRIPTEN_VER = "3.1.14"
