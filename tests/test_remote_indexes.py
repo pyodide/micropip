@@ -26,7 +26,7 @@ async def _query(selenium, index_url, header_accept, packages):
 def _random_pypi_packages(k: int) -> list[str]:
     # Select random K PyPI packages
     import requests  # type: ignore[import]
-    
+
     top_pypi_packages = (
         "https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.min.json"
     )
