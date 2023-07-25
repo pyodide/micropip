@@ -16,10 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `micropip.set_index_urls` to support installing from custom package
   indexes.
   [#74](https://github.com/pyodide/micropip/pull/74)
+- Added support for Simple API (PEP 503 / PEP 691)
+  [#75](https://github.com/pyodide/micropip/pull/75)
 ### Fixed
 
 - Fixed `micropip.add_mock_package` to work with Pyodide>=0.23.0
   [#66](https://github.com/pyodide/micropip/pull/66)
+
+### Changed
+
+- The default index URL is changed to https://pypi.org/simple
+  [#75](https://github.com/pyodide/micropip/pull/75)
 
 ## [0.3.0] - 2023/03/29
 
