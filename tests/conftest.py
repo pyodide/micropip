@@ -10,6 +10,16 @@ from tempfile import TemporaryDirectory
 import pytest
 from pytest_pyodide import spawn_web_server
 
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-remote-index-tests",
+        action="store_true",
+        default=None,
+        help="Run tests that query remote package indexes.",
+    )
+
+
 SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
 
 EMSCRIPTEN_VER = "3.1.14"
@@ -276,4 +286,24 @@ def mock_package_index_json_api(httpserver):
         httpserver=httpserver,
         suffix="_json.json.gz",
         content_type="application/json",
+    )
+
+
+@pytest.fixture
+def mock_package_index_simple_json_api(httpserver):
+    return functools.partial(
+        _mock_package_index_gen,
+        httpserver=httpserver,
+        suffix="_simple.json.gz",
+        content_type="application/vnd.pypi.simple.v1+json",
+    )
+
+
+@pytest.fixture
+def mock_package_index_simple_html_api(httpserver):
+    return functools.partial(
+        _mock_package_index_gen,
+        httpserver=httpserver,
+        suffix="_simple.html.gz",
+        content_type="text/html",
     )

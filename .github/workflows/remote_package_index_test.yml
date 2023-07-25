@@ -1,0 +1,56 @@
+name: run remote package index tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    env:
+      DISPLAY: :99
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04]
+        pyodide-version: [0.23.4]
+        test-config: [
+          {runner: selenium, runtime: chrome, runtime-version: latest },
+        ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11.1
+
+      - uses: pyodide/pyodide-actions/download-pyodide@v1
+        with:
+          version: ${{ matrix.pyodide-version }}
+          to: dist
+
+      - uses: pyodide/pyodide-actions/install-browser@v1
+        with:
+          runner: ${{ matrix.test-config.runner }}
+          browser: ${{ matrix.test-config.runtime }}
+          browser-version: ${{ matrix.test-config.runtime-version }}
+
+      - name: Install requirements
+        shell: bash -l {0}
+        run: |
+          python3 -m pip install -e .[test]
+          python3 -m pip install requests
+
+      - name: Run tests
+        shell: bash -l {0}
+        run: |
+          pytest -v \
+            --dist-dir=./dist/ \
+            --runner=${{ matrix.test-config.runner }} \
+            --rt ${{ matrix.test-config.runtime }} \
+            --run-remote-index-tests \
+            tests/test_remote_indexes.py
