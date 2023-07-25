@@ -2,8 +2,9 @@
 # to ensure that micropip works with real-world package indexes.
 # Since running these tests will send many requests to remote servers,
 # these tests are disabled by default.
-# To run these tests,  the --run-remote-index-tests option,
-# Alternatively, you can run these tests in Github Actions manually.
+#
+# To run these tests, add `--run-remote-index-tests` flag, or
+# these tests can also be run in Github Actions manually.
 import functools
 import random
 
