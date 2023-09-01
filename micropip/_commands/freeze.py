@@ -4,10 +4,9 @@ from copy import deepcopy
 from typing import Any
 
 from packaging.utils import canonicalize_name
-from .check_package_dependencies import check_package_dependencies
-
 
 from .._compat import REPODATA_INFO, REPODATA_PACKAGES
+from .check_package_dependencies import check_package_dependencies
 
 
 def freeze() -> str:
@@ -43,7 +42,7 @@ def freeze() -> str:
                 # the final frozen list
                 check_package_dependencies(name, fix_deps=True)
                 requires = dist.read_text("PYODIDE_REQUIRES")
-                if requires != None:
+                if requires is not None:
                     depends = json.loads(requires)
         pkg_entry: dict[str, Any] = dict(
             name=name,

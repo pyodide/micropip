@@ -4,7 +4,7 @@ import json
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from .._compat import REPODATA_INFO, REPODATA_PACKAGES
+from .._compat import REPODATA_PACKAGES
 
 
 def check_package_dependencies(
@@ -63,7 +63,7 @@ def check_package_dependencies(
     all_missing = {}
 
     package_requires = dist.requires
-    if package_requires == None:
+    if package_requires is None:
         # no dependencies - we're good to go
         return {}
 
@@ -77,7 +77,7 @@ def check_package_dependencies(
         req_marker = req.marker
         req_name = canonicalize_name(req.name)
         needs_requirement = False
-        if req_marker != None:
+        if req_marker is not None:
             for e in extras:
                 if req_marker.evaluate(None if e is None else {"extra": e}):
                     needs_requirement = True
@@ -91,7 +91,7 @@ def check_package_dependencies(
                     req_name, extras=list(req_extras), fix_deps=fix_deps
                 )
 
-            if not req_name in depends:
+            if req_name not in depends:
                 missing.append(req_name)
                 depends.append(req_name)
 
