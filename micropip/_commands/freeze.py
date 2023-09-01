@@ -4,6 +4,8 @@ from copy import deepcopy
 from typing import Any
 
 from packaging.utils import canonicalize_name
+from .check_package_dependencies import check_package_dependencies
+
 
 from .._compat import REPODATA_INFO, REPODATA_PACKAGES
 
@@ -20,7 +22,6 @@ def freeze() -> str:
     You can use your custom lock file by passing an appropriate url to the
     ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
     """
-
     packages = deepcopy(REPODATA_PACKAGES)
     for dist in importlib.metadata.distributions():
         name = dist.name
@@ -37,7 +38,13 @@ def freeze() -> str:
             depends = json.loads(requires)
         else:
             depends = []
-
+            if dist.requires is not None and len(dist.requires) > 0:
+                # no calculated dependencies yet - fix them before outputting
+                # the final frozen list
+                check_package_dependencies(name, fix_deps=True)
+                requires = dist.read_text("PYODIDE_REQUIRES")
+                if requires != None:
+                    depends = json.loads(requires)
         pkg_entry: dict[str, Any] = dict(
             name=name,
             version=version,

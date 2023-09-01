@@ -28,16 +28,16 @@ def check_package_dependencies(
 
     fix_deps (boolean):
         If this is True, any missing dependencies that are in
-        the current package list will be added to the current 
-        package. 
+        the current package list will be added to the current
+        package.
 
     recursive (boolean):
         If this is True, dependencies of dependencies will be checked.
-    
+
     Returns
     -------
-    dict: 
-        Dictionary mapping package name to a list of missing dependencies. 
+    dict:
+        Dictionary mapping package name to a list of missing dependencies.
         If the package has no missing dependencies, an empty list is returned.
     """
     if package_name in REPODATA_PACKAGES:
@@ -67,10 +67,10 @@ def check_package_dependencies(
         # no dependencies - we're good to go
         return {}
 
-    if extras == None:
+    if extras is None:
         extras = [None]
     else:
-        extras = extras.append(None)
+        extras.append(None)
     for r in package_requires:
         req = Requirement(r)
         req_extras = req.extras
@@ -79,7 +79,7 @@ def check_package_dependencies(
         needs_requirement = False
         if req_marker != None:
             for e in extras:
-                if req_marker.evaluate(None if e == None else {"extra": e}):
+                if req_marker.evaluate(None if e is None else {"extra": e}):
                     needs_requirement = True
                     break
         else:
