@@ -1,17 +1,17 @@
 import functools
-from importlib.metadata import Distribution
 import json
+from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_platform
 
+from packaging.requirements import Requirement
 from packaging.tags import Tag
 from packaging.tags import sys_tags as sys_tags_orig
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name, BuildTag, InvalidWheelFilename
+from packaging.utils import BuildTag, InvalidWheelFilename, canonicalize_name
 from packaging.utils import parse_wheel_filename as parse_wheel_filename_orig
 from packaging.version import InvalidVersion, Version
 
-from ._compat import REPODATA_INFO, REPODATA_PACKAGES
+from ._compat import REPODATA_PACKAGES
 
 
 def get_dist_info(dist: Distribution) -> Path:
@@ -212,7 +212,7 @@ def fix_package_dependencies(package_name, *, extras=None):
     dist = Distribution.from_name(package_name)
 
     package_requires = dist.requires
-    if package_requires == None:
+    if package_requires is None:
         # no dependencies - we're good to go
         return
 
@@ -241,7 +241,7 @@ def fix_package_dependencies(package_name, *, extras=None):
         req_marker = req.marker
         req_name = canonicalize_name(req.name)
         needs_requirement = False
-        if req_marker != None:
+        if req_marker is not None:
             for e in extras:
                 if req_marker.evaluate(None if e is None else {"extra": e}):
                     needs_requirement = True
@@ -252,7 +252,7 @@ def fix_package_dependencies(package_name, *, extras=None):
         if needs_requirement:
             fix_package_dependencies(req_name, extras=list(req_extras))
 
-            if not req_name in depends:
+            if req_name not in depends:
                 depends.append(req_name)
 
     # write updated depends to PYODIDE_DEPENDS

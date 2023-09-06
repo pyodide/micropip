@@ -31,8 +31,11 @@ async def test_freeze(mock_fetch: mock_fetch_cls, mock_importlib: None) -> None:
     assert dep1_metadata["imports"] == toplevel[1]
     assert dep2_metadata["imports"] == toplevel[2]
 
+
 @pytest.mark.asyncio
-async def test_freeze_fix_depends(mock_fetch: mock_fetch_cls, mock_importlib: None) -> None:
+async def test_freeze_fix_depends(
+    mock_fetch: mock_fetch_cls, mock_importlib: None
+) -> None:
     import micropip
 
     dummy = "dummy"
@@ -44,9 +47,9 @@ async def test_freeze_fix_depends(mock_fetch: mock_fetch_cls, mock_importlib: No
     mock_fetch.add_pkg_version(dep1, top_level=toplevel[1])
     mock_fetch.add_pkg_version(dep2, top_level=toplevel[2])
 
-    await micropip.install(dummy,deps = False)
-    await micropip.install(dep1,deps = False)
-    await micropip.install(dep2,deps = False)
+    await micropip.install(dummy, deps=False)
+    await micropip.install(dep1, deps=False)
+    await micropip.install(dep2, deps=False)
 
     import json
 
