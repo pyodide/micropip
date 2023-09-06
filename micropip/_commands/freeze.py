@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from packaging.utils import canonicalize_name
-from .check_package_dependencies import check_package_dependencies
+from .._utils import fix_package_dependencies
 
 
 from .._compat import REPODATA_INFO, REPODATA_PACKAGES
@@ -34,17 +34,14 @@ def freeze() -> str:
         assert sha256
         imports = (dist.read_text("top_level.txt") or "").split()
         requires = dist.read_text("PYODIDE_REQUIRES")
+        if not requires:
+            fix_package_dependencies(name)
+            requires = dist.read_text("PYODIDE_REQUIRES")
         if requires:
             depends = json.loads(requires)
         else:
             depends = []
-            if dist.requires is not None and len(dist.requires) > 0:
-                # no calculated dependencies yet - fix them before outputting
-                # the final frozen list
-                check_package_dependencies(name, fix_deps=True)
-                requires = dist.read_text("PYODIDE_REQUIRES")
-                if requires != None:
-                    depends = json.loads(requires)
+
         pkg_entry: dict[str, Any] = dict(
             name=name,
             version=version,

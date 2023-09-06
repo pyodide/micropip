@@ -117,6 +117,13 @@ def wheel_base(monkeypatch):
 def mock_importlib(monkeypatch, wheel_base):
     import importlib.metadata
 
+    def _mock_importlib_from_name(name: str) -> Distribution:
+        dists = _mock_importlib_distributions()
+        for dist in dists:
+            if dist.name == name:
+                return dist
+        raise PackageNotFoundError(name)            
+
     def _mock_importlib_version(name: str) -> str:
         dists = _mock_importlib_distributions()
         for dist in dists:
@@ -131,6 +138,7 @@ def mock_importlib(monkeypatch, wheel_base):
     monkeypatch.setattr(
         importlib.metadata, "distributions", _mock_importlib_distributions
     )
+    monkeypatch.setattr(importlib.metadata.Distribution, "from_name", _mock_importlib_from_name)
 
 
 class Wildcard:

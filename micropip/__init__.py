@@ -1,4 +1,3 @@
-from ._commands.check_package_dependencies import check_package_dependencies
 from ._commands.freeze import freeze
 from ._commands.index_urls import set_index_urls
 from ._commands.install import install
