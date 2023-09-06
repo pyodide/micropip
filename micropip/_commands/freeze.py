@@ -4,10 +4,9 @@ from copy import deepcopy
 from typing import Any
 
 from packaging.utils import canonicalize_name
-from .._utils import fix_package_dependencies
-
 
 from .._compat import REPODATA_INFO, REPODATA_PACKAGES
+from .._utils import fix_package_dependencies
 
 
 def freeze() -> str:
