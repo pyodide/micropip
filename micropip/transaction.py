@@ -186,6 +186,11 @@ class Transaction:
 
     verbose: bool | int = False
 
+    def __post_init__(self):
+        # If index_urls is None, pyodide-lock.json have to be searched first.
+        # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
+        self.search_pyodide_lock_first = self.index_urls is None
+
     async def gather_requirements(
         self,
         requirements: list[str],
@@ -285,8 +290,25 @@ class Transaction:
             logger.info(f"Requirement already satisfied: {req} ({ver})")
             return
 
-        # If there's a Pyodide package that matches the version constraint, use
-        # the Pyodide package instead of the one on PyPI
+        if self.search_pyodide_lock_first:
+            if self._add_requirement_from_pyodide_lock(req):
+                return
+
+            await self._add_requirement_from_package_index(req)
+        else:
+            try:
+                await self._add_requirement_from_package_index(req)
+            except ValueError:
+                # If the requirement is not found in package index,
+                # we still have a chance to find it from pyodide lockfile.
+                if not self._add_requirement_from_pyodide_lock(req):
+                    raise
+
+    def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
+        """
+        Find requirement from pyodide-lock.json. If the requirement is found,
+        add it to the package list and return True. Otherwise, return False.
+        """
         if req.name in REPODATA_PACKAGES and req.specifier.contains(
             REPODATA_PACKAGES[req.name]["version"], prereleases=True
         ):
@@ -294,8 +316,15 @@ class Transaction:
             self.pyodide_packages.append(
                 PackageMetadata(name=req.name, version=str(version), source="pyodide")
             )
-            return
+            return True
 
+        return False
+
+    async def _add_requirement_from_package_index(self, req: Requirement) -> bool:
+        """
+        Find requirement from package index. If the requirement is found,
+        add it to the package list and return True. Otherwise, return False.
+        """
         metadata = await package_index.query_package(
             req.name, self.fetch_kwargs, index_urls=self.index_urls
         )
@@ -307,16 +336,17 @@ class Transaction:
             if not self.keep_going:
                 raise
             else:
-                return
+                return False
 
         # Maybe while we were downloading pypi_json some other branch
         # installed the wheel?
         satisfied, ver = self.check_version_satisfied(req)
         if satisfied:
             logger.info(f"Requirement already satisfied: {req} ({ver})")
-            return
+            return True
 
         await self.add_wheel(wheel, req.extras, specifier=str(req.specifier))
+        return True
 
     async def add_wheel(
         self,

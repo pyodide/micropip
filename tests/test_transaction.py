@@ -292,3 +292,67 @@ def test_last_version_and_best_tag_from_pypi(
     wheel = find_wheel(metadata, requirement)
 
     assert str(wheel.version) == new_version
+
+
+def test_search_pyodide_lock_first():
+    from micropip.transaction import Transaction
+
+    t = Transaction(
+        ctx={},
+        ctx_extras=[],
+        keep_going=True,
+        deps=True,
+        pre=True,
+        fetch_kwargs={},
+        verbose=False,
+        index_urls=None,
+    )
+    assert t.search_pyodide_lock_first is True
+
+    t = Transaction(
+        ctx={},
+        ctx_extras=[],
+        keep_going=True,
+        deps=True,
+        pre=True,
+        fetch_kwargs={},
+        verbose=False,
+        index_urls=["https://my.custom.index.com"],
+    )
+    assert t.search_pyodide_lock_first is False
+
+
+@pytest.mark.asyncio
+async def test_index_url_priority(
+    mock_importlib, wheel_base, monkeypatch, mock_package_index_simple_json_api
+):
+    # Test that if the index_urls are provided, package should be searched in
+    # the index_urls first before searching in Pyodide lock file.
+    from micropip.transaction import Transaction
+
+    # add_wheel is called only when the package is found in the index_urls
+    add_wheel_called = None
+
+    async def mock_add_wheel(self, wheel, extras, *, specifier=""):
+        nonlocal add_wheel_called
+        add_wheel_called = wheel
+
+    monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
+
+    mock_index_url = mock_package_index_simple_json_api(pkgs=["black"])
+
+    t = Transaction(
+        keep_going=True,
+        deps=False,
+        pre=False,
+        ctx={},
+        ctx_extras=[],
+        fetch_kwargs={},
+        index_urls=mock_index_url,
+    )
+
+    await t.add_requirement("black")
+    assert add_wheel_called is not None
+    assert add_wheel_called.name == "black"
+    # 23.7.0 is the latest version of black in the mock index
+    assert str(add_wheel_called.version) == "23.7.0"
