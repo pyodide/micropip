@@ -187,7 +187,9 @@ def check_compatible(filename: str) -> None:
     raise ValueError(f"Wheel interpreter version '{tag.interpreter}' is not supported.")
 
 
-def fix_package_dependencies(package_name: str, *, extras: list[str]|None = None) -> None:
+def fix_package_dependencies(
+    package_name: str, *, extras: list[str] | None = None
+) -> None:
     """Check and fix the list of dependencies for this package
 
     If you have manually installed a package and dependencies from wheels,
