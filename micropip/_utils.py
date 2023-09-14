@@ -187,7 +187,7 @@ def check_compatible(filename: str) -> None:
     raise ValueError(f"Wheel interpreter version '{tag.interpreter}' is not supported.")
 
 
-def fix_package_dependencies(package_name: str, *, extras: list[str]|None = None) -> None:
+def fix_package_dependencies(package_name: str, *, extras: list[str|None]|None = None) -> None:
     """Check and fix the list of dependencies for this package
 
     If you have manually installed a package and dependencies from wheels,
@@ -256,4 +256,4 @@ def fix_package_dependencies(package_name: str, *, extras: list[str]|None = None
                 depends.append(req_name)
 
     # write updated depends to PYODIDE_DEPENDS
-    (dist._path / "PYODIDE_REQUIRES").write_text(json.dumps(sorted(x for x in depends)))
+    (get_dist_info(dist) / "PYODIDE_REQUIRES").write_text(json.dumps(sorted(x for x in depends)))
