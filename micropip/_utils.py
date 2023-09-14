@@ -258,4 +258,6 @@ def fix_package_dependencies(
                 depends.append(req_name)
 
     # write updated depends to PYODIDE_DEPENDS
-    (get_dist_info(dist) / "PYODIDE_REQUIRES").write_text(json.dumps(sorted(x for x in depends)))
+    (get_dist_info(dist) / "PYODIDE_REQUIRES").write_text(
+        json.dumps(sorted(x for x in depends))
+    )
