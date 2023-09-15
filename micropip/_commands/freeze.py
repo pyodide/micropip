@@ -6,6 +6,7 @@ from typing import Any
 from packaging.utils import canonicalize_name
 
 from .._compat import REPODATA_INFO, REPODATA_PACKAGES
+from .._utils import fix_package_dependencies
 
 
 def freeze() -> str:
@@ -20,7 +21,6 @@ def freeze() -> str:
     You can use your custom lock file by passing an appropriate url to the
     ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
     """
-
     packages = deepcopy(REPODATA_PACKAGES)
     for dist in importlib.metadata.distributions():
         name = dist.name
@@ -33,6 +33,9 @@ def freeze() -> str:
         assert sha256
         imports = (dist.read_text("top_level.txt") or "").split()
         requires = dist.read_text("PYODIDE_REQUIRES")
+        if not requires:
+            fix_package_dependencies(name)
+            requires = dist.read_text("PYODIDE_REQUIRES")
         if requires:
             depends = json.loads(requires)
         else:

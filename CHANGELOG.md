@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Made micropip.freeze correctly list dependencies of manually installed packages.
+  [#79](https://github.com/pyodide/micropip/pull/79)
+
 ## [0.4.0] - 2023/07/25
 
 ### Added

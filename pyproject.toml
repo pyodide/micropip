@@ -19,7 +19,7 @@ test = [
   "pytest-httpserver",
   "pytest-pyodide",
   "pytest-cov",
-  "build",
+  "build<1.0.0",
 ]
 
 
