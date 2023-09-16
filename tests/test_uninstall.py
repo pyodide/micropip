@@ -1,9 +1,8 @@
 # isort: skip_file
-from pathlib import Path
 
 import pytest
 from pytest_pyodide import run_in_pyodide, spawn_web_server
-from conftest import SNOWBALL_WHEEL
+from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR
 from packaging.utils import parse_wheel_filename
 
 TEST_PACKAGE_NAME = "test_wheel_uninstall"
@@ -249,7 +248,7 @@ def test_pyodide_repodata(selenium_standalone_micropip):
 
 def test_logging(selenium_standalone_micropip):
     # TODO: make a fixture for this, it's used in a few places
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         url = f"http://{server_hostname}:{server_port}/"
         wheel_url = url + SNOWBALL_WHEEL

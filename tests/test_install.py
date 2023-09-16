@@ -1,7 +1,5 @@
-from pathlib import Path
-
 import pytest
-from conftest import SNOWBALL_WHEEL, mock_fetch_cls
+from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR, mock_fetch_cls
 from packaging.utils import parse_wheel_filename
 from pytest_pyodide import run_in_pyodide, spawn_web_server
 
@@ -34,7 +32,7 @@ def test_install_simple(selenium_standalone_micropip):
 def test_install_custom_url(selenium_standalone_micropip, base_url):
     selenium = selenium_standalone_micropip
 
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
@@ -316,7 +314,7 @@ async def test_load_binary_wheel2(selenium):
 
 
 def test_emfs(selenium_standalone_micropip):
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         url = f"http://{server_hostname}:{server_port}/"
 
@@ -344,7 +342,7 @@ def test_emfs(selenium_standalone_micropip):
 
 def test_logging(selenium_standalone_micropip):
     # TODO: make a fixture for this, it's used in a few places
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         url = f"http://{server_hostname}:{server_port}/"
         wheel_url = url + SNOWBALL_WHEEL

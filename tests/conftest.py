@@ -20,13 +20,14 @@ def pytest_addoption(parser):
     )
 
 
-SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
-
 EMSCRIPTEN_VER = "3.1.14"
 PLATFORM = f"emscripten_{EMSCRIPTEN_VER.replace('.', '_')}_wasm32"
 CPVER = f"cp{sys.version_info.major}{sys.version_info.minor}"
 
 TEST_PYPI_RESPONSE_DIR = Path(__file__).parent / "test_data" / "pypi_response"
+TEST_WHEEL_DIR = Path(__file__).parent / "test_data" / "wheel"
+SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
+PYTEST_WHEEL = "pytest-7.2.2-py3-none-any.whl"
 
 
 def _read_pypi_response(file: Path) -> bytes:

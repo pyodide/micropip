@@ -1,7 +1,5 @@
-from pathlib import Path
-
 import pytest
-from conftest import SNOWBALL_WHEEL
+from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR
 from packaging.tags import Tag
 from pytest_pyodide import spawn_web_server
 
@@ -71,7 +69,7 @@ async def test_add_requirement():
     pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
