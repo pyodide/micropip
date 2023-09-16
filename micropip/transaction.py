@@ -1,172 +1,23 @@
 import asyncio
-import hashlib
 import importlib.metadata
-import json
 import logging
 import warnings
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
-from pathlib import Path
-from typing import IO, Any
-from urllib.parse import ParseResult, urlparse
-from zipfile import ZipFile
+from urllib.parse import urlparse
 
 from packaging.requirements import Requirement
-from packaging.tags import Tag
 from packaging.utils import canonicalize_name
-from packaging.version import Version
 
 from . import package_index
-from ._compat import (
-    REPODATA_PACKAGES,
-    fetch_bytes,
-    get_dynlibs,
-    loadDynlib,
-    loadedPackages,
-    wheel_dist_info_dir,
-)
-from ._utils import best_compatible_tag_index, check_compatible, parse_wheel_filename
+from ._compat import REPODATA_PACKAGES
+from ._utils import best_compatible_tag_index, check_compatible
 from .constants import FAQ_URLS
-from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
 from .package import PackageMetadata
-from .package_index import ProjectInfo, ProjectInfoFile
+from .package_index import ProjectInfo
+from .wheelinfo import WheelInfo
 
 logger = logging.getLogger("micropip")
-
-
-@dataclass
-class WheelInfo:
-    name: str
-    version: Version
-    filename: str
-    build: tuple[int, str] | tuple[()]
-    tags: frozenset[Tag]
-    url: str
-    parsed_url: ParseResult
-    project_name: str | None = None
-    sha256: str | None = None
-    data: IO[bytes] | None = None
-    _dist: Any = None
-    dist_info: Path | None = None
-    _requires: list[Requirement] | None = None
-
-    @staticmethod
-    def from_url(url: str) -> "WheelInfo":
-        """Parse wheels URL and extract available metadata
-
-        See https://www.python.org/dev/peps/pep-0427/#file-name-convention
-        """
-        parsed_url = urlparse(url)
-        file_name = Path(parsed_url.path).name
-        name, version, build, tags = parse_wheel_filename(file_name)
-        return WheelInfo(
-            name=name,
-            version=version,
-            filename=file_name,
-            build=build,
-            tags=tags,
-            url=url,
-            parsed_url=parsed_url,
-        )
-
-    @staticmethod
-    def from_project_info_file(project_info_file: ProjectInfoFile) -> "WheelInfo":
-        """Extract available metadata from response received from package index"""
-        wheel_info = WheelInfo.from_url(project_info_file.url)
-        wheel_info.sha256 = project_info_file.sha256
-
-        return wheel_info
-
-    async def _fetch_bytes(self, fetch_kwargs):
-        try:
-            return await fetch_bytes(self.url, fetch_kwargs)
-        except OSError as e:
-            if self.parsed_url.hostname in [
-                "files.pythonhosted.org",
-                "cdn.jsdelivr.net",
-            ]:
-                raise e
-            else:
-                raise ValueError(
-                    f"Can't fetch wheel from '{self.url}'. "
-                    "One common reason for this is when the server blocks "
-                    "Cross-Origin Resource Sharing (CORS). "
-                    "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
-                ) from e
-
-    async def download(self, fetch_kwargs):
-        data = await self._fetch_bytes(fetch_kwargs)
-        self.data = data
-        with ZipFile(data) as zip_file:
-            self._dist = pkg_resources_distribution_for_wheel(
-                zip_file, self.name, "???"
-            )
-
-        self.project_name = self._dist.project_name
-        if self.project_name == "UNKNOWN":
-            self.project_name = self.name
-
-    def validate(self):
-        if self.sha256 is None:
-            # No checksums available, e.g. because installing
-            # from a different location than PyPI.
-            return
-
-        assert self.data
-        sha256_actual = _generate_package_hash(self.data)
-        if sha256_actual != self.sha256:
-            raise ValueError("Contents don't match hash")
-
-    def extract(self, target: Path) -> None:
-        assert self.data
-        with ZipFile(self.data) as zf:
-            zf.extractall(target)
-        dist_info_name: str = wheel_dist_info_dir(ZipFile(self.data), self.name)
-        self.dist_info = target / dist_info_name
-
-    def requires(self, extras: set[str]) -> list[str]:
-        if not self._dist:
-            raise RuntimeError(
-                "Micropip internal error: attempted to access wheel 'requires' before downloading it?"
-            )
-        requires = self._dist.requires(extras)
-        self._requires = requires
-        return requires
-
-    def write_dist_info(self, file: str, content: str) -> None:
-        assert self.dist_info
-        (self.dist_info / file).write_text(content)
-
-    def set_installer(self) -> None:
-        assert self.data
-        wheel_source = "pypi" if self.sha256 is not None else self.url
-
-        self.write_dist_info("PYODIDE_SOURCE", wheel_source)
-        self.write_dist_info("PYODIDE_URL", self.url)
-        self.write_dist_info("PYODIDE_SHA256", _generate_package_hash(self.data))
-        self.write_dist_info("INSTALLER", "micropip")
-        if self._requires:
-            self.write_dist_info(
-                "PYODIDE_REQUIRES", json.dumps(sorted(x.name for x in self._requires))
-            )
-        name = self.project_name
-        assert name
-        setattr(loadedPackages, name, wheel_source)
-
-    async def load_libraries(self, target: Path) -> None:
-        assert self.data
-        dynlibs = get_dynlibs(self.data, ".whl", target)
-        await asyncio.gather(*map(lambda dynlib: loadDynlib(dynlib, False), dynlibs))
-
-    async def install(self, target: Path) -> None:
-        if not self.data:
-            raise RuntimeError(
-                "Micropip internal error: attempted to install wheel before downloading it?"
-            )
-        self.validate()
-        self.extract(target)
-        await self.load_libraries(target)
-        self.set_installer()
 
 
 @dataclass
@@ -389,9 +240,8 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         best_wheel = None
         best_tag_index = float("infinity")
 
-        files = releases[ver]
-        for fileinfo in files:
-            wheel = WheelInfo.from_project_info_file(fileinfo)
+        wheels = releases[ver]
+        for wheel in wheels:
             tag_index = best_compatible_tag_index(wheel.tags)
             if tag_index is not None and tag_index < best_tag_index:
                 best_wheel = wheel
@@ -406,11 +256,3 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         "You can use `await micropip.install(..., keep_going=True)` "
         "to get a list of all packages with missing wheels."
     )
-
-
-def _generate_package_hash(data: IO[bytes]) -> str:
-    sha256_hash = hashlib.sha256()
-    data.seek(0)
-    while chunk := data.read(4096):
-        sha256_hash.update(chunk)
-    return sha256_hash.hexdigest()
