@@ -193,7 +193,7 @@ class mock_fetch_cls:
         if top_level is None:
             top_level = []
         if name not in self.releases_map:
-            self.releases_map[name] = {"releases": {}}
+            self.releases_map[name] = {"name": name, "releases": {}}
         releases = self.releases_map[name]["releases"]
         filename = self._make_wheel_filename(name, version, platform)
         releases[version] = [
