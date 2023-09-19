@@ -127,7 +127,7 @@ async def install(
     wheel_base = Path(getsitepackages()[0])
 
     if index_urls is None:
-        index_urls = package_index.INDEX_URLS
+        index_urls = package_index.INDEX_URLS[:]
 
     transaction = Transaction(
         ctx=ctx,
