@@ -197,7 +197,7 @@ class mock_fetch_cls:
                 "info": {
                     "name": name,
                 },
-                "releases": {}
+                "releases": {},
             }
         releases = self.releases_map[name]["releases"]
         filename = self._make_wheel_filename(name, version, platform)
