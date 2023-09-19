@@ -24,4 +24,4 @@ def set_index_urls(urls: list[str] | str) -> None:
     if isinstance(urls, str):
         urls = [urls]
 
-    package_index.INDEX_URLS = urls
+    package_index.INDEX_URLS = urls[:]
