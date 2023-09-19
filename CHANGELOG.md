@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.5.0] - 2023/09/19
+
+### Changed
+
+- When custom index URLs are set by `micropip.set_index_urls` or by `micropip.install(index_urls=...)`,
+  micropip will now query packages from the custom index first,
+  and then from pyodide lockfile.
+  [#83](https://github.com/pyodide/micropip/pull/83)
+
 - Made micropip.freeze correctly list dependencies of manually installed packages.
   [#79](https://github.com/pyodide/micropip/pull/79)
 

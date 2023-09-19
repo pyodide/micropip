@@ -4,6 +4,7 @@ from pathlib import Path
 
 from packaging.markers import default_environment
 
+from .. import package_index
 from .._compat import loadPackage, to_js
 from ..constants import FAQ_URLS
 from ..logging import setup_logging
@@ -124,6 +125,9 @@ async def install(
     from site import getsitepackages
 
     wheel_base = Path(getsitepackages()[0])
+
+    if index_urls is None:
+        index_urls = package_index.INDEX_URLS[:]
 
     transaction = Transaction(
         ctx=ctx,
