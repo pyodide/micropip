@@ -251,12 +251,12 @@ async def test_install_pre(
 async def test_fetch_wheel_fail(monkeypatch, wheel_base):
     pytest.importorskip("packaging")
     import micropip
-    from micropip import transaction
+    from micropip import wheelinfo
 
     def _mock_fetch_bytes(arg, *args, **kwargs):
         raise OSError(f"Request for {arg} failed with status 404: Not Found")
 
-    monkeypatch.setattr(transaction, "fetch_bytes", _mock_fetch_bytes)
+    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
 
     msg = "Access-Control-Allow-Origin"
     with pytest.raises(ValueError, match=msg):
