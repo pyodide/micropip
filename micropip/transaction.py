@@ -189,7 +189,7 @@ class Transaction:
     def __post_init__(self):
         # If index_urls is None, pyodide-lock.json have to be searched first.
         # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
-        self.search_pyodide_lock_first = self.index_urls is None
+        self.search_pyodide_lock_first = self.index_urls == package_index.DEFAULT_INDEX_URLS
 
     async def gather_requirements(
         self,
