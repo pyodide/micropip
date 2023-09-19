@@ -308,7 +308,8 @@ class Transaction:
                         raise
         except ValueError:
             self.failed.append(req)
-            raise
+            if not self.keep_going:
+                raise
 
     def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
         """
@@ -326,7 +327,7 @@ class Transaction:
 
         return False
 
-    async def _add_requirement_from_package_index(self, req: Requirement) -> bool:
+    async def _add_requirement_from_package_index(self, req: Requirement):
         """
         Find requirement from package index. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
@@ -335,23 +336,15 @@ class Transaction:
             req.name, self.fetch_kwargs, index_urls=self.index_urls
         )
 
-        try:
-            wheel = find_wheel(metadata, req)
-        except ValueError:
-            if not self.keep_going:
-                raise
-            else:
-                return False
+        wheel = find_wheel(metadata, req)
 
         # Maybe while we were downloading pypi_json some other branch
         # installed the wheel?
         satisfied, ver = self.check_version_satisfied(req)
         if satisfied:
             logger.info(f"Requirement already satisfied: {req} ({ver})")
-            return True
 
         await self.add_wheel(wheel, req.extras, specifier=str(req.specifier))
-        return True
 
     async def add_wheel(
         self,
