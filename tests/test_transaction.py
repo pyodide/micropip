@@ -296,6 +296,7 @@ def test_last_version_and_best_tag_from_pypi(
 
 def test_search_pyodide_lock_first():
     from micropip.transaction import Transaction
+    from micropip import package_index
 
     t = Transaction(
         ctx={},
@@ -305,7 +306,7 @@ def test_search_pyodide_lock_first():
         pre=True,
         fetch_kwargs={},
         verbose=False,
-        index_urls=None,
+        index_urls=package_index.DEFAULT_INDEX_URLS,
     )
     assert t.search_pyodide_lock_first is True
 
