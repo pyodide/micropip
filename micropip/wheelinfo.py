@@ -52,8 +52,8 @@ class WheelInfo:
     # Path to the .dist-info directory. This is only available after extracting the wheel, i.e. after calling `extract()`.
     _dist_info: Path | None = None
 
-    @staticmethod
-    def from_url(url: str) -> "WheelInfo":
+    @classmethod
+    def from_url(cls, url: str) -> "WheelInfo":
         """Parse wheels URL and extract available metadata
 
         See https://www.python.org/dev/peps/pep-0427/#file-name-convention
@@ -71,8 +71,9 @@ class WheelInfo:
             parsed_url=parsed_url,
         )
 
-    @staticmethod
+    @classmethod
     def from_package_index(
+        cls,
         name: str,
         filename: str,
         url: str,
