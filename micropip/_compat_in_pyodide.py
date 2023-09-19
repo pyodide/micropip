@@ -8,7 +8,6 @@ from pyodide.http import pyfetch
 
 try:
     import pyodide_js
-    from js import Object
     from pyodide_js import loadedPackages, loadPackage
     from pyodide_js._api import loadBinaryFile, loadDynlib  # type: ignore[import]
 
