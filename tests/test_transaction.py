@@ -295,8 +295,8 @@ def test_last_version_and_best_tag_from_pypi(
 
 
 def test_search_pyodide_lock_first():
-    from micropip.transaction import Transaction
     from micropip import package_index
+    from micropip.transaction import Transaction
 
     t = Transaction(
         ctx={},
