@@ -258,11 +258,11 @@ class mock_fetch_cls:
 @pytest.fixture
 def mock_fetch(monkeypatch, mock_importlib):
     pytest.importorskip("packaging")
-    from micropip import package_index, transaction
+    from micropip import package_index, wheelinfo
 
     result = mock_fetch_cls()
     monkeypatch.setattr(package_index, "query_package", result.query_package)
-    monkeypatch.setattr(transaction, "fetch_bytes", result._fetch_bytes)
+    monkeypatch.setattr(wheelinfo, "fetch_bytes", result._fetch_bytes)
     return result
 
 
