@@ -37,10 +37,7 @@ async def fetch_string_and_headers(
     response = await pyfetch(url, **kwargs)
 
     content = await response.string()
-    # TODO: replace with response.headers when pyodide>= 0.24 is released
-    headers: dict[str, str] = Object.fromEntries(
-        response.js_response.headers.entries()
-    ).to_py()
+    headers = response.headers
 
     return content, headers
 
