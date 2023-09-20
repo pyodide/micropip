@@ -383,9 +383,9 @@ async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
         _wheel_url = url
         return BytesIO(b"fake wheel")
 
-    from micropip import transaction
+    from micropip import wheelinfo
 
-    monkeypatch.setattr(transaction, "fetch_bytes", _mock_fetch_bytes)
+    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
 
     try:
         await micropip.install(
