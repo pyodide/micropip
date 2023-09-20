@@ -1,7 +1,5 @@
-from pathlib import Path
-
 import pytest
-from conftest import SNOWBALL_WHEEL, mock_fetch_cls
+from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR, mock_fetch_cls
 from pytest_pyodide import spawn_web_server
 
 import micropip
@@ -45,7 +43,7 @@ async def test_list_wheel_name_mismatch(mock_fetch: mock_fetch_cls) -> None:
 
 
 def test_list_load_package_from_url(selenium_standalone_micropip):
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL

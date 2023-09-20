@@ -20,13 +20,14 @@ def pytest_addoption(parser):
     )
 
 
-SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
-
 EMSCRIPTEN_VER = "3.1.14"
 PLATFORM = f"emscripten_{EMSCRIPTEN_VER.replace('.', '_')}_wasm32"
 CPVER = f"cp{sys.version_info.major}{sys.version_info.minor}"
 
 TEST_PYPI_RESPONSE_DIR = Path(__file__).parent / "test_data" / "pypi_response"
+TEST_WHEEL_DIR = Path(__file__).parent / "test_data" / "wheel"
+SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
+PYTEST_WHEEL = "pytest-7.2.2-py3-none-any.whl"
 
 
 def _read_pypi_response(file: Path) -> bytes:
@@ -192,7 +193,12 @@ class mock_fetch_cls:
         if top_level is None:
             top_level = []
         if name not in self.releases_map:
-            self.releases_map[name] = {"releases": {}}
+            self.releases_map[name] = {
+                "info": {
+                    "name": name,
+                },
+                "releases": {},
+            }
         releases = self.releases_map[name]["releases"]
         filename = self._make_wheel_filename(name, version, platform)
         releases[version] = [
@@ -257,11 +263,11 @@ class mock_fetch_cls:
 @pytest.fixture
 def mock_fetch(monkeypatch, mock_importlib):
     pytest.importorskip("packaging")
-    from micropip import package_index, transaction
+    from micropip import package_index, wheelinfo
 
     result = mock_fetch_cls()
     monkeypatch.setattr(package_index, "query_package", result.query_package)
-    monkeypatch.setattr(transaction, "fetch_bytes", result._fetch_bytes)
+    monkeypatch.setattr(wheelinfo, "fetch_bytes", result._fetch_bytes)
     return result
 
 
