@@ -1,8 +1,9 @@
 from io import BytesIO
+
 import pytest
+from conftest import PYTEST_WHEEL, TEST_WHEEL_DIR
 
 from micropip.wheelinfo import WheelInfo
-from conftest import TEST_WHEEL_DIR, PYTEST_WHEEL
 
 
 @pytest.fixture
@@ -46,7 +47,7 @@ def test_from_package_index():
     size = 1234
 
     wheel = WheelInfo.from_package_index(name, filename, url, version, sha256, size)
-    
+
     assert wheel.name == name
     assert str(wheel.version) == version
     assert wheel.url == url
@@ -68,7 +69,7 @@ def test_validate(dummy_wheel):
     dummy_wheel.sha256 = "dummy-sha256"
     with pytest.raises(ValueError, match="Contents don't match hash"):
         dummy_wheel._validate()
-    
+
     # Should succeed when checksum is the same
     dummy_wheel.sha256 = hashlib.sha256(b"dummy-data").hexdigest()
     dummy_wheel._validate()
@@ -109,7 +110,7 @@ async def test_download(dummy_wheel_url):
 
     assert wheel._project_name == "pytest"
     assert wheel._dist is not None
-    
+
 
 @pytest.mark.asyncio
 async def test_requires(dummy_wheel_url, tmp_path):
@@ -122,7 +123,6 @@ async def test_requires(dummy_wheel_url, tmp_path):
     assert "pluggy" in requirements_default
     assert "hypothesis" not in requirements_default
 
-    requirements_extra_testing = [str(r.name) for r in wheel.requires({"testing"})] 
+    requirements_extra_testing = [str(r.name) for r in wheel.requires({"testing"})]
     assert "pluggy" in requirements_extra_testing
     assert "hypothesis" in requirements_extra_testing
-
