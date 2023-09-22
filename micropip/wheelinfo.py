@@ -121,7 +121,8 @@ class WheelInfo:
 
         self._data = await self._fetch_bytes(fetch_kwargs)
         with zipfile.ZipFile(self._data) as zf:
-            self._metadata = Metadata(zipfile.Path(zf, wheel_dist_info_dir(zf, self.name)))
+            metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+            self._metadata = Metadata(zipfile.Path(zf, metadata_path))
 
     def requires(self, extras: set[str]) -> list[str]:
         """

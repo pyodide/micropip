@@ -69,6 +69,7 @@ class Metadata:
     """
     Represents a metadata file in a wheel
     """
+    PKG_INFO = "METADATA"
     REQUIRES_DIST = "Requires-Dist:"
     PROVIDES_EXTRA = "Provides-Extra:"
 
