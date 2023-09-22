@@ -4,6 +4,7 @@ micropip/_version.py
 dist/
 build/
 .venv*
+.hypothesis/
 
 .vscode
 pyodide/
