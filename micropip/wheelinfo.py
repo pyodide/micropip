@@ -47,7 +47,6 @@ class WheelInfo:
     _dist_info: Path | None = None
 
     def __post_init__(self):
-        
         self._project_name = safe_name(self.name)
 
     @classmethod

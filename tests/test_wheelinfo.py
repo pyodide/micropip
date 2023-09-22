@@ -103,13 +103,11 @@ def test_install():
 async def test_download(dummy_wheel_url):
     wheel = WheelInfo.from_url(dummy_wheel_url)
 
-    assert wheel._project_name is None
-    assert wheel._dist is None
+    assert wheel._metadata is None
 
     await wheel.download({})
 
-    assert wheel._project_name == "pytest"
-    assert wheel._dist is not None
+    assert wheel._metadata is not None
 
 
 @pytest.mark.asyncio
