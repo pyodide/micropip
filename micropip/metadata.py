@@ -6,7 +6,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 import re
 from collections.abc import Sequence
-from zipfile import ZipFile
+import zipfile
 
 
 def safe_name(name):
@@ -31,7 +31,7 @@ class UnsupportedWheel(Exception):
     """Unsupported wheel."""
 
 
-def wheel_dist_info_dir(source: ZipFile, name: str) -> str:
+def wheel_dist_info_dir(source: zipfile.ZipFile, name: str) -> str:
     """Returns the name of the contained .dist-info directory.
     Raises UnsupportedWheel if not found, >1 found, or it doesn't match the
     provided name.
@@ -64,6 +64,7 @@ def wheel_dist_info_dir(source: ZipFile, name: str) -> str:
 
     return info_dir
 
+
 class Metadata:
     """
     Represents a metadata file in a wheel
@@ -71,8 +72,8 @@ class Metadata:
     REQUIRES_DIST = "Requires-Dist:"
     PROVIDES_EXTRA = "Provides-Extra:"
 
-    def __init__(self, path: Path | str):
-        self.path = Path(path)
+    def __init__(self, path: Path | zipfile.Path):
+        self.path = path
         self.deps = self._compute_dependencies()
 
     def _parse_requirement(self, line: str) -> Requirement:
