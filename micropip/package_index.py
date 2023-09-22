@@ -13,24 +13,12 @@ from packaging.version import InvalidVersion, Version
 from ._compat import fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
 from .externals.mousebender.simple import from_project_details_html
+from .wheelinfo import WheelInfo
 
 DEFAULT_INDEX_URLS = ["https://pypi.org/simple"]
 INDEX_URLS = DEFAULT_INDEX_URLS
 
 _formatter = string.Formatter()
-
-
-# TODO: Merge this class with WheelInfo
-@dataclass
-class ProjectInfoFile:
-    filename: str  # Name of the file
-    url: str  # URL to download the file
-    version: Version  # Version of the package
-    sha256: str | None  # SHA256 hash of the file
-
-    # Size of the file in bytes, if available (PEP 700)
-    # This key is not available in the Simple API HTML response, so this field may be None
-    size: int | None = None
 
 
 @dataclass
@@ -46,7 +34,7 @@ class ProjectInfo:
     # List of releases available for the package, sorted in ascending order by version.
     # For each version, list of wheels compatible with the current platform are stored.
     # If no such wheel is available, the list is empty.
-    releases: dict[Version, Generator[ProjectInfoFile, None, None]]
+    releases: dict[Version, Generator[WheelInfo, None, None]]
 
     @staticmethod
     def from_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
@@ -148,7 +136,7 @@ class ProjectInfo:
 
         def _compatible_wheels(
             files: list[dict[str, Any]], version: Version
-        ) -> Generator[ProjectInfoFile, None, None]:
+        ) -> Generator[WheelInfo, None, None]:
             for file in files:
                 filename = file["filename"]
 
@@ -162,12 +150,17 @@ class ProjectInfo:
                 hashes = file["digests"] if "digests" in file else file["hashes"]
                 sha256 = hashes.get("sha256")
 
-                yield ProjectInfoFile(
+                # Size of the file in bytes, if available (PEP 700)
+                # This key is not available in the Simple API HTML response, so this field may be None
+                size = file.get("size")
+
+                yield WheelInfo.from_package_index(
+                    name=name,
                     filename=filename,
                     url=file["url"],
                     version=version,
                     sha256=sha256,
-                    size=file.get("size"),
+                    size=size,
                 )
 
         releases_compatible = {

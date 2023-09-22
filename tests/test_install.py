@@ -1,7 +1,5 @@
-from pathlib import Path
-
 import pytest
-from conftest import SNOWBALL_WHEEL, mock_fetch_cls
+from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR, mock_fetch_cls
 from packaging.utils import parse_wheel_filename
 from pytest_pyodide import run_in_pyodide, spawn_web_server
 
@@ -34,7 +32,7 @@ def test_install_simple(selenium_standalone_micropip):
 def test_install_custom_url(selenium_standalone_micropip, base_url):
     selenium = selenium_standalone_micropip
 
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         base_url = f"http://{server_hostname}:{server_port}/"
         url = base_url + SNOWBALL_WHEEL
@@ -253,12 +251,12 @@ async def test_install_pre(
 async def test_fetch_wheel_fail(monkeypatch, wheel_base):
     pytest.importorskip("packaging")
     import micropip
-    from micropip import transaction
+    from micropip import wheelinfo
 
     def _mock_fetch_bytes(arg, *args, **kwargs):
         raise OSError(f"Request for {arg} failed with status 404: Not Found")
 
-    monkeypatch.setattr(transaction, "fetch_bytes", _mock_fetch_bytes)
+    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
 
     msg = "Access-Control-Allow-Origin"
     with pytest.raises(ValueError, match=msg):
@@ -316,7 +314,7 @@ async def test_load_binary_wheel2(selenium):
 
 
 def test_emfs(selenium_standalone_micropip):
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         url = f"http://{server_hostname}:{server_port}/"
 
@@ -344,7 +342,7 @@ def test_emfs(selenium_standalone_micropip):
 
 def test_logging(selenium_standalone_micropip):
     # TODO: make a fixture for this, it's used in a few places
-    with spawn_web_server(Path(__file__).parent / "dist") as server:
+    with spawn_web_server(TEST_WHEEL_DIR) as server:
         server_hostname, server_port, _ = server
         url = f"http://{server_hostname}:{server_port}/"
         wheel_url = url + SNOWBALL_WHEEL
@@ -385,9 +383,9 @@ async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
         _wheel_url = url
         return BytesIO(b"fake wheel")
 
-    from micropip import transaction
+    from micropip import wheelinfo
 
-    monkeypatch.setattr(transaction, "fetch_bytes", _mock_fetch_bytes)
+    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
 
     try:
         await micropip.install(
