@@ -1,11 +1,11 @@
 import asyncio
 import hashlib
 import json
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any
 from urllib.parse import ParseResult, urlparse
-import zipfile
 
 from packaging.requirements import Requirement
 from packaging.tags import Tag
@@ -123,10 +123,15 @@ class WheelInfo:
             metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
             self._metadata = Metadata(zipfile.Path(zf, metadata_path))
 
-    def requires(self, extras: set[str]) -> list[str]:
+    def requires(self, extras: set[str]) -> list[Requirement]:
         """
         Get a list of requirements for the wheel.
         """
+        if self._metadata is None:
+            raise RuntimeError(
+                "Micropip internal error: attempted to get requirements before downloading the wheel?"
+            )
+
         requires = self._metadata.requires(extras)
         self._requires = requires
         return requires

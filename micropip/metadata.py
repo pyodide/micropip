@@ -1,12 +1,13 @@
 """
 This is a stripped down version of pip._vendor.pkg_resources.DistInfoDistribution
 """
+import re
+import zipfile
+from collections.abc import Iterable
 from pathlib import Path
+
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
-import re
-from collections.abc import Sequence
-import zipfile
 
 
 def safe_name(name):
@@ -69,6 +70,7 @@ class Metadata:
     """
     Represents a metadata file in a wheel
     """
+
     PKG_INFO = "METADATA"
     REQUIRES_DIST = "Requires-Dist:"
     PROVIDES_EXTRA = "Provides-Extra:"
@@ -78,23 +80,24 @@ class Metadata:
         self.deps = self._compute_dependencies()
 
     def _parse_requirement(self, line: str) -> Requirement:
-        line = line[len(self.REQUIRES_DIST):]
+        line = line[len(self.REQUIRES_DIST) :]
         if " #" in line:
             line = line[: line.find(" #")]
-        
+
         return Requirement(line.strip())
 
-    def _compute_dependencies(self) -> dict[str, frozenset[str]]:
+    def _compute_dependencies(self) -> dict[str | None, frozenset[Requirement]]:
         """
         Compute the dependencies of the metadata file
         """
-        deps: dict[str, frozenset[str]] = {}
+        deps: dict[str | None, frozenset[Requirement]] = {}
         reqs: list[Requirement] = []
         extras: list[str] = []
 
-        def reqs_for_extra(extra: str) -> Requirement:
+        def reqs_for_extra(extra: str | None) -> Iterable[Requirement]:
+            environment = {"extra": extra} if extra else None
             for req in reqs:
-                if not req.marker or req.marker.evaluate({"extra": extra}):
+                if not req.marker or req.marker.evaluate(environment):
                     yield req
 
         lines = self.path.read_text(encoding="utf-8").splitlines()
@@ -102,22 +105,22 @@ class Metadata:
             if line.startswith(self.REQUIRES_DIST):
                 reqs.append(self._parse_requirement(line))
             elif line.startswith(self.PROVIDES_EXTRA):
-                extras.append(line[len(self.PROVIDES_EXTRA):].strip())
+                extras.append(line[len(self.PROVIDES_EXTRA) :].strip())
 
         deps[None] = frozenset(reqs_for_extra(None))
         for extra in extras:
             deps[safe_extra(extra)] = frozenset(reqs_for_extra(extra)) - deps[None]
 
         return deps
-    
-    def requires(self, extras: Sequence[str]=()) -> list[Requirement]:
+
+    def requires(self, extras: Iterable[str] = ()) -> list[Requirement]:
         """List of Requirements needed for this distro if `extras` are used"""
-        deps = []
+        deps: list[Requirement] = []
+
         deps.extend(self.deps.get(None, ()))
         for ext in extras:
             try:
                 deps.extend(self.deps[safe_extra(ext)])
             except KeyError:
-                raise KeyError(f"Unknown extra {ext!r}")
+                raise KeyError(f"Unknown extra {ext!r}") from None
         return deps
-    

@@ -1,7 +1,9 @@
 from pathlib import Path
+
 import pytest
 
 TEST_METADATA_DIR = Path(__file__).parent / "test_data" / "metadata"
+
 
 @pytest.mark.parametrize(
     "metadata_path, extras, expected",
@@ -9,25 +11,28 @@ TEST_METADATA_DIR = Path(__file__).parent / "test_data" / "metadata"
         (
             "boto3-1.28.51-py3-none-any.whl.metadata",
             (),
-            ["botocore", "jmespath", "s3transfer"]
+            ["botocore", "jmespath", "s3transfer"],
         ),
         (
             "requests-2.31.0-py3-none-any.whl.metadata",
             (),
-            ["certifi", "urllib3", "charset-normalizer", "idna"]
+            ["certifi", "urllib3", "charset-normalizer", "idna"],
         ),
         (
             "requests-2.31.0-py3-none-any.whl.metadata",
-            ("socks", "use_chardet_on_py3",),
-            ["certifi", "urllib3", "charset-normalizer", "idna", "PySocks", "chardet"]
+            (
+                "socks",
+                "use_chardet_on_py3",
+            ),
+            ["certifi", "urllib3", "charset-normalizer", "idna", "PySocks", "chardet"],
         ),
-    ]
+    ],
 )
 def test_Metadata_requires(metadata_path, extras, expected):
     from micropip.metadata import Metadata
 
     m = Metadata(TEST_METADATA_DIR / metadata_path)
-    
+
     reqs = m.requires(extras)
     reqs_set = set([r.name for r in reqs])
     assert reqs_set == set(expected)
@@ -53,7 +58,10 @@ def test_Metadata_marker():
     markers = {r.name: str(r.marker) for r in reqs}
 
     assert "brotli" in markers
-    assert markers["brotli"] == 'platform_python_implementation == "CPython" and extra == "brotli"'
+    assert (
+        markers["brotli"]
+        == 'platform_python_implementation == "CPython" and extra == "brotli"'
+    )
 
     assert "zstandard" in markers
     assert markers["zstandard"] == 'extra == "zstd"'
