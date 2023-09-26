@@ -1,7 +1,7 @@
 # Compatible Pyodide versions
 
-Following versions of micropip and Pyodide are tested in CI.
-Other versions may work, however with no guarantee.
+The following versions of micropip and Pyodide are tested in CI.
+Other versions may work, however we make no guarantees.
 
 | micropip    | Tested Pyodide versions |
 | ----------- | ----------------------- |
