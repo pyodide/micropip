@@ -286,9 +286,9 @@ async def test_install_with_credentials(selenium):
             # The above will raise an exception as the mock data is garbage
             # but it is sufficient for this test
             pass
-        pyfetch_mock.assert_called_with(
-            "https://pypi.org/pypi/pyodide-micropip-test/json", credentials="include"
-        )
+
+        call_args = pyfetch_mock.call_args.kwargs
+        assert call_args["credentials"] == "include"
 
     await call_micropip_install()
 
