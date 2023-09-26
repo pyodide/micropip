@@ -286,7 +286,7 @@ async def test_install_with_credentials(selenium):
             # The above will raise an exception as the mock data is garbage
             # but it is sufficient for this test
             pass
-        
+
         call_args = pyfetch_mock.call_args.kwargs
         assert call_args["credentials"] == "include"
 
