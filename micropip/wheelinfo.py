@@ -124,13 +124,11 @@ class WheelInfo:
             return
 
         self._data = await self._fetch_bytes(self.url, fetch_kwargs)
-
-        if self.pep658_metadata_available():
-            return
-
-        with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
-            metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
-            self._metadata = Metadata(zipfile.Path(zf, metadata_path))
+        
+        if self._metadata is None:
+            with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
+                metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+                self._metadata = Metadata(zipfile.Path(zf, metadata_path))
 
     def pep658_metadata_available(self) -> bool:
         """

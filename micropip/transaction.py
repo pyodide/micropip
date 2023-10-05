@@ -236,7 +236,12 @@ class Transaction:
             # Case 1) If metadata file is available,
             #         we can gather requirements without waiting for the wheel to be downloaded.
             if wheel.pep658_metadata_available():
-                await wheel.download_pep658_metadata(self.fetch_kwargs)
+                try:
+                    await wheel.download_pep658_metadata(self.fetch_kwargs)
+                except OSError:
+                    # If something goes wrong while downloading the metadata,
+                    # we have to wait for the wheel to be downloaded.
+                    await wheel_download_task
                 await self.gather_requirements(wheel.requires(extras))
             
             # Case 2) If metadata file is not available,
