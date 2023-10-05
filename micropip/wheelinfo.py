@@ -190,7 +190,7 @@ class WheelInfo:
 
     def _extract(self, target: Path) -> None:
         assert self._data
-        with zipfile.ZipFile(self._data) as zf:
+        with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
             zf.extractall(target)
             self._dist_info = target / wheel_dist_info_dir(zf, self.name)
 
@@ -240,4 +240,4 @@ def _validate_sha256_checksum(data: bytes, sha256_expected: str | None = None) -
     
 
 def _generate_package_hash(data: bytes) -> str:
-    return hashlib.sha256(data).hex_digest()
+    return hashlib.sha256(data).hexdigest()

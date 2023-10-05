@@ -231,27 +231,19 @@ class Transaction:
         logger.info(f"Collecting {wheel.name}{specifier}")
         logger.info(f"  Downloading {wheel.url.split('/')[-1]}")
 
-        async with asyncio.TaskGroup() as g:
-            wheel_download_task = g.create_task(wheel.download(self.fetch_kwargs))
-
-            if self.deps:
-                # Case 1) If metadata file is available,
-                #         we can gather requirements without waiting for the wheel to be downloaded.
-                if wheel.pep658_metadata_available():
-                    await g.create_task(
-                        wheel.download_metadata(self.fetch_kwargs)
-                    )
-
-                    await g.create_task(
-                        self.gather_requirements(wheel.requires(extras))
-                    )
-                # Case 2) If metadata file is not available,
-                #         we have to wait for the wheel to be downloaded.
-                else:
-                    await wheel_download_task
-                    await g.create_task(
-                        self.gather_requirements(wheel.requires(extras))
-                    )
+        wheel_download_task = asyncio.create_task(wheel.download(self.fetch_kwargs))
+        if self.deps:
+            # Case 1) If metadata file is available,
+            #         we can gather requirements without waiting for the wheel to be downloaded.
+            if wheel.pep658_metadata_available():
+                await wheel.download_pep658_metadata(self.fetch_kwargs)
+                await self.gather_requirements(wheel.requires(extras))
+            
+            # Case 2) If metadata file is not available,
+            #         we have to wait for the wheel to be downloaded.
+            else:
+                await wheel_download_task
+                await self.gather_requirements(wheel.requires(extras))
 
         self.wheels.append(wheel)
 
