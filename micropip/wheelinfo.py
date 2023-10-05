@@ -222,7 +222,7 @@ class WheelInfo:
         TODO: integrate with pyodide's dynamic library loading mechanism.
         """
         assert self._data
-        dynlibs = get_dynlibs(self._data, ".whl", target)
+        dynlibs = get_dynlibs(io.BytesIO(self._data), ".whl", target)
         await asyncio.gather(*map(lambda dynlib: loadDynlib(dynlib, False), dynlibs))
 
 
