@@ -36,6 +36,7 @@ class WheelInfo:
     parsed_url: ParseResult
     sha256: str | None = None
     size: int | None = None  # Size in bytes, if available (PEP 700)
+    data_dist_info_metadata: bool | dict[str, str] | None = None
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -77,6 +78,7 @@ class WheelInfo:
         version: Version,
         sha256: str | None,
         size: int | None,
+        data_dist_info_metadata: bool = False,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
@@ -92,6 +94,7 @@ class WheelInfo:
             parsed_url=parsed_url,
             sha256=sha256,
             size=size,
+            data_dist_info_metadata=data_dist_info_metadata,
         )
 
     async def install(self, target: Path) -> None:
@@ -118,10 +121,33 @@ class WheelInfo:
         if self._data is not None:
             return
 
-        self._data = await self._fetch_bytes(fetch_kwargs)
+        self._data = await self._fetch_bytes(self.url, fetch_kwargs)
+
+        if self.pep658_metadata_available():
+            return
+
         with zipfile.ZipFile(self._data) as zf:
             metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
             self._metadata = Metadata(zipfile.Path(zf, metadata_path))
+
+    def pep658_metadata_available(self) -> bool:
+        """
+        Check if the wheel's metadata is exposed via PEP 658.
+        """
+        return self.data_dist_info_metadata is not None
+    
+    async def download_pep658_metadata(self, fetch_kwargs: dict[str, Any]) -> dict[str, str]:
+        """
+        Download the wheel's metadata exposed via PEP 658.
+        """
+        if self.data_dist_info_metadata is None:
+            raise RuntimeError(
+                "Micropip internal error: the package index didn't expose the wheel's metadata via PEP 658."
+            )
+        
+        metadata_url = self.url + ".metadata"
+        data = await self._fetch_bytes(metadata_url, fetch_kwargs)
+        self._metadata = Metadata(data.read())
 
     def requires(self, extras: set[str]) -> list[Requirement]:
         """
@@ -136,9 +162,9 @@ class WheelInfo:
         self._requires = requires
         return requires
 
-    async def _fetch_bytes(self, fetch_kwargs: dict[str, Any]):
+    async def _fetch_bytes(self, url: str, fetch_kwargs: dict[str, Any]):
         try:
-            return await fetch_bytes(self.url, fetch_kwargs)
+            return await fetch_bytes(url, fetch_kwargs)
         except OSError as e:
             if self.parsed_url.hostname in [
                 "files.pythonhosted.org",
