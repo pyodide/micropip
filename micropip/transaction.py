@@ -46,7 +46,7 @@ class Transaction:
 
     async def gather_requirements(
         self,
-        requirements: list[str],
+        requirements: list[str] | list[Requirement],
     ) -> None:
         requirement_promises = []
         for requirement in requirements:

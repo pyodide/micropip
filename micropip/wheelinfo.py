@@ -1,11 +1,11 @@
 import asyncio
 import hashlib
 import json
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, Any
 from urllib.parse import ParseResult, urlparse
-from zipfile import ZipFile
 
 from packaging.requirements import Requirement
 from packaging.tags import Tag
@@ -16,11 +16,9 @@ from ._compat import (
     get_dynlibs,
     loadDynlib,
     loadedPackages,
-    wheel_dist_info_dir,
 )
 from ._utils import parse_wheel_filename
-from .externals.pip._internal.utils.wheel import pkg_resources_distribution_for_wheel
-from .externals.pip._vendor.pkg_resources import Distribution
+from .metadata import Metadata, safe_name, wheel_dist_info_dir
 
 
 @dataclass
@@ -42,15 +40,14 @@ class WheelInfo:
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
     _data: IO[bytes] | None = None  # Wheel file contents.
-    _dist: Distribution | None = None  # pkg_resources.Distribution object.
+    _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
-
-    # Note: `_project_name`` is taken from the wheel metadata, while `name` is taken from the wheel filename or metadata of the package index.
-    #       They are mostly the same, but can be different in some weird cases (e.g. a user manually renaming the wheel file), so just to be safe we store both.
-    _project_name: str | None = None  # Project name.
 
     # Path to the .dist-info directory. This is only available after extracting the wheel, i.e. after calling `extract()`.
     _dist_info: Path | None = None
+
+    def __post_init__(self):
+        self._project_name = safe_name(self.name)
 
     @classmethod
     def from_url(cls, url: str) -> "WheelInfo":
@@ -122,24 +119,20 @@ class WheelInfo:
             return
 
         self._data = await self._fetch_bytes(fetch_kwargs)
-        with ZipFile(self._data) as zip_file:
-            self._dist = pkg_resources_distribution_for_wheel(
-                zip_file, self.name, "???"
-            )
+        with zipfile.ZipFile(self._data) as zf:
+            metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+            self._metadata = Metadata(zipfile.Path(zf, metadata_path))
 
-        self._project_name = self._dist.project_name
-        if self._project_name == "UNKNOWN":
-            self._project_name = self.name
-
-    def requires(self, extras: set[str]) -> list[str]:
+    def requires(self, extras: set[str]) -> list[Requirement]:
         """
         Get a list of requirements for the wheel.
         """
-        if not self._dist:
+        if self._metadata is None:
             raise RuntimeError(
-                "Micropip internal error: attempted to access wheel 'requires' before downloading it?"
+                "Micropip internal error: attempted to get requirements before downloading the wheel?"
             )
-        requires = self._dist.requires(extras)
+
+        requires = self._metadata.requires(extras)
         self._requires = requires
         return requires
 
@@ -173,7 +166,7 @@ class WheelInfo:
 
     def _extract(self, target: Path) -> None:
         assert self._data
-        with ZipFile(self._data) as zf:
+        with zipfile.ZipFile(self._data) as zf:
             zf.extractall(target)
             self._dist_info = target / wheel_dist_info_dir(zf, self.name)
 
@@ -193,8 +186,7 @@ class WheelInfo:
                 "PYODIDE_REQUIRES", json.dumps(sorted(x.name for x in self._requires))
             )
 
-        name = self._project_name or self.name
-        setattr(loadedPackages, name, wheel_source)
+        setattr(loadedPackages, self._project_name, wheel_source)
 
     def _write_dist_info(self, file: str, content: str) -> None:
         assert self._dist_info

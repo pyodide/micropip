@@ -30,7 +30,7 @@ SNOWBALL_WHEEL = "snowballstemmer-2.0.0-py2.py3-none-any.whl"
 PYTEST_WHEEL = "pytest-7.2.2-py3-none-any.whl"
 
 
-def _read_pypi_response(file: Path) -> bytes:
+def _read_gzipped_testfile(file: Path) -> bytes:
     return gzip.decompress(file.read_bytes())
 
 
@@ -283,7 +283,7 @@ def _mock_package_index_gen(
     base = secrets.token_hex(16)
 
     for pkg in pkgs:
-        data = _read_pypi_response(TEST_PYPI_RESPONSE_DIR / f"{pkg}{suffix}")
+        data = _read_gzipped_testfile(TEST_PYPI_RESPONSE_DIR / f"{pkg}{suffix}")
         httpserver.expect_request(f"/{base}/{pkg}/").respond_with_data(
             data,
             content_type=content_type,

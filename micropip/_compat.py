@@ -13,7 +13,6 @@ if IN_BROWSER:
         loadedPackages,
         loadPackage,
         to_js,
-        wheel_dist_info_dir,
     )
 else:
     from ._compat_not_in_pyodide import (
@@ -26,7 +25,6 @@ else:
         loadedPackages,
         loadPackage,
         to_js,
-        wheel_dist_info_dir,
     )
 
 __all__ = [
@@ -38,6 +36,5 @@ __all__ = [
     "loadDynlib",
     "loadPackage",
     "get_dynlibs",
-    "wheel_dist_info_dir",
     "to_js",
 ]

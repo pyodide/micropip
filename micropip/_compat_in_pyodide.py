@@ -2,7 +2,7 @@ from io import BytesIO
 from typing import IO
 from urllib.parse import urlparse
 
-from pyodide._package_loader import get_dynlibs, wheel_dist_info_dir
+from pyodide._package_loader import get_dynlibs
 from pyodide.ffi import IN_BROWSER, to_js
 from pyodide.http import pyfetch
 
@@ -54,6 +54,5 @@ __all__ = [
     "loadDynlib",
     "loadPackage",
     "get_dynlibs",
-    "wheel_dist_info_dir",
     "to_js",
 ]
