@@ -37,7 +37,7 @@ class WheelInfo:
     parsed_url: ParseResult
     sha256: str | None = None
     size: int | None = None  # Size in bytes, if available (PEP 700)
-    data_dist_info_metadata: bool | dict[str, str] | None = None
+    data_dist_info_metadata: bool | dict[str, str] | None = None  # Whether the package index exposes the wheel's metadata (PEP 658)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -138,7 +138,7 @@ class WheelInfo:
         """
         return self.data_dist_info_metadata is not None
     
-    async def download_pep658_metadata(self, fetch_kwargs: dict[str, Any]) -> dict[str, str]:
+    async def download_pep658_metadata(self, fetch_kwargs: dict[str, Any] = {}) -> dict[str, str]:
         """
         Download the wheel's metadata exposed via PEP 658.
         """
