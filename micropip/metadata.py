@@ -73,8 +73,14 @@ class Metadata:
     REQUIRES_DIST = "Requires-Dist:"
     PROVIDES_EXTRA = "Provides-Extra:"
 
-    def __init__(self, path: Path | zipfile.Path):
-        self.path = path
+    def __init__(self, metadata: Path | zipfile.Path | bytes):
+        self.metadata: list[str] = []
+
+        if isinstance(metadata, Path | zipfile.Path):
+            self.metadata = metadata.read_text(encoding="utf-8").splitlines()
+        elif isinstance(metadata, bytes):
+            self.metadata = metadata.decode("utf-8").splitlines()
+
         self.deps = self._compute_dependencies()
 
     def _parse_requirement(self, line: str) -> Requirement:
@@ -98,8 +104,7 @@ class Metadata:
                 if not req.marker or req.marker.evaluate(environment):
                     yield req
 
-        lines = self.path.read_text(encoding="utf-8").splitlines()
-        for line in lines:
+        for line in self.metadata:
             if line.startswith(self.REQUIRES_DIST):
                 reqs.append(self._parse_requirement(line))
             elif line.startswith(self.PROVIDES_EXTRA):
