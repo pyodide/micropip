@@ -1,10 +1,11 @@
 import asyncio
 import hashlib
+import io
 import json
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO, Any
+from typing import Any
 from urllib.parse import ParseResult, urlparse
 
 from packaging.requirements import Requirement
@@ -40,7 +41,7 @@ class WheelInfo:
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
-    _data: IO[bytes] | None = None  # Wheel file contents.
+    _data: bytes | None = None  # Wheel file contents.
     _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
 
@@ -112,7 +113,8 @@ class WheelInfo:
             raise RuntimeError(
                 "Micropip internal error: attempted to install wheel before downloading it?"
             )
-        self._validate()
+        _validate_sha256_checksum(self._data, self.sha256)
+
         self._extract(target)
         await self._load_libraries(target)
         self._set_installer()
@@ -126,7 +128,7 @@ class WheelInfo:
         if self.pep658_metadata_available():
             return
 
-        with zipfile.ZipFile(self._data) as zf:
+        with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
             metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
             self._metadata = Metadata(zipfile.Path(zf, metadata_path))
 
@@ -142,12 +144,19 @@ class WheelInfo:
         """
         if self.data_dist_info_metadata is None:
             raise RuntimeError(
-                "Micropip internal error: the package index didn't expose the wheel's metadata via PEP 658."
+                "Micropip internal error: the package index does not expose the wheel's metadata via PEP 658."
             )
         
         metadata_url = self.url + ".metadata"
         data = await self._fetch_bytes(metadata_url, fetch_kwargs)
-        self._metadata = Metadata(data.read())
+        
+        match self.data_dist_info_metadata:
+            case {"sha256": checksum}:  # sha256 checksum available
+                _validate_sha256_checksum(data, checksum)
+            case _: # no checksum available
+                pass 
+
+        self._metadata = Metadata(data)
 
     def requires(self, extras: set[str]) -> list[Requirement]:
         """
@@ -178,17 +187,6 @@ class WheelInfo:
                     "Cross-Origin Resource Sharing (CORS). "
                     "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
                 ) from e
-
-    def _validate(self):
-        if self.sha256 is None:
-            # No checksums available, e.g. because installing
-            # from a different location than PyPI.
-            return
-
-        assert self._data
-        sha256_actual = _generate_package_hash(self._data)
-        if sha256_actual != self.sha256:
-            raise ValueError("Contents don't match hash")
 
     def _extract(self, target: Path) -> None:
         assert self._data
@@ -228,12 +226,18 @@ class WheelInfo:
         await asyncio.gather(*map(lambda dynlib: loadDynlib(dynlib, False), dynlibs))
 
 
-def _generate_package_hash(data: IO[bytes]) -> str:
-    """
-    Generate a SHA256 hash of the package data.
-    """
-    sha256_hash = hashlib.sha256()
-    data.seek(0)
-    while chunk := data.read(4096):
-        sha256_hash.update(chunk)
-    return sha256_hash.hexdigest()
+def _validate_sha256_checksum(data: bytes, sha256_expected: str | None = None) -> None:
+    if sha256_expected is None:
+        # No checksums available, e.g. because installing
+        # from a different location than PyPI.
+        return
+
+    actual = _generate_package_hash(data)
+    if actual != sha256_expected:
+        raise RuntimeError(
+            f"Invalid checksum: expected {sha256_expected}, got {actual}"
+        )
+    
+
+def _generate_package_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hex_digest()

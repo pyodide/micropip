@@ -257,7 +257,7 @@ class mock_fetch_cls:
 
         tmp.seek(0)
 
-        return tmp
+        return tmp.read()
 
 
 @pytest.fixture

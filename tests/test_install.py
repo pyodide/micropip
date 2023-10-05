@@ -381,7 +381,7 @@ async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
     async def _mock_fetch_bytes(url, *args):
         nonlocal _wheel_url
         _wheel_url = url
-        return BytesIO(b"fake wheel")
+        return b"fake wheel"
 
     from micropip import wheelinfo
 
