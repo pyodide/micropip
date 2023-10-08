@@ -150,6 +150,9 @@ class ProjectInfo:
                 hashes = file["digests"] if "digests" in file else file["hashes"]
                 sha256 = hashes.get("sha256")
 
+                # Check if the metadata file is available (PEP 658)
+                data_dist_info_metadata = file.get("data-dist-info-metadata")
+
                 # Size of the file in bytes, if available (PEP 700)
                 # This key is not available in the Simple API HTML response, so this field may be None
                 size = file.get("size")
@@ -161,6 +164,7 @@ class ProjectInfo:
                     version=version,
                     sha256=sha256,
                     size=size,
+                    data_dist_info_metadata=data_dist_info_metadata,
                 )
 
         releases_compatible = {

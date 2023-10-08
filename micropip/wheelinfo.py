@@ -1,10 +1,11 @@
 import asyncio
 import hashlib
+import io
 import json
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO, Any
+from typing import Any
 from urllib.parse import ParseResult, urlparse
 
 from packaging.requirements import Requirement
@@ -36,10 +37,13 @@ class WheelInfo:
     parsed_url: ParseResult
     sha256: str | None = None
     size: int | None = None  # Size in bytes, if available (PEP 700)
+    data_dist_info_metadata: bool | dict[
+        str, str
+    ] | None = None  # Whether the package index exposes the wheel's metadata (PEP 658)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
-    _data: IO[bytes] | None = None  # Wheel file contents.
+    _data: bytes | None = None  # Wheel file contents.
     _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
 
@@ -77,6 +81,7 @@ class WheelInfo:
         version: Version,
         sha256: str | None,
         size: int | None,
+        data_dist_info_metadata: bool = False,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
@@ -92,6 +97,7 @@ class WheelInfo:
             parsed_url=parsed_url,
             sha256=sha256,
             size=size,
+            data_dist_info_metadata=data_dist_info_metadata,
         )
 
     async def install(self, target: Path) -> None:
@@ -109,7 +115,8 @@ class WheelInfo:
             raise RuntimeError(
                 "Micropip internal error: attempted to install wheel before downloading it?"
             )
-        self._validate()
+        _validate_sha256_checksum(self._data, self.sha256)
+
         self._extract(target)
         await self._load_libraries(target)
         self._set_installer()
@@ -118,10 +125,44 @@ class WheelInfo:
         if self._data is not None:
             return
 
-        self._data = await self._fetch_bytes(fetch_kwargs)
-        with zipfile.ZipFile(self._data) as zf:
-            metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
-            self._metadata = Metadata(zipfile.Path(zf, metadata_path))
+        self._data = await self._fetch_bytes(self.url, fetch_kwargs)
+
+        if self._metadata is None:
+            with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
+                metadata_path = (
+                    wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+                )
+                self._metadata = Metadata(zipfile.Path(zf, metadata_path))
+
+    def pep658_metadata_available(self) -> bool:
+        """
+        Check if the wheel's metadata is exposed via PEP 658.
+        """
+        return self.data_dist_info_metadata is not None
+
+    async def download_pep658_metadata(
+        self, fetch_kwargs: dict[str, Any] = None
+    ) -> dict[str, str]:
+        """
+        Download the wheel's metadata exposed via PEP 658.
+        """
+        if fetch_kwargs is None:
+            fetch_kwargs = {}
+        if self.data_dist_info_metadata is None:
+            raise RuntimeError(
+                "Micropip internal error: the package index does not expose the wheel's metadata via PEP 658."
+            )
+
+        metadata_url = self.url + ".metadata"
+        data = await self._fetch_bytes(metadata_url, fetch_kwargs)
+
+        match self.data_dist_info_metadata:
+            case {"sha256": checksum}:  # sha256 checksum available
+                _validate_sha256_checksum(data, checksum)
+            case _:  # no checksum available
+                pass
+
+        self._metadata = Metadata(data)
 
     def requires(self, extras: set[str]) -> list[Requirement]:
         """
@@ -136,9 +177,9 @@ class WheelInfo:
         self._requires = requires
         return requires
 
-    async def _fetch_bytes(self, fetch_kwargs: dict[str, Any]):
+    async def _fetch_bytes(self, url: str, fetch_kwargs: dict[str, Any]):
         try:
-            return await fetch_bytes(self.url, fetch_kwargs)
+            return await fetch_bytes(url, fetch_kwargs)
         except OSError as e:
             if self.parsed_url.hostname in [
                 "files.pythonhosted.org",
@@ -153,20 +194,9 @@ class WheelInfo:
                     "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
                 ) from e
 
-    def _validate(self):
-        if self.sha256 is None:
-            # No checksums available, e.g. because installing
-            # from a different location than PyPI.
-            return
-
-        assert self._data
-        sha256_actual = _generate_package_hash(self._data)
-        if sha256_actual != self.sha256:
-            raise ValueError("Contents don't match hash")
-
     def _extract(self, target: Path) -> None:
         assert self._data
-        with zipfile.ZipFile(self._data) as zf:
+        with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
             zf.extractall(target)
             self._dist_info = target / wheel_dist_info_dir(zf, self.name)
 
@@ -198,16 +228,22 @@ class WheelInfo:
         TODO: integrate with pyodide's dynamic library loading mechanism.
         """
         assert self._data
-        dynlibs = get_dynlibs(self._data, ".whl", target)
+        dynlibs = get_dynlibs(io.BytesIO(self._data), ".whl", target)
         await asyncio.gather(*map(lambda dynlib: loadDynlib(dynlib, False), dynlibs))
 
 
-def _generate_package_hash(data: IO[bytes]) -> str:
-    """
-    Generate a SHA256 hash of the package data.
-    """
-    sha256_hash = hashlib.sha256()
-    data.seek(0)
-    while chunk := data.read(4096):
-        sha256_hash.update(chunk)
-    return sha256_hash.hexdigest()
+def _validate_sha256_checksum(data: bytes, sha256_expected: str | None = None) -> None:
+    if sha256_expected is None:
+        # No checksums available, e.g. because installing
+        # from a different location than PyPI.
+        return
+
+    actual = _generate_package_hash(data)
+    if actual != sha256_expected:
+        raise RuntimeError(
+            f"Invalid checksum: expected {sha256_expected}, got {actual}"
+        )
+
+
+def _generate_package_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()

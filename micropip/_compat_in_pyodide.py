@@ -1,5 +1,3 @@
-from io import BytesIO
-from typing import IO
 from urllib.parse import urlparse
 
 from pyodide._package_loader import get_dynlibs
@@ -20,7 +18,7 @@ except ImportError:
     # Otherwise, this is pytest test collection so let it go.
 
 
-async def fetch_bytes(url: str, kwargs: dict[str, str]) -> IO[bytes]:
+async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
     parsed_url = urlparse(url)
     if parsed_url.scheme == "emfs":
         return open(parsed_url.path, "rb")
@@ -28,7 +26,7 @@ async def fetch_bytes(url: str, kwargs: dict[str, str]) -> IO[bytes]:
         result_bytes = (await loadBinaryFile(parsed_url.path)).to_bytes()
     else:
         result_bytes = await (await pyfetch(url, **kwargs)).bytes()
-    return BytesIO(result_bytes)
+    return result_bytes
 
 
 async def fetch_string_and_headers(
