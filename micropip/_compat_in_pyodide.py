@@ -1,5 +1,3 @@
-from io import BytesIO
-from typing import IO
 from urllib.parse import urlparse
 
 from pyodide._package_loader import get_dynlibs

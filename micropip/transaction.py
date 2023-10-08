@@ -243,7 +243,7 @@ class Transaction:
                     # we have to wait for the wheel to be downloaded.
                     await wheel_download_task
                 await self.gather_requirements(wheel.requires(extras))
-            
+
             # Case 2) If metadata file is not available,
             #         we have to wait for the wheel to be downloaded.
             else:

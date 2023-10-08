@@ -1,5 +1,4 @@
 import re
-from io import BytesIO
 from pathlib import Path
 from typing import IO, Any
 

@@ -37,7 +37,9 @@ class WheelInfo:
     parsed_url: ParseResult
     sha256: str | None = None
     size: int | None = None  # Size in bytes, if available (PEP 700)
-    data_dist_info_metadata: bool | dict[str, str] | None = None  # Whether the package index exposes the wheel's metadata (PEP 658)
+    data_dist_info_metadata: bool | dict[
+        str, str
+    ] | None = None  # Whether the package index exposes the wheel's metadata (PEP 658)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -124,10 +126,12 @@ class WheelInfo:
             return
 
         self._data = await self._fetch_bytes(self.url, fetch_kwargs)
-        
+
         if self._metadata is None:
             with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
-                metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+                metadata_path = (
+                    wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+                )
                 self._metadata = Metadata(zipfile.Path(zf, metadata_path))
 
     def pep658_metadata_available(self) -> bool:
@@ -135,24 +139,28 @@ class WheelInfo:
         Check if the wheel's metadata is exposed via PEP 658.
         """
         return self.data_dist_info_metadata is not None
-    
-    async def download_pep658_metadata(self, fetch_kwargs: dict[str, Any] = {}) -> dict[str, str]:
+
+    async def download_pep658_metadata(
+        self, fetch_kwargs: dict[str, Any] = None
+    ) -> dict[str, str]:
         """
         Download the wheel's metadata exposed via PEP 658.
         """
+        if fetch_kwargs is None:
+            fetch_kwargs = {}
         if self.data_dist_info_metadata is None:
             raise RuntimeError(
                 "Micropip internal error: the package index does not expose the wheel's metadata via PEP 658."
             )
-        
+
         metadata_url = self.url + ".metadata"
         data = await self._fetch_bytes(metadata_url, fetch_kwargs)
-        
+
         match self.data_dist_info_metadata:
             case {"sha256": checksum}:  # sha256 checksum available
                 _validate_sha256_checksum(data, checksum)
-            case _: # no checksum available
-                pass 
+            case _:  # no checksum available
+                pass
 
         self._metadata = Metadata(data)
 
@@ -235,7 +243,7 @@ def _validate_sha256_checksum(data: bytes, sha256_expected: str | None = None) -
         raise RuntimeError(
             f"Invalid checksum: expected {sha256_expected}, got {actual}"
         )
-    
+
 
 def _generate_package_hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()

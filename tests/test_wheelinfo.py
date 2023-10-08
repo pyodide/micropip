@@ -1,6 +1,6 @@
-from packaging.utils import parse_wheel_filename
 import pytest
 from conftest import PYTEST_WHEEL, TEST_WHEEL_DIR, _read_gzipped_testfile
+from packaging.utils import parse_wheel_filename
 
 from micropip.wheelinfo import WheelInfo
 
@@ -119,10 +119,20 @@ def test_pep658_metadata_available():
     sha256 = "dummy-sha256"
     size = 1234
 
-    wheel = WheelInfo.from_package_index(name, filename, url, version, sha256, size, data_dist_info_metadata=True)
+    wheel = WheelInfo.from_package_index(
+        name, filename, url, version, sha256, size, data_dist_info_metadata=True
+    )
     assert wheel.pep658_metadata_available()
 
-    wheel = WheelInfo.from_package_index(name, filename, url, version, sha256, size, data_dist_info_metadata={"sha256": "dummy-sha256"})
+    wheel = WheelInfo.from_package_index(
+        name,
+        filename,
+        url,
+        version,
+        sha256,
+        size,
+        data_dist_info_metadata={"sha256": "dummy-sha256"},
+    )
     assert wheel.pep658_metadata_available()
 
     wheel = WheelInfo.from_url(url)
@@ -138,24 +148,46 @@ async def test_download_pep658_metadata(dummy_wheel_url):
     sha256 = "dummy-sha256"
     size = 1234
 
-    wheel = WheelInfo.from_package_index(name, filename, dummy_wheel_url, version, sha256, size, data_dist_info_metadata=True)
+    wheel = WheelInfo.from_package_index(
+        name,
+        filename,
+        dummy_wheel_url,
+        version,
+        sha256,
+        size,
+        data_dist_info_metadata=True,
+    )
     assert wheel.pep658_metadata_available()
 
     assert wheel._metadata is None
     await wheel.download_pep658_metadata()
     assert wheel._metadata is not None
 
-
-    wheel = WheelInfo.from_package_index(name, filename, dummy_wheel_url, version, sha256, size, data_dist_info_metadata={"sha256": "dummy-sha256"})
+    wheel = WheelInfo.from_package_index(
+        name,
+        filename,
+        dummy_wheel_url,
+        version,
+        sha256,
+        size,
+        data_dist_info_metadata={"sha256": "dummy-sha256"},
+    )
     assert wheel.pep658_metadata_available()
 
     assert wheel._metadata is None
     with pytest.raises(RuntimeError, match="Invalid checksum: expected dummy-sha256"):
         await wheel.download_pep658_metadata()
 
-    
     checksum = "62eb95408ccec185e7a3b8f354a1df1721cd8f463922f5a900c7bf4b69c5a4e8"  # TODO: calculate this from the file
-    wheel = WheelInfo.from_package_index(name, filename, dummy_wheel_url, version, sha256, size, data_dist_info_metadata={"sha256": checksum})
+    wheel = WheelInfo.from_package_index(
+        name,
+        filename,
+        dummy_wheel_url,
+        version,
+        sha256,
+        size,
+        data_dist_info_metadata={"sha256": checksum},
+    )
     assert wheel.pep658_metadata_available()
 
     assert wheel._metadata is None
