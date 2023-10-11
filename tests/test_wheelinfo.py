@@ -1,5 +1,3 @@
-from io import BytesIO
-
 import pytest
 from conftest import PYTEST_WHEEL, TEST_WHEEL_DIR
 

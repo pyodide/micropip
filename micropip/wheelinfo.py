@@ -5,7 +5,7 @@ import json
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO, Any
+from typing import Any
 from urllib.parse import ParseResult, urlparse
 
 from packaging.requirements import Requirement
@@ -200,9 +200,7 @@ def _validate_sha256_checksum(data: bytes, expected: str | None = None) -> None:
 
     actual = _generate_package_hash(data)
     if actual != expected:
-        raise RuntimeError(
-            f"Invalid checksum: expected {expected}, got {actual}"
-        )
+        raise RuntimeError(f"Invalid checksum: expected {expected}, got {actual}")
 
 
 def _generate_package_hash(data: bytes) -> str:
