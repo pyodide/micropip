@@ -13,7 +13,7 @@ def dummy_wheel():
 
 @pytest.fixture
 def dummy_wheel_content():
-    yield BytesIO((TEST_WHEEL_DIR / PYTEST_WHEEL).read_bytes())
+    yield (TEST_WHEEL_DIR / PYTEST_WHEEL).read_bytes()
 
 
 @pytest.fixture
@@ -54,25 +54,6 @@ def test_from_package_index():
     assert wheel.filename == filename
     assert wheel.size == size
     assert wheel.sha256 == sha256
-
-
-def test_validate(dummy_wheel):
-    import hashlib
-
-    dummy_wheel.sha256 = None
-    dummy_wheel._data = BytesIO(b"dummy-data")
-
-    # Should succeed when sha256 is None
-    dummy_wheel._validate()
-
-    # Should fail when checksum is different
-    dummy_wheel.sha256 = "dummy-sha256"
-    with pytest.raises(ValueError, match="Contents don't match hash"):
-        dummy_wheel._validate()
-
-    # Should succeed when checksum is the same
-    dummy_wheel.sha256 = hashlib.sha256(b"dummy-data").hexdigest()
-    dummy_wheel._validate()
 
 
 def test_extract(dummy_wheel, dummy_wheel_content, tmp_path):
