@@ -23,7 +23,7 @@ async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
     parsed_url = urlparse(url)
     if parsed_url.scheme == "emfs":
         result_bytes = Path(parsed_url.path).read_bytes()
-    if parsed_url.scheme == "file":
+    elif parsed_url.scheme == "file":
         result_bytes = (await loadBinaryFile(parsed_url.path)).to_bytes()
     else:
         result_bytes = await (await pyfetch(url, **kwargs)).bytes()
