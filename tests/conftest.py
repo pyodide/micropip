@@ -2,6 +2,7 @@ import functools
 import gzip
 import io
 import sys
+from typing import Any
 import zipfile
 from dataclasses import dataclass
 from importlib.metadata import Distribution, PackageNotFoundError
@@ -9,7 +10,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
-from packaging.utils import canonicalize_name, parse_wheel_filename
+from packaging.utils import parse_wheel_filename
+from pytest_httpserver import HTTPServer
 from pytest_pyodide import spawn_web_server
 
 
@@ -102,9 +104,18 @@ class WheelCatalog:
         def content(self) -> bytes:
             return self._path.read_bytes()
 
-    def __init__(self, httpserver):
+    def __init__(self):
         self._wheels = {}
-        self._httpserver = httpserver
+
+        self._httpserver = HTTPServer()
+        self._httpserver.no_handler_status_code = 404
+    
+    def __enter__(self):
+        self._httpserver.__enter__()
+        return self
+
+    def __exit__(self, *args: Any):
+        self._httpserver.__exit__(*args)
 
     def _register_handler(self, path: Path) -> str:
         self._httpserver.expect_request(f"/{path.name}").respond_with_data(
@@ -128,16 +139,13 @@ class WheelCatalog:
 
 
 @pytest.fixture(scope="session")
-def test_wheel_catalog(make_httpserver):
+def test_wheel_catalog():
     """Run a mock server that serves pre-built wheels"""
-    server = make_httpserver
-    server.no_handler_status_code = 404
-    catalog = WheelCatalog(server)
+    with WheelCatalog() as catalog:
+        for wheel in TEST_WHEEL_DIR.glob("*.whl"):
+            catalog.add_wheel(wheel)
 
-    for wheel in TEST_WHEEL_DIR.glob("*.whl"):
-        catalog.add_wheel(wheel)
-
-    yield catalog
+        yield catalog
 
 
 @pytest.fixture
