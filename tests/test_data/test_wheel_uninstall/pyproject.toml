@@ -1,5 +1,5 @@
 [project]
-name = "test_wheel_uninstall"
+name = "test-wheel-uninstall"
 description = "Test wheel uninstall"
 requires-python = ">=3.10"
 version = "1.0.0"

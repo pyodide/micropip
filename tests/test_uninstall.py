@@ -3,9 +3,10 @@
 import pytest
 from pytest_pyodide import run_in_pyodide, spawn_web_server
 from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR
-from packaging.utils import parse_wheel_filename
+from packaging.utils import parse_wheel_filename, canonicalize_name
 
 TEST_PACKAGE_NAME = "test_wheel_uninstall"
+TEST_PACKAGE_NAME_NORMALIZED = canonicalize_name(TEST_PACKAGE_NAME)
 
 
 @pytest.fixture(scope="module")
@@ -19,7 +20,7 @@ def test_wheel_url(test_wheel_path):
 
 def test_basic(selenium_standalone_micropip, test_wheel_url):
     @run_in_pyodide()
-    async def run(selenium, pkg_name, wheel_url):
+    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
         import importlib.metadata
         import sys
 
@@ -27,7 +28,7 @@ def test_basic(selenium_standalone_micropip, test_wheel_url):
 
         await micropip.install(wheel_url)
 
-        assert pkg_name in micropip.list()
+        assert pkg_name_normalized in micropip.list()
         assert pkg_name not in sys.modules
 
         __import__(pkg_name)
@@ -52,7 +53,7 @@ def test_basic(selenium_standalone_micropip, test_wheel_url):
         # 3. Check that the module is not available with micropip.list()
         assert pkg_name not in micropip.list()
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, test_wheel_url)
+    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
 
 
 def test_files(selenium_standalone_micropip, test_wheel_url):
@@ -61,13 +62,13 @@ def test_files(selenium_standalone_micropip, test_wheel_url):
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, wheel_url):
+    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
         import importlib.metadata
 
         import micropip
 
         await micropip.install(wheel_url)
-        assert pkg_name in micropip.list()
+        assert pkg_name_normalized in micropip.list()
 
         dist = importlib.metadata.distribution(pkg_name)
         files = dist.files
@@ -86,7 +87,7 @@ def test_files(selenium_standalone_micropip, test_wheel_url):
 
         assert not dist._path.is_dir(), f"{dist._path} still exists after removal"
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, test_wheel_url)
+    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
 
 
 def test_install_again(selenium_standalone_micropip, test_wheel_url):
@@ -95,20 +96,20 @@ def test_install_again(selenium_standalone_micropip, test_wheel_url):
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, wheel_url):
+    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
         import sys
 
         import micropip
 
         await micropip.install(wheel_url)
 
-        assert pkg_name in micropip.list()
+        assert pkg_name_normalized in micropip.list()
 
         __import__(pkg_name)
 
         micropip.uninstall(pkg_name)
 
-        assert pkg_name not in micropip.list()
+        assert pkg_name_normalized not in micropip.list()
 
         del sys.modules[pkg_name]
 
@@ -121,10 +122,10 @@ def test_install_again(selenium_standalone_micropip, test_wheel_url):
 
         await micropip.install(wheel_url)
 
-        assert pkg_name in micropip.list()
+        assert pkg_name_normalized in micropip.list()
         __import__(pkg_name)
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, test_wheel_url)
+    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
 
 
 def test_warning_not_installed(selenium_standalone_micropip):
@@ -156,7 +157,7 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, wheel_url):
+    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
         from importlib.metadata import distribution
         import micropip
         import contextlib
@@ -165,9 +166,9 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
         with io.StringIO() as buf, contextlib.redirect_stdout(buf):
             await micropip.install(wheel_url)
 
-            assert pkg_name in micropip.list()
+            assert pkg_name_normalized in micropip.list()
 
-            dist = distribution(pkg_name)
+            dist = distribution(pkg_name_normalized)
             files = dist.files
             file1 = files[0]
             file2 = files[1]
@@ -175,7 +176,7 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
             file1.locate().unlink()
             file2.locate().unlink()
 
-            micropip.uninstall(pkg_name)
+            micropip.uninstall(pkg_name_normalized)
 
             captured = buf.getvalue()
             logs = captured.strip().split("\n")
@@ -184,7 +185,7 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
             assert "does not exist" in logs[-1]
             assert "does not exist" in logs[-2]
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, test_wheel_url)
+    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
 
 
 def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
@@ -193,7 +194,7 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, wheel_url):
+    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
         from importlib.metadata import distribution
         import micropip
         import contextlib
@@ -201,12 +202,12 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
 
         with io.StringIO() as buf, contextlib.redirect_stdout(buf):
             await micropip.install(wheel_url)
-            assert pkg_name in micropip.list()
+            assert pkg_name_normalized in micropip.list()
 
-            pkg_dir = distribution(pkg_name)._path.parent / "deep"
+            pkg_dir = distribution(pkg_name_normalized)._path.parent / "deep"
             (pkg_dir / "extra-file.txt").touch()
 
-            micropip.uninstall(pkg_name)
+            micropip.uninstall(pkg_name_normalized)
 
             captured = buf.getvalue()
             logs = captured.strip().split("\n")
@@ -214,7 +215,7 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
             assert len(logs) == 1
             assert "is not empty after uninstallation" in logs[0]
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, test_wheel_url)
+    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
 
 
 def test_pyodide_repodata(selenium_standalone_micropip):
