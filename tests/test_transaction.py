@@ -1,7 +1,6 @@
 import pytest
-from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR
+from conftest import SNOWBALL_WHEEL
 from packaging.tags import Tag
-from pytest_pyodide import spawn_web_server
 
 
 @pytest.mark.parametrize(
@@ -65,23 +64,20 @@ def create_transaction(Transaction):
 
 
 @pytest.mark.asyncio
-async def test_add_requirement():
+async def test_add_requirement(test_wheel_catalog):
     pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
-    with spawn_web_server(TEST_WHEEL_DIR) as server:
-        server_hostname, server_port, _ = server
-        base_url = f"http://{server_hostname}:{server_port}/"
-        url = base_url + SNOWBALL_WHEEL
+    snowballstemmer_wheel = test_wheel_catalog("snowballstemmer")
 
-        transaction = create_transaction(Transaction)
-        await transaction.add_requirement(url)
+    transaction = create_transaction(Transaction)
+    await transaction.add_requirement(snowballstemmer_wheel.url)
 
     wheel = transaction.wheels[0]
     assert wheel.name == "snowballstemmer"
     assert str(wheel.version) == "2.0.0"
     assert wheel.filename == SNOWBALL_WHEEL
-    assert wheel.url == url
+    assert wheel.url == snowballstemmer_wheel.url
     assert wheel.tags == frozenset(
         {Tag("py2", "none", "any"), Tag("py3", "none", "any")}
     )

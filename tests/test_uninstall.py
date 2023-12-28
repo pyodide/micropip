@@ -1,24 +1,12 @@
 # isort: skip_file
 
-import pytest
-from pytest_pyodide import run_in_pyodide, spawn_web_server
-from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR
-from packaging.utils import parse_wheel_filename, canonicalize_name
+from pytest_pyodide import run_in_pyodide
+from packaging.utils import parse_wheel_filename
 
 TEST_PACKAGE_NAME = "test_wheel_uninstall"
-TEST_PACKAGE_NAME_NORMALIZED = canonicalize_name(TEST_PACKAGE_NAME)
 
 
-@pytest.fixture(scope="module")
-def test_wheel_url(test_wheel_path):
-    wheel_file = next(test_wheel_path.glob(f"{TEST_PACKAGE_NAME}-*.whl")).name
-
-    with spawn_web_server(test_wheel_path) as server:
-        server_hostname, server_port, _ = server
-        yield f"http://{server_hostname}:{server_port}/{wheel_file}"
-
-
-def test_basic(selenium_standalone_micropip, test_wheel_url):
+def test_basic(selenium_standalone_micropip, test_wheel_catalog):
     @run_in_pyodide()
     async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
         import importlib.metadata
@@ -53,15 +41,17 @@ def test_basic(selenium_standalone_micropip, test_wheel_url):
         # 3. Check that the module is not available with micropip.list()
         assert pkg_name not in micropip.list()
 
+    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+
     run(
         selenium_standalone_micropip,
-        TEST_PACKAGE_NAME,
-        TEST_PACKAGE_NAME_NORMALIZED,
-        test_wheel_url,
+        test_wheel.name,
+        test_wheel.normalized_name,
+        test_wheel.url,
     )
 
 
-def test_files(selenium_standalone_micropip, test_wheel_url):
+def test_files(selenium_standalone_micropip, test_wheel_catalog):
     """
     Check all files are removed after uninstallation.
     """
@@ -92,15 +82,17 @@ def test_files(selenium_standalone_micropip, test_wheel_url):
 
         assert not dist._path.is_dir(), f"{dist._path} still exists after removal"
 
+    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+
     run(
         selenium_standalone_micropip,
-        TEST_PACKAGE_NAME,
-        TEST_PACKAGE_NAME_NORMALIZED,
-        test_wheel_url,
+        test_wheel.name,
+        test_wheel.normalized_name,
+        test_wheel.url,
     )
 
 
-def test_install_again(selenium_standalone_micropip, test_wheel_url):
+def test_install_again(selenium_standalone_micropip, test_wheel_catalog):
     """
     Check that uninstalling and installing again works.
     """
@@ -135,11 +127,13 @@ def test_install_again(selenium_standalone_micropip, test_wheel_url):
         assert pkg_name_normalized in micropip.list()
         __import__(pkg_name)
 
+    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+
     run(
         selenium_standalone_micropip,
-        TEST_PACKAGE_NAME,
-        TEST_PACKAGE_NAME_NORMALIZED,
-        test_wheel_url,
+        test_wheel.name,
+        test_wheel.normalized_name,
+        test_wheel.url,
     )
 
 
@@ -166,7 +160,7 @@ def test_warning_not_installed(selenium_standalone_micropip):
     run(selenium_standalone_micropip)
 
 
-def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
+def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
     """
     Test warning when files in a package are removed by user.
     """
@@ -200,15 +194,17 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
             assert "does not exist" in logs[-1]
             assert "does not exist" in logs[-2]
 
+    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+
     run(
         selenium_standalone_micropip,
-        TEST_PACKAGE_NAME,
-        TEST_PACKAGE_NAME_NORMALIZED,
-        test_wheel_url,
+        test_wheel.name,
+        test_wheel.normalized_name,
+        test_wheel.url,
     )
 
 
-def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
+def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_catalog):
     """
     Test warning when there are remaining files after uninstallation.
     """
@@ -235,11 +231,13 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
             assert len(logs) == 1
             assert "is not empty after uninstallation" in logs[0]
 
+    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+
     run(
         selenium_standalone_micropip,
-        TEST_PACKAGE_NAME,
-        TEST_PACKAGE_NAME_NORMALIZED,
-        test_wheel_url,
+        test_wheel.name,
+        test_wheel.normalized_name,
+        test_wheel.url,
     )
 
 
@@ -272,27 +270,24 @@ def test_pyodide_repodata(selenium_standalone_micropip):
     run(selenium_standalone_micropip)
 
 
-def test_logging(selenium_standalone_micropip):
-    # TODO: make a fixture for this, it's used in a few places
-    with spawn_web_server(TEST_WHEEL_DIR) as server:
-        server_hostname, server_port, _ = server
-        url = f"http://{server_hostname}:{server_port}/"
-        wheel_url = url + SNOWBALL_WHEEL
-        name, version, _, _ = parse_wheel_filename(SNOWBALL_WHEEL)
+def test_logging(selenium_standalone_micropip, test_wheel_catalog):
+    snowballstemmer_wheel = test_wheel_catalog.get("snowballstemmer")
+    wheel_url = snowballstemmer_wheel.url
+    name, version, _, _ = parse_wheel_filename(snowballstemmer_wheel.filename)
 
-        @run_in_pyodide(packages=["micropip"])
-        async def run_test(selenium, url, name, version):
-            import micropip
-            import contextlib
-            import io
+    @run_in_pyodide(packages=["micropip"])
+    async def run_test(selenium, url, name, version):
+        import micropip
+        import contextlib
+        import io
 
-            with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-                await micropip.install(url)
-                micropip.uninstall("snowballstemmer", verbose=True)
+        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+            await micropip.install(url)
+            micropip.uninstall("snowballstemmer", verbose=True)
 
-                captured = buf.getvalue()
+            captured = buf.getvalue()
 
-                assert f"Found existing installation: {name} {version}" in captured
-                assert f"Successfully uninstalled {name}-{version}" in captured
+            assert f"Found existing installation: {name} {version}" in captured
+            assert f"Successfully uninstalled {name}-{version}" in captured
 
-        run_test(selenium_standalone_micropip, wheel_url, name, version)
+    run_test(selenium_standalone_micropip, wheel_url, name, version)
