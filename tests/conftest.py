@@ -131,6 +131,7 @@ class WheelCatalog:
 def test_wheel_catalog(make_httpserver):
     """Run a mock server that serves pre-built wheels"""
     server = make_httpserver
+    server.no_handler_status_code = 404
     catalog = WheelCatalog(server)
 
     for wheel in TEST_WHEEL_DIR.glob("*.whl"):
