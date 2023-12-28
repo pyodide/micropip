@@ -2,12 +2,12 @@ import functools
 import gzip
 import io
 import sys
-from typing import Any
 import zipfile
 from dataclasses import dataclass
 from importlib.metadata import Distribution, PackageNotFoundError
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 import pytest
 from packaging.utils import parse_wheel_filename
@@ -110,7 +110,7 @@ class WheelCatalog:
 
         self._httpserver = HTTPServer()
         self._httpserver.no_handler_status_code = 404
-    
+
     def __enter__(self):
         self._httpserver.__enter__()
         return self
