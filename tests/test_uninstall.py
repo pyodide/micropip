@@ -53,7 +53,12 @@ def test_basic(selenium_standalone_micropip, test_wheel_url):
         # 3. Check that the module is not available with micropip.list()
         assert pkg_name not in micropip.list()
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
+    run(
+        selenium_standalone_micropip,
+        TEST_PACKAGE_NAME,
+        TEST_PACKAGE_NAME_NORMALIZED,
+        test_wheel_url,
+    )
 
 
 def test_files(selenium_standalone_micropip, test_wheel_url):
@@ -87,7 +92,12 @@ def test_files(selenium_standalone_micropip, test_wheel_url):
 
         assert not dist._path.is_dir(), f"{dist._path} still exists after removal"
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
+    run(
+        selenium_standalone_micropip,
+        TEST_PACKAGE_NAME,
+        TEST_PACKAGE_NAME_NORMALIZED,
+        test_wheel_url,
+    )
 
 
 def test_install_again(selenium_standalone_micropip, test_wheel_url):
@@ -125,7 +135,12 @@ def test_install_again(selenium_standalone_micropip, test_wheel_url):
         assert pkg_name_normalized in micropip.list()
         __import__(pkg_name)
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
+    run(
+        selenium_standalone_micropip,
+        TEST_PACKAGE_NAME,
+        TEST_PACKAGE_NAME_NORMALIZED,
+        test_wheel_url,
+    )
 
 
 def test_warning_not_installed(selenium_standalone_micropip):
@@ -185,7 +200,12 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_url):
             assert "does not exist" in logs[-1]
             assert "does not exist" in logs[-2]
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
+    run(
+        selenium_standalone_micropip,
+        TEST_PACKAGE_NAME,
+        TEST_PACKAGE_NAME_NORMALIZED,
+        test_wheel_url,
+    )
 
 
 def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
@@ -215,7 +235,12 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_url):
             assert len(logs) == 1
             assert "is not empty after uninstallation" in logs[0]
 
-    run(selenium_standalone_micropip, TEST_PACKAGE_NAME, TEST_PACKAGE_NAME_NORMALIZED, test_wheel_url)
+    run(
+        selenium_standalone_micropip,
+        TEST_PACKAGE_NAME,
+        TEST_PACKAGE_NAME_NORMALIZED,
+        test_wheel_url,
+    )
 
 
 def test_pyodide_repodata(selenium_standalone_micropip):
