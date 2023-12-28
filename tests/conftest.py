@@ -130,9 +130,10 @@ class WheelCatalog:
 
 
 @pytest.fixture(scope="session")
-def test_wheel_catalog(httpserver, test_wheel_path):
+def test_wheel_catalog(make_httpserver):
     """Run a mock server that serves pre-built wheels"""
-    catalog = WheelCatalog(httpserver)
+    server = make_httpserver
+    catalog = WheelCatalog(server)
 
     for wheel in TEST_WHEEL_DIR.glob("*.whl"):
         catalog.add_wheel(wheel)
