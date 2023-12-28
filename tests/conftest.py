@@ -113,11 +113,10 @@ class WheelCatalog:
             headers={"Access-Control-Allow-Origin": "*"},
         )
 
-        return self._httpserver.url_for(path.name)
+        return self._httpserver.url_for(f"/{path.name}")
 
     def add_wheel(self, path: Path):
         name = parse_wheel_filename(path.name)[0]
-        path.read_bytes()
         url = self._register_handler(path)
 
         self._wheels[name] = self.Wheel(
@@ -137,7 +136,7 @@ def test_wheel_catalog(make_httpserver):
     for wheel in TEST_WHEEL_DIR.glob("*.whl"):
         catalog.add_wheel(wheel)
 
-    return catalog
+    yield catalog
 
 
 @pytest.fixture
