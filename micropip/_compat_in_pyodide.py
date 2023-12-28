@@ -25,7 +25,7 @@ async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
         return Path(parsed_url.path).read_bytes()
     if parsed_url.scheme == "file":
         return (await loadBinaryFile(parsed_url.path)).to_bytes()
-    
+
     return await (await pyfetch(url, **kwargs)).bytes()
 
 
