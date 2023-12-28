@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 version = "1.0.0"
 
 [tool.setuptools]
-packages = ["deep", "deep.deep", "shallow", "test_wheel_uninstall"]
+packages = ["deep", "deep.deep", "shallow", "test_wheel_uninstall", "deep.data"]
 py-modules = ["top_level"]
 
 [tool.setuptools.package-data]
