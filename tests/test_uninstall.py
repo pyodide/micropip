@@ -8,7 +8,7 @@ TEST_PACKAGE_NAME = "test-wheel-uninstall"
 
 def test_basic(selenium_standalone_micropip, test_wheel_catalog):
     @run_in_pyodide()
-    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
+    async def run(selenium, pkg_name, import_name, wheel_url):
         import importlib.metadata
         import sys
 
@@ -16,18 +16,18 @@ def test_basic(selenium_standalone_micropip, test_wheel_catalog):
 
         await micropip.install(wheel_url)
 
-        assert pkg_name_normalized in micropip.list()
-        assert pkg_name not in sys.modules
+        assert pkg_name in micropip.list()
+        assert import_name not in sys.modules
 
-        __import__(pkg_name)
-        assert pkg_name in sys.modules
+        __import__(import_name)
+        assert import_name in sys.modules
 
         micropip.uninstall(pkg_name)
-        del sys.modules[pkg_name]
+        del sys.modules[import_name]
 
         # 1. Check that the module is not available with import statement
         try:
-            __import__(pkg_name)
+            __import__(import_name)
         except ImportError:
             pass
         else:
@@ -45,8 +45,8 @@ def test_basic(selenium_standalone_micropip, test_wheel_catalog):
 
     run(
         selenium_standalone_micropip,
-        test_wheel.name.lower(),
         test_wheel.name,
+        test_wheel.top_level,
         test_wheel.url,
     )
 
@@ -57,13 +57,13 @@ def test_files(selenium_standalone_micropip, test_wheel_catalog):
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
+    async def run(selenium, pkg_name, wheel_url):
         import importlib.metadata
 
         import micropip
 
         await micropip.install(wheel_url)
-        assert pkg_name_normalized in micropip.list()
+        assert pkg_name in micropip.list()
 
         dist = importlib.metadata.distribution(pkg_name)
         files = dist.files
@@ -86,7 +86,6 @@ def test_files(selenium_standalone_micropip, test_wheel_catalog):
 
     run(
         selenium_standalone_micropip,
-        test_wheel.name.lower(),
         test_wheel.name,
         test_wheel.url,
     )
@@ -98,25 +97,25 @@ def test_install_again(selenium_standalone_micropip, test_wheel_catalog):
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
+    async def run(selenium, pkg_name, import_name, wheel_url):
         import sys
 
         import micropip
 
         await micropip.install(wheel_url)
 
-        assert pkg_name_normalized in micropip.list()
+        assert pkg_name in micropip.list()
 
-        __import__(pkg_name)
+        __import__(import_name)
 
         micropip.uninstall(pkg_name)
 
-        assert pkg_name_normalized not in micropip.list()
+        assert pkg_name not in micropip.list()
 
-        del sys.modules[pkg_name]
+        del sys.modules[import_name]
 
         try:
-            __import__(pkg_name)
+            __import__(import_name)
         except ImportError:
             pass
         else:
@@ -124,15 +123,15 @@ def test_install_again(selenium_standalone_micropip, test_wheel_catalog):
 
         await micropip.install(wheel_url)
 
-        assert pkg_name_normalized in micropip.list()
-        __import__(pkg_name)
+        assert pkg_name in micropip.list()
+        __import__(import_name)
 
     test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
 
     run(
         selenium_standalone_micropip,
-        test_wheel.name.lower(),
         test_wheel.name,
+        test_wheel.top_level,
         test_wheel.url,
     )
 
@@ -166,7 +165,7 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
+    async def run(selenium, pkg_name, wheel_url):
         from importlib.metadata import distribution
         import micropip
         import contextlib
@@ -175,9 +174,9 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
         with io.StringIO() as buf, contextlib.redirect_stdout(buf):
             await micropip.install(wheel_url)
 
-            assert pkg_name_normalized in micropip.list()
+            assert pkg_name in micropip.list()
 
-            dist = distribution(pkg_name_normalized)
+            dist = distribution(pkg_name)
             files = dist.files
             file1 = files[0]
             file2 = files[1]
@@ -185,7 +184,7 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
             file1.locate().unlink()
             file2.locate().unlink()
 
-            micropip.uninstall(pkg_name_normalized)
+            micropip.uninstall(pkg_name)
 
             captured = buf.getvalue()
             logs = captured.strip().split("\n")
@@ -198,7 +197,6 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
 
     run(
         selenium_standalone_micropip,
-        test_wheel.name.lower(),
         test_wheel.name,
         test_wheel.url,
     )
@@ -210,7 +208,7 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_catalog
     """
 
     @run_in_pyodide()
-    async def run(selenium, pkg_name, pkg_name_normalized, wheel_url):
+    async def run(selenium, pkg_name, wheel_url):
         from importlib.metadata import distribution
         import micropip
         import contextlib
@@ -218,12 +216,12 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_catalog
 
         with io.StringIO() as buf, contextlib.redirect_stdout(buf):
             await micropip.install(wheel_url)
-            assert pkg_name_normalized in micropip.list()
+            assert pkg_name in micropip.list()
 
-            pkg_dir = distribution(pkg_name_normalized)._path.parent / "deep"
+            pkg_dir = distribution(pkg_name)._path.parent / "deep"
             (pkg_dir / "extra-file.txt").touch()
 
-            micropip.uninstall(pkg_name_normalized)
+            micropip.uninstall(pkg_name)
 
             captured = buf.getvalue()
             logs = captured.strip().split("\n")
@@ -235,7 +233,6 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_catalog
 
     run(
         selenium_standalone_micropip,
-        test_wheel.name.lower(),
         test_wheel.name,
         test_wheel.url,
     )

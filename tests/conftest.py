@@ -98,6 +98,7 @@ class WheelCatalog:
 
         name: str
         filename: str
+        top_level: str
         url: str
 
         @property
@@ -131,7 +132,7 @@ class WheelCatalog:
         url = self._register_handler(path)
 
         self._wheels[name] = self.Wheel(
-            path, name, path.name, url
+            path, name, path.name, name.replace("-", "_"), url
         )
 
     def get(self, name: str) -> Wheel:
