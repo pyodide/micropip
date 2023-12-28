@@ -95,7 +95,6 @@ class WheelCatalog:
         _path: Path
 
         name: str
-        normalized_name: str
         filename: str
         url: str
 
@@ -122,7 +121,7 @@ class WheelCatalog:
         url = self._register_handler(path)
 
         self._wheels[name] = self.Wheel(
-            path, name, canonicalize_name(name), path.name, url
+            path, name, path.name, url
         )
 
     def get(self, name: str) -> Wheel:

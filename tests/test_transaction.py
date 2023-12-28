@@ -68,7 +68,7 @@ async def test_add_requirement(test_wheel_catalog):
     pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
-    snowballstemmer_wheel = test_wheel_catalog("snowballstemmer")
+    snowballstemmer_wheel = test_wheel_catalog.get("snowballstemmer")
 
     transaction = create_transaction(Transaction)
     await transaction.add_requirement(snowballstemmer_wheel.url)

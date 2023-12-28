@@ -3,7 +3,7 @@
 from pytest_pyodide import run_in_pyodide
 from packaging.utils import parse_wheel_filename
 
-TEST_PACKAGE_NAME = "test_wheel_uninstall"
+TEST_PACKAGE_NAME = "test-wheel-uninstall"
 
 
 def test_basic(selenium_standalone_micropip, test_wheel_catalog):
@@ -45,8 +45,8 @@ def test_basic(selenium_standalone_micropip, test_wheel_catalog):
 
     run(
         selenium_standalone_micropip,
+        test_wheel.name.lower(),
         test_wheel.name,
-        test_wheel.normalized_name,
         test_wheel.url,
     )
 
@@ -86,8 +86,8 @@ def test_files(selenium_standalone_micropip, test_wheel_catalog):
 
     run(
         selenium_standalone_micropip,
+        test_wheel.name.lower(),
         test_wheel.name,
-        test_wheel.normalized_name,
         test_wheel.url,
     )
 
@@ -131,8 +131,8 @@ def test_install_again(selenium_standalone_micropip, test_wheel_catalog):
 
     run(
         selenium_standalone_micropip,
+        test_wheel.name.lower(),
         test_wheel.name,
-        test_wheel.normalized_name,
         test_wheel.url,
     )
 
@@ -198,8 +198,8 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
 
     run(
         selenium_standalone_micropip,
+        test_wheel.name.lower(),
         test_wheel.name,
-        test_wheel.normalized_name,
         test_wheel.url,
     )
 
@@ -235,8 +235,8 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_catalog
 
     run(
         selenium_standalone_micropip,
+        test_wheel.name.lower(),
         test_wheel.name,
-        test_wheel.normalized_name,
         test_wheel.url,
     )
 
