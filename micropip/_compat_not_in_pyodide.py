@@ -20,8 +20,7 @@ def _fetch(url: str, kwargs: dict[str, Any]) -> addinfourl:
 
 
 async def fetch_bytes(url: str, kwargs: dict[str, Any]) -> bytes:
-    response = _fetch(url, kwargs=kwargs)
-    return response.read()
+    return _fetch(url, kwargs=kwargs).read()
 
 
 async def fetch_string_and_headers(
