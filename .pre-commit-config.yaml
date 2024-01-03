@@ -4,7 +4,7 @@ default_language_version:
 exclude: (^micropip/externals|^tests/vendored|^tests/test_data)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: "v4.4.0"
+    rev: "v4.5.0"
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
@@ -18,18 +18,18 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.0.292"
+    rev: "v0.1.9"
     hooks:
       - id: ruff
         args: [--fix]
 
   - repo: https://github.com/psf/black
-    rev: "23.9.1"
+    rev: "23.12.1"
     hooks:
       - id: black
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.5.1"
+    rev: "v1.8.0"
     hooks:
       - id: mypy
         args: []
