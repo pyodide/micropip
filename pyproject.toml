@@ -3,7 +3,7 @@ name = "micropip"
 authors = [
   { name="Pyodide developers"},
 ]
-description = "A lightweight Python package installer for the web "
+description = "A lightweight Python package installer for the web"
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = ">=3.10"
