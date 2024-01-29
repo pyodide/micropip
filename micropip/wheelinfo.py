@@ -4,7 +4,7 @@ import json
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import ParseResult, urlparse
 
 from packaging.requirements import Requirement
@@ -19,6 +19,13 @@ from ._compat import (
 )
 from ._utils import parse_wheel_filename
 from .metadata import Metadata, safe_name, wheel_dist_info_dir
+
+
+@dataclass
+class PackageData:
+    file_name: str
+    package_type: Literal["shared_library", "package"]
+    shared_library: bool
 
 
 @dataclass
@@ -187,14 +194,13 @@ class WheelInfo:
         """
         assert self._data
 
-        pkg = {
-            "file_name": self.filename,
-            "package_type": "package",
-            "shared_library": False,
-        }
+        pkg = PackageData(
+            file_name=self.filename,
+            package_type="package",
+            shared_library=False,
+        )
 
         dynlibs = get_dynlibs(io.BytesIO(self._data), ".whl", target)
-
         await loadDynlibsFromPackage(pkg, dynlibs)
 
 
