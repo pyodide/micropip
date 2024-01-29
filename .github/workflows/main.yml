@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04]
-        pyodide-version: [0.22.1, 0.23.4, 0.24.0]
+        pyodide-version: [0.23.4, 0.24.1, 0.25.0]
         test-config: [
           {runner: selenium, runtime: chrome, runtime-version: latest },
         ]
