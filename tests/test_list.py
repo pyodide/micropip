@@ -1,6 +1,5 @@
 import pytest
-from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR, mock_fetch_cls
-from pytest_pyodide import spawn_web_server
+from conftest import mock_fetch_cls
 
 import micropip
 
@@ -42,22 +41,20 @@ async def test_list_wheel_name_mismatch(mock_fetch: mock_fetch_cls) -> None:
     assert pkg_list[dummy_pkg_name].source.lower() == dummy_url
 
 
-def test_list_load_package_from_url(selenium_standalone_micropip):
-    with spawn_web_server(TEST_WHEEL_DIR) as server:
-        server_hostname, server_port, _ = server
-        base_url = f"http://{server_hostname}:{server_port}/"
-        url = base_url + SNOWBALL_WHEEL
+def test_list_load_package_from_url(selenium_standalone_micropip, wheel_catalog):
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
+    url = snowball_wheel.url
 
-        selenium = selenium_standalone_micropip
-        selenium.run_js(
-            f"""
-            await pyodide.loadPackage({url!r});
-            await pyodide.runPythonAsync(`
-                import micropip
-                assert "snowballstemmer" in micropip.list()
-            `);
-            """
-        )
+    selenium = selenium_standalone_micropip
+    selenium.run_js(
+        f"""
+        await pyodide.loadPackage({url!r});
+        await pyodide.runPythonAsync(`
+            import micropip
+            assert "snowballstemmer" in micropip.list()
+        `);
+        """
+    )
 
 
 def test_list_pyodide_package(selenium_standalone_micropip):

@@ -1,7 +1,7 @@
 import pytest
-from conftest import SNOWBALL_WHEEL, TEST_WHEEL_DIR, mock_fetch_cls
+from conftest import mock_fetch_cls
 from packaging.utils import parse_wheel_filename
-from pytest_pyodide import run_in_pyodide, spawn_web_server
+from pytest_pyodide import run_in_pyodide
 
 import micropip
 
@@ -28,24 +28,21 @@ def test_install_simple(selenium_standalone_micropip):
     )
 
 
-@pytest.mark.parametrize("base_url", ["'{base_url}'", "'.'"])
-def test_install_custom_url(selenium_standalone_micropip, base_url):
+def test_install_custom_url(selenium_standalone_micropip, wheel_catalog):
     selenium = selenium_standalone_micropip
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
+    url = snowball_wheel.url
 
-    with spawn_web_server(TEST_WHEEL_DIR) as server:
-        server_hostname, server_port, _ = server
-        base_url = f"http://{server_hostname}:{server_port}/"
-        url = base_url + SNOWBALL_WHEEL
+    @run_in_pyodide
+    async def install_from_url(selenium, url):
+        import micropip
 
-        selenium.run_js(
-            f"""
-            await pyodide.runPythonAsync(`
-                import micropip
-                await micropip.install('{url}')
-                import snowballstemmer
-            `);
-            """
-        )
+        await micropip.install(url)
+        import snowballstemmer
+
+        snowballstemmer.stemmer("english")
+
+    install_from_url(selenium, url)
 
 
 @pytest.mark.xfail_browsers(chrome="node only", firefox="node only")
@@ -313,59 +310,54 @@ async def test_load_binary_wheel2(selenium):
     import regex  # noqa: F401
 
 
-def test_emfs(selenium_standalone_micropip):
-    with spawn_web_server(TEST_WHEEL_DIR) as server:
-        server_hostname, server_port, _ = server
-        url = f"http://{server_hostname}:{server_port}/"
+def test_emfs(selenium_standalone_micropip, wheel_catalog):
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
 
-        @run_in_pyodide(packages=["micropip"])
-        async def run_test(selenium, url, wheel_name):
-            from pyodide.http import pyfetch
+    @run_in_pyodide()
+    async def run_test(selenium, url, wheel_name):
+        from pyodide.http import pyfetch
 
-            import micropip
+        import micropip
 
-            resp = await pyfetch(url + wheel_name)
-            await resp._into_file(open(wheel_name, "wb"))
-            await micropip.install("emfs:" + wheel_name)
-            import snowballstemmer
+        resp = await pyfetch(url)
+        await resp._into_file(open(wheel_name, "wb"))
+        await micropip.install("emfs:" + wheel_name)
+        import snowballstemmer
 
-            stemmer = snowballstemmer.stemmer("english")
-            assert stemmer.stemWords("go going goes gone".split()) == [
-                "go",
-                "go",
-                "goe",
-                "gone",
-            ]
+        stemmer = snowballstemmer.stemmer("english")
+        assert stemmer.stemWords("go going goes gone".split()) == [
+            "go",
+            "go",
+            "goe",
+            "gone",
+        ]
 
-        run_test(selenium_standalone_micropip, url, SNOWBALL_WHEEL)
+    run_test(selenium_standalone_micropip, snowball_wheel.url, snowball_wheel.filename)
 
 
-def test_logging(selenium_standalone_micropip):
-    # TODO: make a fixture for this, it's used in a few places
-    with spawn_web_server(TEST_WHEEL_DIR) as server:
-        server_hostname, server_port, _ = server
-        url = f"http://{server_hostname}:{server_port}/"
-        wheel_url = url + SNOWBALL_WHEEL
-        name, version, _, _ = parse_wheel_filename(SNOWBALL_WHEEL)
+def test_logging(selenium_standalone_micropip, wheel_catalog):
+    @run_in_pyodide(packages=["micropip"])
+    async def run_test(selenium, url, name, version):
+        import contextlib
+        import io
 
-        @run_in_pyodide(packages=["micropip"])
-        async def run_test(selenium, url, name, version):
-            import contextlib
-            import io
+        import micropip
 
-            import micropip
+        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+            await micropip.install(url, verbose=True)
 
-            with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-                await micropip.install(url, verbose=True)
+            captured = buf.getvalue()
 
-                captured = buf.getvalue()
+            assert f"Collecting {name}" in captured
+            assert f"  Downloading {name}" in captured
+            assert f"Installing collected packages: {name}" in captured
+            assert f"Successfully installed {name}-{version}" in captured
 
-                assert f"Collecting {name}" in captured
-                assert f"  Downloading {name}" in captured
-                assert f"Installing collected packages: {name}" in captured
-                assert f"Successfully installed {name}-{version}" in captured
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
+    wheel_url = snowball_wheel.url
+    name, version, _, _ = parse_wheel_filename(snowball_wheel.filename)
 
-        run_test(selenium_standalone_micropip, wheel_url, name, version)
+    run_test(selenium_standalone_micropip, wheel_url, name, version)
 
 
 @pytest.mark.asyncio

@@ -1,27 +1,6 @@
 import pytest
-from conftest import PYTEST_WHEEL, TEST_WHEEL_DIR
 
 from micropip.wheelinfo import WheelInfo
-
-
-@pytest.fixture
-def dummy_wheel():
-    yield WheelInfo.from_url(f"https://test.com/{PYTEST_WHEEL}")
-
-
-@pytest.fixture
-def dummy_wheel_content():
-    yield (TEST_WHEEL_DIR / PYTEST_WHEEL).read_bytes()
-
-
-@pytest.fixture
-def dummy_wheel_url(httpserver):
-    httpserver.expect_request(f"/{PYTEST_WHEEL}").respond_with_data(
-        (TEST_WHEEL_DIR / PYTEST_WHEEL).read_bytes(),
-        content_type="application/zip",
-        headers={"Access-Control-Allow-Origin": "*"},
-    )
-    return httpserver.url_for(f"/{PYTEST_WHEEL}")
 
 
 def test_from_url():
@@ -54,16 +33,21 @@ def test_from_package_index():
     assert wheel.sha256 == sha256
 
 
-def test_extract(dummy_wheel, dummy_wheel_content, tmp_path):
-    dummy_wheel._data = dummy_wheel_content
-    dummy_wheel._extract(tmp_path)
+def test_extract(wheel_catalog, tmp_path):
+    pytest_wheel = wheel_catalog.get("pytest")
+    dummy_wheel = WheelInfo.from_url(pytest_wheel.url)
+    dummy_wheel._data = pytest_wheel.content
 
+    dummy_wheel._extract(tmp_path)
     assert dummy_wheel._dist_info is not None
     assert dummy_wheel._dist_info.is_dir()
 
 
-def test_set_installer(dummy_wheel, dummy_wheel_content, tmp_path):
-    dummy_wheel._data = dummy_wheel_content
+def test_set_installer(wheel_catalog, tmp_path):
+    pytest_wheel = wheel_catalog.get("pytest")
+    dummy_wheel = WheelInfo.from_url(pytest_wheel.url)
+    dummy_wheel._data = pytest_wheel.content
+
     dummy_wheel._extract(tmp_path)
 
     dummy_wheel._set_installer()
@@ -79,8 +63,9 @@ def test_install():
 
 
 @pytest.mark.asyncio
-async def test_download(dummy_wheel_url):
-    wheel = WheelInfo.from_url(dummy_wheel_url)
+async def test_download(wheel_catalog):
+    pytest_wheel = wheel_catalog.get("pytest")
+    wheel = WheelInfo.from_url(pytest_wheel.url)
 
     assert wheel._metadata is None
 
@@ -90,8 +75,9 @@ async def test_download(dummy_wheel_url):
 
 
 @pytest.mark.asyncio
-async def test_requires(dummy_wheel_url, tmp_path):
-    wheel = WheelInfo.from_url(dummy_wheel_url)
+async def test_requires(wheel_catalog, tmp_path):
+    pytest_wheel = wheel_catalog.get("pytest")
+    wheel = WheelInfo.from_url(pytest_wheel.url)
     await wheel.download({})
 
     wheel._extract(tmp_path)

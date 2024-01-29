@@ -3,11 +3,15 @@ import gzip
 import io
 import sys
 import zipfile
+from dataclasses import dataclass
 from importlib.metadata import Distribution, PackageNotFoundError
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 import pytest
+from packaging.utils import parse_wheel_filename
+from pytest_httpserver import HTTPServer
 from pytest_pyodide import spawn_web_server
 
 
@@ -56,16 +60,6 @@ def wheel_path(tmp_path_factory):
     yield output_dir
 
 
-@pytest.fixture(scope="session")
-def test_wheel_path(tmp_path_factory):
-    # Build a test wheel for testing
-    output_dir = tmp_path_factory.mktemp("wheel")
-
-    _build(Path(__file__).parent / "test_data" / "test_wheel_uninstall", output_dir)
-
-    yield output_dir
-
-
 @pytest.fixture
 def selenium_standalone_micropip(selenium_standalone, wheel_path):
     """Import micropip before entering test so that global initialization of
@@ -91,6 +85,68 @@ def selenium_standalone_micropip(selenium_standalone, wheel_path):
         )
 
     yield selenium_standalone
+
+
+class WheelCatalog:
+    """
+    A catalog of wheels for testing.
+    """
+
+    @dataclass
+    class Wheel:
+        _path: Path
+
+        name: str
+        filename: str
+        top_level: str
+        url: str
+
+        @property
+        def content(self) -> bytes:
+            return self._path.read_bytes()
+
+    def __init__(self):
+        self._wheels = {}
+
+        self._httpserver = HTTPServer()
+        self._httpserver.no_handler_status_code = 404
+
+    def __enter__(self):
+        self._httpserver.__enter__()
+        return self
+
+    def __exit__(self, *args: Any):
+        self._httpserver.__exit__(*args)
+
+    def _register_handler(self, path: Path) -> str:
+        self._httpserver.expect_request(f"/{path.name}").respond_with_data(
+            path.read_bytes(),
+            content_type="application/zip",
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
+
+        return self._httpserver.url_for(f"/{path.name}")
+
+    def add_wheel(self, path: Path):
+        name = parse_wheel_filename(path.name)[0]
+        url = self._register_handler(path)
+
+        self._wheels[name] = self.Wheel(
+            path, name, path.name, name.replace("-", "_"), url
+        )
+
+    def get(self, name: str) -> Wheel:
+        return self._wheels[name]
+
+
+@pytest.fixture(scope="session")
+def wheel_catalog():
+    """Run a mock server that serves pre-built wheels"""
+    with WheelCatalog() as catalog:
+        for wheel in TEST_WHEEL_DIR.glob("*.whl"):
+            catalog.add_wheel(wheel)
+
+        yield catalog
 
 
 @pytest.fixture
