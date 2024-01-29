@@ -389,9 +389,7 @@ async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
     assert "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl" in _wheel_url
 
 
-def test_install_pkg_with_sharedlib_deps(
-    selenium_standalone_micropip, wheel_catalog
-):
+def test_install_pkg_with_sharedlib_deps(selenium_standalone_micropip, wheel_catalog):
     """
     Test if micropip can locate shared libraries in the wheel file correctly.
     shapely requires libgeos and it is bundled inside the shapely wheel.
