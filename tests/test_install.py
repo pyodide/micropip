@@ -36,8 +36,10 @@ def test_install_custom_url(selenium_standalone_micropip, wheel_catalog):
     @run_in_pyodide
     async def install_from_url(selenium, url):
         import micropip
+
         await micropip.install(url)
         import snowballstemmer
+
         snowballstemmer.stemmer("english")
 
     install_from_url(selenium, url)
