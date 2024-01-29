@@ -41,8 +41,8 @@ async def test_list_wheel_name_mismatch(mock_fetch: mock_fetch_cls) -> None:
     assert pkg_list[dummy_pkg_name].source.lower() == dummy_url
 
 
-def test_list_load_package_from_url(selenium_standalone_micropip, test_wheel_catalog):
-    snowball_wheel = test_wheel_catalog.get("snowballstemmer")
+def test_list_load_package_from_url(selenium_standalone_micropip, wheel_catalog):
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
     url = snowball_wheel.url
 
     selenium = selenium_standalone_micropip

@@ -28,21 +28,19 @@ def test_install_simple(selenium_standalone_micropip):
     )
 
 
-@pytest.mark.parametrize("base_url", ["'{base_url}'", "'.'"])
-def test_install_custom_url(selenium_standalone_micropip, base_url, test_wheel_catalog):
+def test_install_custom_url(selenium_standalone_micropip, wheel_catalog):
     selenium = selenium_standalone_micropip
-    snowball_wheel = test_wheel_catalog.get("snowballstemmer")
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
     url = snowball_wheel.url
 
-    selenium.run_js(
-        f"""
-        await pyodide.runPythonAsync(`
-            import micropip
-            await micropip.install('{url}')
-            import snowballstemmer
-        `);
-        """
-    )
+    @run_in_pyodide
+    async def install_from_url(selenium, url):
+        import micropip
+        await micropip.install(url)
+        import snowballstemmer
+        snowballstemmer.stemmer("english")
+
+    install_from_url(selenium, url)
 
 
 @pytest.mark.xfail_browsers(chrome="node only", firefox="node only")
@@ -310,8 +308,8 @@ async def test_load_binary_wheel2(selenium):
     import regex  # noqa: F401
 
 
-def test_emfs(selenium_standalone_micropip, test_wheel_catalog):
-    snowball_wheel = test_wheel_catalog.get("snowballstemmer")
+def test_emfs(selenium_standalone_micropip, wheel_catalog):
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
 
     @run_in_pyodide()
     async def run_test(selenium, url, wheel_name):
@@ -335,7 +333,7 @@ def test_emfs(selenium_standalone_micropip, test_wheel_catalog):
     run_test(selenium_standalone_micropip, snowball_wheel.url, snowball_wheel.filename)
 
 
-def test_logging(selenium_standalone_micropip, test_wheel_catalog):
+def test_logging(selenium_standalone_micropip, wheel_catalog):
     @run_in_pyodide(packages=["micropip"])
     async def run_test(selenium, url, name, version):
         import contextlib
@@ -353,7 +351,7 @@ def test_logging(selenium_standalone_micropip, test_wheel_catalog):
             assert f"Installing collected packages: {name}" in captured
             assert f"Successfully installed {name}-{version}" in captured
 
-    snowball_wheel = test_wheel_catalog.get("snowballstemmer")
+    snowball_wheel = wheel_catalog.get("snowballstemmer")
     wheel_url = snowball_wheel.url
     name, version, _, _ = parse_wheel_filename(snowball_wheel.filename)
 

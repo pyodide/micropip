@@ -6,7 +6,7 @@ from packaging.utils import parse_wheel_filename
 TEST_PACKAGE_NAME = "test-wheel-uninstall"
 
 
-def test_basic(selenium_standalone_micropip, test_wheel_catalog):
+def test_basic(selenium_standalone_micropip, wheel_catalog):
     @run_in_pyodide()
     async def run(selenium, pkg_name, import_name, wheel_url):
         import importlib.metadata
@@ -41,7 +41,7 @@ def test_basic(selenium_standalone_micropip, test_wheel_catalog):
         # 3. Check that the module is not available with micropip.list()
         assert pkg_name not in micropip.list()
 
-    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+    test_wheel = wheel_catalog.get(TEST_PACKAGE_NAME)
 
     run(
         selenium_standalone_micropip,
@@ -51,7 +51,7 @@ def test_basic(selenium_standalone_micropip, test_wheel_catalog):
     )
 
 
-def test_files(selenium_standalone_micropip, test_wheel_catalog):
+def test_files(selenium_standalone_micropip, wheel_catalog):
     """
     Check all files are removed after uninstallation.
     """
@@ -82,7 +82,7 @@ def test_files(selenium_standalone_micropip, test_wheel_catalog):
 
         assert not dist._path.is_dir(), f"{dist._path} still exists after removal"
 
-    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+    test_wheel = wheel_catalog.get(TEST_PACKAGE_NAME)
 
     run(
         selenium_standalone_micropip,
@@ -91,7 +91,7 @@ def test_files(selenium_standalone_micropip, test_wheel_catalog):
     )
 
 
-def test_install_again(selenium_standalone_micropip, test_wheel_catalog):
+def test_install_again(selenium_standalone_micropip, wheel_catalog):
     """
     Check that uninstalling and installing again works.
     """
@@ -126,7 +126,7 @@ def test_install_again(selenium_standalone_micropip, test_wheel_catalog):
         assert pkg_name in micropip.list()
         __import__(import_name)
 
-    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+    test_wheel = wheel_catalog.get(TEST_PACKAGE_NAME)
 
     run(
         selenium_standalone_micropip,
@@ -159,7 +159,7 @@ def test_warning_not_installed(selenium_standalone_micropip):
     run(selenium_standalone_micropip)
 
 
-def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
+def test_warning_file_removed(selenium_standalone_micropip, wheel_catalog):
     """
     Test warning when files in a package are removed by user.
     """
@@ -193,7 +193,7 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
             assert "does not exist" in logs[-1]
             assert "does not exist" in logs[-2]
 
-    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+    test_wheel = wheel_catalog.get(TEST_PACKAGE_NAME)
 
     run(
         selenium_standalone_micropip,
@@ -202,7 +202,7 @@ def test_warning_file_removed(selenium_standalone_micropip, test_wheel_catalog):
     )
 
 
-def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_catalog):
+def test_warning_remaining_file(selenium_standalone_micropip, wheel_catalog):
     """
     Test warning when there are remaining files after uninstallation.
     """
@@ -229,7 +229,7 @@ def test_warning_remaining_file(selenium_standalone_micropip, test_wheel_catalog
             assert len(logs) == 1
             assert "is not empty after uninstallation" in logs[0]
 
-    test_wheel = test_wheel_catalog.get(TEST_PACKAGE_NAME)
+    test_wheel = wheel_catalog.get(TEST_PACKAGE_NAME)
 
     run(
         selenium_standalone_micropip,
@@ -267,8 +267,8 @@ def test_pyodide_repodata(selenium_standalone_micropip):
     run(selenium_standalone_micropip)
 
 
-def test_logging(selenium_standalone_micropip, test_wheel_catalog):
-    snowballstemmer_wheel = test_wheel_catalog.get("snowballstemmer")
+def test_logging(selenium_standalone_micropip, wheel_catalog):
+    snowballstemmer_wheel = wheel_catalog.get("snowballstemmer")
     wheel_url = snowballstemmer_wheel.url
     name, version, _, _ = parse_wheel_filename(snowballstemmer_wheel.filename)
 

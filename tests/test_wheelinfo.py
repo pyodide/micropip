@@ -33,8 +33,8 @@ def test_from_package_index():
     assert wheel.sha256 == sha256
 
 
-def test_extract(test_wheel_catalog, tmp_path):
-    pytest_wheel = test_wheel_catalog.get("pytest")
+def test_extract(wheel_catalog, tmp_path):
+    pytest_wheel = wheel_catalog.get("pytest")
     dummy_wheel = WheelInfo.from_url(pytest_wheel.url)
     dummy_wheel._data = pytest_wheel.content
 
@@ -43,8 +43,8 @@ def test_extract(test_wheel_catalog, tmp_path):
     assert dummy_wheel._dist_info.is_dir()
 
 
-def test_set_installer(test_wheel_catalog, tmp_path):
-    pytest_wheel = test_wheel_catalog.get("pytest")
+def test_set_installer(wheel_catalog, tmp_path):
+    pytest_wheel = wheel_catalog.get("pytest")
     dummy_wheel = WheelInfo.from_url(pytest_wheel.url)
     dummy_wheel._data = pytest_wheel.content
 
@@ -63,8 +63,8 @@ def test_install():
 
 
 @pytest.mark.asyncio
-async def test_download(test_wheel_catalog):
-    pytest_wheel = test_wheel_catalog.get("pytest")
+async def test_download(wheel_catalog):
+    pytest_wheel = wheel_catalog.get("pytest")
     wheel = WheelInfo.from_url(pytest_wheel.url)
 
     assert wheel._metadata is None
@@ -75,8 +75,8 @@ async def test_download(test_wheel_catalog):
 
 
 @pytest.mark.asyncio
-async def test_requires(test_wheel_catalog, tmp_path):
-    pytest_wheel = test_wheel_catalog.get("pytest")
+async def test_requires(wheel_catalog, tmp_path):
+    pytest_wheel = wheel_catalog.get("pytest")
     wheel = WheelInfo.from_url(pytest_wheel.url)
     await wheel.download({})
 
