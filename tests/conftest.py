@@ -149,6 +149,9 @@ def wheel_catalog(pytestconfig):
         for wheel in TEST_WHEEL_DIR.glob("*.whl"):
             catalog.add_wheel(wheel)
 
+        # Add wheels in the pyodide distribution so we can use it in the test.
+        # This is a workaround to get a wheel build with a same emscripten version that the Pyodide is build with,
+        # But probably we should find a better way that does not depend on Pyodide distribution.
         dist_dir = Path(pytestconfig.getoption("dist_dir"))
         for wheel in dist_dir.glob("*.whl"):
             catalog.add_wheel(wheel, replace=False)
