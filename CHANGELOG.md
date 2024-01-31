@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.6.0] - 2024/01/31
+
+### Fixed
+
+- micropip.install can now locate shared libraries in `<pkg>.libs` directory.
+  This is consistent with the behavior of pyodide.loadpackage.
+  [#97](https://github.com/pyodide/micropip/pull/97)
+
 ## [0.5.0] - 2023/09/19
 
 ### Changed
