@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any, Literal
+from typing import IO, TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .wheelinfo import PackageData
@@ -34,7 +34,9 @@ async def fetch_string_and_headers(
     return response.read().decode(), headers
 
 
-async def loadDynlibsFromPackage(pkg_metadata: "PackageData", dynlibs: list[str]) -> None:
+async def loadDynlibsFromPackage(
+    pkg_metadata: "PackageData", dynlibs: list[str]
+) -> None:
     pass
 
 
