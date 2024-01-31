@@ -127,9 +127,12 @@ class WheelCatalog:
 
         return self._httpserver.url_for(f"/{path.name}")
 
-    def add_wheel(self, path: Path):
+    def add_wheel(self, path: Path, replace: bool = True):
         name = parse_wheel_filename(path.name)[0]
         url = self._register_handler(path)
+
+        if name in self._wheels and not replace:
+            return
 
         self._wheels[name] = self.Wheel(
             path, name, path.name, name.replace("-", "_"), url
@@ -140,11 +143,18 @@ class WheelCatalog:
 
 
 @pytest.fixture(scope="session")
-def wheel_catalog():
+def wheel_catalog(pytestconfig):
     """Run a mock server that serves pre-built wheels"""
     with WheelCatalog() as catalog:
         for wheel in TEST_WHEEL_DIR.glob("*.whl"):
             catalog.add_wheel(wheel)
+
+        # Add wheels in the pyodide distribution so we can use it in the test.
+        # This is a workaround to get a wheel build with a same emscripten version that the Pyodide is build with,
+        # But probably we should find a better way that does not depend on Pyodide distribution.
+        dist_dir = Path(pytestconfig.getoption("dist_dir"))
+        for wheel in dist_dir.glob("*.whl"):
+            catalog.add_wheel(wheel, replace=False)
 
         yield catalog
 

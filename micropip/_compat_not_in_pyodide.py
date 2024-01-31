@@ -1,6 +1,9 @@
 import re
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .wheelinfo import PackageData
 
 REPODATA_PACKAGES: dict[str, dict[str, Any]] = {}
 
@@ -31,7 +34,9 @@ async def fetch_string_and_headers(
     return response.read().decode(), headers
 
 
-async def loadDynlib(dynlib: str, is_shared_lib: bool) -> None:
+async def loadDynlibsFromPackage(
+    pkg_metadata: "PackageData", dynlibs: list[str]
+) -> None:
     pass
 
 
@@ -74,7 +79,7 @@ def loadPackage(packages: str | list[str]) -> None:
 
 
 __all__ = [
-    "loadDynlib",
+    "loadDynlibsFromPackage",
     "fetch_bytes",
     "fetch_string_and_headers",
     "REPODATA_INFO",

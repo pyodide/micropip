@@ -387,3 +387,30 @@ async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
         pass
 
     assert "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl" in _wheel_url
+
+
+def test_install_pkg_with_sharedlib_deps(selenium_standalone_micropip, wheel_catalog):
+    """
+    Test if micropip can locate shared libraries in the wheel file correctly.
+    shapely requires libgeos and it is bundled inside the shapely wheel.
+    If micropip does not locate the shared libraries correctly,
+    it will fail with the message "Didn't expect to load any more file_packager files!"
+
+    TODO: maybe build a wheel for test-only purpose instead of relying on a real package?
+    """
+    selenium = selenium_standalone_micropip
+    numpy_wheel = wheel_catalog.get("numpy")
+    shapely_wheel = wheel_catalog.get("shapely")
+
+    @run_in_pyodide
+    async def run(selenium, numpy_url, shapely_url):
+        import micropip
+
+        await micropip.install(numpy_url)
+        await micropip.install(shapely_url)
+
+        from shapely.geometry import Point
+
+        Point(0, 0)
+
+    run(selenium, numpy_wheel.url, shapely_wheel.url)

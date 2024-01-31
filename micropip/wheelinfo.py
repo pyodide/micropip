@@ -1,11 +1,10 @@
-import asyncio
 import hashlib
 import io
 import json
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import ParseResult, urlparse
 
 from packaging.requirements import Requirement
@@ -15,11 +14,18 @@ from packaging.version import Version
 from ._compat import (
     fetch_bytes,
     get_dynlibs,
-    loadDynlib,
+    loadDynlibsFromPackage,
     loadedPackages,
 )
 from ._utils import parse_wheel_filename
 from .metadata import Metadata, safe_name, wheel_dist_info_dir
+
+
+@dataclass
+class PackageData:
+    file_name: str
+    package_type: Literal["shared_library", "package"]
+    shared_library: bool
 
 
 @dataclass
@@ -185,11 +191,17 @@ class WheelInfo:
     async def _load_libraries(self, target: Path) -> None:
         """
         Compiles shared libraries (WASM modules) in the wheel and loads them.
-        TODO: integrate with pyodide's dynamic library loading mechanism.
         """
         assert self._data
+
+        pkg = PackageData(
+            file_name=self.filename,
+            package_type="package",
+            shared_library=False,
+        )
+
         dynlibs = get_dynlibs(io.BytesIO(self._data), ".whl", target)
-        await asyncio.gather(*map(lambda dynlib: loadDynlib(dynlib, False), dynlibs))
+        await loadDynlibsFromPackage(pkg, dynlibs)
 
 
 def _validate_sha256_checksum(data: bytes, expected: str | None = None) -> None:

@@ -9,7 +9,10 @@ try:
     import pyodide_js
     from js import Object
     from pyodide_js import loadedPackages, loadPackage
-    from pyodide_js._api import loadBinaryFile, loadDynlib  # type: ignore[import]
+    from pyodide_js._api import (  # type: ignore[import]
+        loadBinaryFile,
+        loadDynlibsFromPackage,
+    )
 
     REPODATA_PACKAGES = pyodide_js._api.repodata_packages.to_py()
     REPODATA_INFO = pyodide_js._api.repodata_info.to_py()
@@ -49,7 +52,7 @@ __all__ = [
     "REPODATA_INFO",
     "REPODATA_PACKAGES",
     "loadedPackages",
-    "loadDynlib",
+    "loadDynlibsFromPackage",
     "loadPackage",
     "get_dynlibs",
     "to_js",
