@@ -411,7 +411,7 @@ def test_install_pkg_with_sharedlib_deps(
         await micropip.install(numpy_url)
         await micropip.install(shapely_url)
 
-        from shapely import Point
+        from shapely.geometry import Point
 
         Point(0, 0)
 
