@@ -5,7 +5,7 @@
 ## Jupyterlite
 
 In [Jupyterlite](https://jupyter.org/try-jupyter/lab/),
-a package called [piplite](https://jupyterlite.readthedocs.io/en/latest/howto/python/packages.html#installing-packages-at-runtime) is provided, which is a layer
+a package called [piplite](https://jupyterlite.readthedocs.io/en/latest/howto/pyodide/packages.html) is provided, which is a layer
 on top of micropip.
 
 ```python
