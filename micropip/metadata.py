@@ -1,6 +1,7 @@
 """
 This is a stripped down version of pip._vendor.pkg_resources.DistInfoDistribution
 """
+
 import re
 import zipfile
 from collections.abc import Iterable
