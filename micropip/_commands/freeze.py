@@ -42,7 +42,7 @@ def freeze_data() -> dict[str, Any]:
 def load_pip_packages() -> Iterator[tuple[str, dict[str, Any]]]:
     return map(
         package_item,
-        filter(None, map(load_pip_package, importlib.metadata.distributions())),
+        filter(is_valid, map(load_pip_package, importlib.metadata.distributions())),
     )
 
 
@@ -50,15 +50,15 @@ def package_item(entry: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     return canonicalize_name(entry["name"]), entry
 
 
-def load_pip_package(dist: importlib.metadata.Distribution) -> dict[str, Any] | None:
+def is_valid(entry: dict[str, Any]) -> bool:
+    return entry["file_name"] is not None
+
+
+def load_pip_package(dist: importlib.metadata.Distribution) -> dict[str, Any]:
     name = dist.name
     version = dist.version
     url = dist.read_text("PYODIDE_URL")
-    if url is None:
-        return
-
     sha256 = dist.read_text("PYODIDE_SHA256")
-    assert sha256
     imports = (dist.read_text("top_level.txt") or "").split()
     requires = dist.read_text("PYODIDE_REQUIRES")
     if not requires:
