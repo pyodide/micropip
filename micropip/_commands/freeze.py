@@ -59,10 +59,7 @@ def load_pip_package(
     if not requires:
         fix_package_dependencies(name)
         requires = dist.read_text("PYODIDE_REQUIRES")
-    if requires:
-        depends = json.loads(requires)
-    else:
-        depends = []
+    depends = json.loads(requires or "[]")
 
     pkg_entry: dict[str, Any] = dict(
         name=name,
