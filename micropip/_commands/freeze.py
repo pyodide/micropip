@@ -1,5 +1,7 @@
 import importlib.metadata
+import itertools
 import json
+from collections.abc import Iterator
 from copy import deepcopy
 from typing import Any
 
@@ -21,7 +23,23 @@ def freeze() -> str:
     You can use your custom lock file by passing an appropriate url to the
     ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
     """
-    packages = deepcopy(REPODATA_PACKAGES)
+    return json.dumps(freeze_data())
+
+
+def freeze_data() -> dict[str, Any]:
+    pyodide_packages = deepcopy(REPODATA_PACKAGES)
+    pip_packages = load_pip_packages()
+    package_items = itertools.chain(pyodide_packages.items(), pip_packages)
+
+    # Sort
+    packages = dict(sorted(package_items))
+    return {
+        "info": REPODATA_INFO,
+        "packages": packages,
+    }
+
+
+def load_pip_packages() -> Iterator[tuple[str, dict[str, Any]]]:
     for dist in importlib.metadata.distributions():
         name = dist.name
         version = dist.version
@@ -50,12 +68,4 @@ def freeze() -> str:
             imports=imports,
             depends=depends,
         )
-        packages[canonicalize_name(name)] = pkg_entry
-
-    # Sort
-    packages = dict(sorted(packages.items()))
-    package_data = {
-        "info": REPODATA_INFO,
-        "packages": packages,
-    }
-    return json.dumps(package_data)
+        yield canonicalize_name(name), pkg_entry
