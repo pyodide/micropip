@@ -40,12 +40,17 @@ def freeze_data() -> dict[str, Any]:
 
 
 def load_pip_packages() -> Iterator[tuple[str, dict[str, Any]]]:
-    return filter(None, map(load_pip_package, importlib.metadata.distributions()))
+    return map(
+        package_item,
+        filter(None, map(load_pip_package, importlib.metadata.distributions())),
+    )
 
 
-def load_pip_package(
-    dist: importlib.metadata.Distribution,
-) -> tuple[str, dict[str, Any]] | None:
+def package_item(entry: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    return canonicalize_name(entry["name"]), entry
+
+
+def load_pip_package(dist: importlib.metadata.Distribution) -> dict[str, Any] | None:
     name = dist.name
     version = dist.version
     url = dist.read_text("PYODIDE_URL")
@@ -61,7 +66,7 @@ def load_pip_package(
         requires = dist.read_text("PYODIDE_REQUIRES")
     depends = json.loads(requires or "[]")
 
-    pkg_entry: dict[str, Any] = dict(
+    return dict(
         name=name,
         version=version,
         file_name=url,
@@ -70,4 +75,3 @@ def load_pip_package(
         imports=imports,
         depends=depends,
     )
-    return canonicalize_name(name), pkg_entry
