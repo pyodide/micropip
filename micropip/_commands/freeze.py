@@ -40,32 +40,37 @@ def freeze_data() -> dict[str, Any]:
 
 
 def load_pip_packages() -> Iterator[tuple[str, dict[str, Any]]]:
-    for dist in importlib.metadata.distributions():
-        name = dist.name
-        version = dist.version
-        url = dist.read_text("PYODIDE_URL")
-        if url is None:
-            continue
+    return filter(None, map(load_pip_package, importlib.metadata.distributions()))
 
-        sha256 = dist.read_text("PYODIDE_SHA256")
-        assert sha256
-        imports = (dist.read_text("top_level.txt") or "").split()
+
+def load_pip_package(
+    dist: importlib.metadata.Distribution,
+) -> tuple[str, dict[str, Any]] | None:
+    name = dist.name
+    version = dist.version
+    url = dist.read_text("PYODIDE_URL")
+    if url is None:
+        return
+
+    sha256 = dist.read_text("PYODIDE_SHA256")
+    assert sha256
+    imports = (dist.read_text("top_level.txt") or "").split()
+    requires = dist.read_text("PYODIDE_REQUIRES")
+    if not requires:
+        fix_package_dependencies(name)
         requires = dist.read_text("PYODIDE_REQUIRES")
-        if not requires:
-            fix_package_dependencies(name)
-            requires = dist.read_text("PYODIDE_REQUIRES")
-        if requires:
-            depends = json.loads(requires)
-        else:
-            depends = []
+    if requires:
+        depends = json.loads(requires)
+    else:
+        depends = []
 
-        pkg_entry: dict[str, Any] = dict(
-            name=name,
-            version=version,
-            file_name=url,
-            install_dir="site",
-            sha256=sha256,
-            imports=imports,
-            depends=depends,
-        )
-        yield canonicalize_name(name), pkg_entry
+    pkg_entry: dict[str, Any] = dict(
+        name=name,
+        version=version,
+        file_name=url,
+        install_dir="site",
+        sha256=sha256,
+        imports=imports,
+        depends=depends,
+    )
+    return canonicalize_name(name), pkg_entry
