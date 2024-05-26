@@ -1,3 +1,4 @@
+from asyncio import CancelledError
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -7,7 +8,7 @@ from pyodide.http import pyfetch
 
 try:
     import pyodide_js
-    from js import Object
+    from js import AbortController, Object
     from pyodide_js import loadedPackages, loadPackage
     from pyodide_js._api import (  # type: ignore[import]
         loadBinaryFile,
@@ -21,6 +22,24 @@ except ImportError:
         raise
     # Otherwise, this is pytest test collection so let it go.
 
+if IN_BROWSER:
+
+    async def _pyfetch(url: str, **kwargs):
+        if "signal" in kwargs:
+            return await pyfetch(url, **kwargs)
+
+        controller = AbortController.new()
+        kwargs["signal"] = controller.signal
+
+        try:
+            return await pyfetch(url, **kwargs)
+        except CancelledError:
+            controller.abort()
+            raise
+
+else:
+    _pyfetch = pyfetch
+
 
 async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
     parsed_url = urlparse(url)
@@ -29,13 +48,13 @@ async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
     if parsed_url.scheme == "file":
         return (await loadBinaryFile(parsed_url.path)).to_bytes()
 
-    return await (await pyfetch(url, **kwargs)).bytes()
+    return await (await _pyfetch(url, **kwargs)).bytes()
 
 
 async def fetch_string_and_headers(
     url: str, kwargs: dict[str, str]
 ) -> tuple[str, dict[str, str]]:
-    response = await pyfetch(url, **kwargs)
+    response = await _pyfetch(url, **kwargs)
 
     content = await response.string()
     # TODO: replace with response.headers when pyodide>= 0.24 is released

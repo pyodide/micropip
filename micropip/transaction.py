@@ -52,7 +52,17 @@ class Transaction:
         for requirement in requirements:
             requirement_promises.append(self.add_requirement(requirement))
 
-        await asyncio.gather(*requirement_promises)
+        futures: list[asyncio.Future] = []
+        try:
+            for coro in requirement_promises:
+                futures.append(asyncio.ensure_future(coro))
+            await asyncio.gather(*futures)
+        except ValueError:
+            if not self.keep_going:
+                for future in futures:
+                    if not future.done():
+                        future.cancel()
+            raise
 
     async def add_requirement(self, req: str | Requirement) -> None:
         if isinstance(req, Requirement):
