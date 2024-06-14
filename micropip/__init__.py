@@ -8,6 +8,7 @@ from ._commands.mock_package import (
     remove_mock_package,
 )
 from ._commands.uninstall import uninstall
+from manager import Manager
 
 try:
     from ._version import __version__
@@ -24,4 +25,5 @@ __all__ = [
     "uninstall",
     "set_index_urls",
     "__version__",
+    "Manager",
 ]
