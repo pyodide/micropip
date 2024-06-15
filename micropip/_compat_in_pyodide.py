@@ -1,5 +1,7 @@
 from asyncio import CancelledError
+from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import TYPE_CHECKING, Concatenate, ParamSpec, TypeVar
 from urllib.parse import urlparse
 
 from pyodide._package_loader import get_dynlibs
@@ -8,7 +10,7 @@ from pyodide.http import pyfetch
 
 try:
     import pyodide_js
-    from js import AbortController, Object
+    from js import AbortController, AbortSignal, Object
     from pyodide_js import loadedPackages, loadPackage
     from pyodide_js._api import (  # type: ignore[import]
         loadBinaryFile,
@@ -22,39 +24,45 @@ except ImportError:
         raise
     # Otherwise, this is pytest test collection so let it go.
 
-if IN_BROWSER:
+if IN_BROWSER or TYPE_CHECKING:
+    P = ParamSpec("P")
+    T = TypeVar("T")
 
-    async def _pyfetch(url: str, **kwargs):
-        if "signal" in kwargs:
-            return await pyfetch(url, **kwargs)
+    def _abort_on_cancel(
+        func: Callable[Concatenate[AbortSignal, P], Awaitable[T]],
+    ) -> Callable[P, Awaitable[T]]:
+        """inject an AbortSignal as the first argument"""
 
-        controller = AbortController.new()
-        kwargs["signal"] = controller.signal
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            controller = AbortController.new()
+            try:
+                return await func(controller.signal, *args, **kwargs)
+            except CancelledError:
+                controller.abort()
+                raise
 
-        try:
-            return await pyfetch(url, **kwargs)
-        except CancelledError:
-            controller.abort()
-            raise
+        return wrapper
 
 else:
-    _pyfetch = pyfetch
+    _abort_on_cancel = lambda func: lambda *args, **kwargs: func(None, *args, **kwargs)
 
 
-async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
+@_abort_on_cancel
+async def fetch_bytes(signal: AbortSignal, url: str, kwargs: dict[str, str]) -> bytes:
     parsed_url = urlparse(url)
     if parsed_url.scheme == "emfs":
         return Path(parsed_url.path).read_bytes()
     if parsed_url.scheme == "file":
         return (await loadBinaryFile(parsed_url.path)).to_bytes()
 
-    return await (await _pyfetch(url, **kwargs)).bytes()
+    return await (await pyfetch(url, **kwargs, signal=signal)).bytes()
 
 
+@_abort_on_cancel
 async def fetch_string_and_headers(
-    url: str, kwargs: dict[str, str]
+    signal: AbortSignal, url: str, kwargs: dict[str, str]
 ) -> tuple[str, dict[str, str]]:
-    response = await _pyfetch(url, **kwargs)
+    response = await pyfetch(url, **kwargs, signal=signal)
 
     content = await response.string()
     # TODO: replace with response.headers when pyodide>= 0.24 is released
