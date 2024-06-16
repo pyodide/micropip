@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 from micropip import package_index
 
 
@@ -14,6 +14,11 @@ class Manager:
 
     def __init__(self):
         self.index_urls = package_index.DEFAULT_INDEX_URLS
+
+        # TODO: initialize the compatibility layer
+        self.repodata_packages: dict[str, dict[str, Any]] = {}
+        self.repodata_info: dict[str, str] = {}
+
         pass
 
     def install(self):
