@@ -23,25 +23,25 @@ class Manager:
         pass
 
     def install(self):
-        pass
+        raise NotImplementedError()
 
     def list(self):
-        pass
+        raise NotImplementedError()
 
-    def freeze(self) -> str:
-        pass
+    def freeze(self):
+        raise NotImplementedError()
 
     def add_mock_package(self):
-        pass
+        raise NotImplementedError()
 
     def list_mock_packages(self):
-        pass
+        raise NotImplementedError()
 
     def remove_mock_package(self):
-        pass
+        raise NotImplementedError()
 
     def uninstall(self):
-        pass
+        raise NotImplementedError()
 
     def set_index_urls(self, urls: List[str] | str):
         """
