@@ -1,4 +1,7 @@
-from typing import Any, List
+from typing import (  # noqa: UP035 List import is necessary due to the `list` method
+    Any,
+    List,
+)
 
 from micropip import package_index
 
@@ -43,7 +46,7 @@ class Manager:
     def uninstall(self):
         raise NotImplementedError()
 
-    def set_index_urls(self, urls: List[str] | str):
+    def set_index_urls(self, urls: List[str] | str):  # noqa: UP006
         """
         Set the index URLs to use when looking up packages.
 
