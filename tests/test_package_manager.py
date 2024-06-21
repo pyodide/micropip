@@ -1,16 +1,16 @@
 import micropip.package_index as package_index
-from micropip.package_manager import Manager
+from micropip.package_manager import PackageManager
 
 
-def test_manager() -> Manager:
-    manager = Manager()
-    assert manager.index_urls == package_index.DEFAULT_INDEX_URLS
+def test_package_manager() -> PackageManager:
+    package_manager = PackageManager()
+    assert package_manager.index_urls == package_index.DEFAULT_INDEX_URLS
 
-    return manager
+    return package_manager
 
 
 def test_set_index_urls():
-    manager = test_manager()
+    manager = test_package_manager()
 
     default_index_urls = package_index.DEFAULT_INDEX_URLS
     assert manager.index_urls == default_index_urls
