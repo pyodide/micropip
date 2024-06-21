@@ -6,12 +6,12 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 from micropip import package_index
 
 
-class Manager:
+class PackageManager:
     """
-    Manager provides an extensible interface for customizing micropip's behavior.
+    PackageManager provides an extensible interface for customizing micropip's behavior.
 
     Each Manager instance holds its own local state that is
-    independent of other instances, including the global state.
+    independent of other instances.
 
     TODO: Implement all of the following global commands to utilize local state.
     """

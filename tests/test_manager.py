@@ -1,5 +1,5 @@
 import micropip.package_index as package_index
-from micropip.manager import Manager
+from micropip.package_manager import Manager
 
 
 def test_manager() -> Manager:
