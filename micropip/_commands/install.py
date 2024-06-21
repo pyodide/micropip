@@ -130,7 +130,7 @@ async def install(
         index_urls = package_index.INDEX_URLS[:]
 
     transaction = Transaction(
-        ctx=ctx,
+        ctx=ctx,  # type: ignore[arg-type]
         ctx_extras=[],
         keep_going=keep_going,
         deps=deps,
