@@ -16,7 +16,7 @@ class PackageManager:
     TODO: Implement all of the following global commands to utilize local state.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.index_urls = package_index.DEFAULT_INDEX_URLS
 
         # TODO: initialize the compatibility layer
