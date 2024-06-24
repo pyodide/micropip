@@ -12,6 +12,10 @@ from .._utils import fix_package_dependencies
 
 
 def freeze() -> str:
+    return _freeze(REPODATA_PACKAGES, REPODATA_INFO)
+
+
+def _freeze(packages: dict[str, dict[str, Any]], info: dict[str, str]) -> str:
     """Produce a json string which can be used as the contents of the
     ``repodata.json`` lock file.
 
@@ -23,18 +27,20 @@ def freeze() -> str:
     You can use your custom lock file by passing an appropriate url to the
     ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
     """
-    return json.dumps(freeze_data())
+    return json.dumps(freeze_data(packages, info))
 
 
-def freeze_data() -> dict[str, Any]:
-    pyodide_packages = deepcopy(REPODATA_PACKAGES)
+def freeze_data(
+    packages: dict[str, dict[str, Any]], info: dict[str, str]
+) -> dict[str, Any]:
+    pyodide_packages = deepcopy(packages)
     pip_packages = load_pip_packages()
     package_items = itertools.chain(pyodide_packages.items(), pip_packages)
 
     # Sort
     packages = dict(sorted(package_items))
     return {
-        "info": REPODATA_INFO,
+        "info": info,
         "packages": packages,
     }
 
