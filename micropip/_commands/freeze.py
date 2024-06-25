@@ -16,7 +16,7 @@ def freeze() -> str:
 
 
 def _freeze(
-    repodata_packages: dict[str, dict[str, Any]], repodata_info: dict[str, str]
+    lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
 ) -> str:
     """Produce a json string which can be used as the contents of the
     ``repodata.json`` lock file.
@@ -29,20 +29,20 @@ def _freeze(
     You can use your custom lock file by passing an appropriate url to the
     ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
     """
-    return json.dumps(freeze_data(repodata_packages, repodata_info))
+    return json.dumps(freeze_data(lockfile_packages, lockfile_info))
 
 
 def freeze_data(
-    repodata_packages: dict[str, dict[str, Any]], repodata_info: dict[str, str]
+    lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
 ) -> dict[str, Any]:
-    pyodide_packages = deepcopy(repodata_packages)
+    pyodide_packages = deepcopy(lockfile_packages)
     pip_packages = load_pip_packages()
     package_items = itertools.chain(pyodide_packages.items(), pip_packages)
 
     # Sort
     packages = dict(sorted(package_items))
     return {
-        "info": repodata_info,
+        "info": lockfile_info,
         "packages": packages,
     }
 
