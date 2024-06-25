@@ -4,7 +4,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 )
 
 from micropip import package_index
-from micropip._commands.freeze import _freeze
+from micropip.freeze import freeze_lockfile
 
 
 class PackageManager:
@@ -33,7 +33,7 @@ class PackageManager:
         raise NotImplementedError()
 
     def freeze(self) -> str:
-        return _freeze(self.repodata_packages, self.repodata_info)
+        return freeze_lockfile(self.repodata_packages, self.repodata_info)
 
     def add_mock_package(self):
         raise NotImplementedError()
