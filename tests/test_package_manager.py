@@ -1,16 +1,19 @@
+import json
+
 import micropip.package_index as package_index
 from micropip.package_manager import PackageManager
 
 
-def test_package_manager() -> PackageManager:
+def get_test_package_manager() -> PackageManager:
     package_manager = PackageManager()
-    assert package_manager.index_urls == package_index.DEFAULT_INDEX_URLS
+
+    # TODO: inject necessary constructor parameters
 
     return package_manager
 
 
 def test_set_index_urls():
-    manager = test_package_manager()
+    manager = get_test_package_manager()
 
     default_index_urls = package_index.DEFAULT_INDEX_URLS
     assert manager.index_urls == default_index_urls
@@ -27,3 +30,30 @@ def test_set_index_urls():
     finally:
         manager.set_index_urls(default_index_urls)
         assert manager.index_urls == default_index_urls
+
+
+def test_freeze():
+    manager = get_test_package_manager()
+
+    test_repodata_info = {
+        "test-dep-1": "0.1.0",
+        "test-dep-2": "0.2.0",
+    }
+    test_repodata_packages = {
+        "test-dep-1": {
+            "version": "0.1.0",
+            "depends": ["test-dep-2"],
+        },
+        "test-dep-2": {
+            "version": "0.2.0",
+        },
+    }
+
+    manager.repodata_info = test_repodata_info.copy()
+    manager.repodata_packages = test_repodata_packages.copy()
+
+    lockfile = manager.freeze()
+    assert json.loads(lockfile) == {
+        "info": test_repodata_info,
+        "packages": test_repodata_packages,
+    }
