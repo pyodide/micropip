@@ -74,7 +74,7 @@ class pyodide_js_:
 REPODATA_INFO: dict[str, str] = {}
 
 
-def loadPackage(packages: str | list[str]) -> None:
+async def loadPackage(packages: str | list[str]) -> None:
     pass
 
 
