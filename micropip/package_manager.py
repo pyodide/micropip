@@ -4,6 +4,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 )
 
 from micropip import package_index
+from micropip._commands import mock_package
 from micropip.freeze import freeze_lockfile
 from micropip.list import list_installed_packages
 from micropip.package import PackageDict
@@ -37,14 +38,23 @@ class PackageManager:
     def freeze(self) -> str:
         return freeze_lockfile(self.repodata_packages, self.repodata_info)
 
-    def add_mock_package(self):
-        raise NotImplementedError()
+    def add_mock_package(
+        self,
+        name: str,
+        version: str,
+        *,
+        modules: dict[str, str | None] | None = None,
+        persistent: bool = False,
+    ):
+        return mock_package.add_mock_package(
+            name, version, modules=modules, persistent=persistent
+        )
 
     def list_mock_packages(self):
-        raise NotImplementedError()
+        return mock_package.list_mock_packages()
 
-    def remove_mock_package(self):
-        raise NotImplementedError()
+    def remove_mock_package(self, name: str):
+        return mock_package.remove_mock_package(name)
 
     def uninstall(self):
         raise NotImplementedError()
