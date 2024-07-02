@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 import micropip.package_index as package_index
 from micropip.package_manager import PackageManager
 
@@ -57,3 +59,12 @@ def test_freeze():
         "info": test_repodata_info,
         "packages": test_repodata_packages,
     }
+
+
+@pytest.mark.skip(reason="Not implemented")
+def test_list():
+    manager = get_test_package_manager()
+
+    _package_dict = manager.list()
+
+    # TODO: implement test after implementing manager.install()

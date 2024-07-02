@@ -5,6 +5,8 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 
 from micropip import package_index
 from micropip.freeze import freeze_lockfile
+from micropip.list import list_installed_packages
+from micropip.package import PackageDict
 
 
 class PackageManager:
@@ -29,8 +31,8 @@ class PackageManager:
     def install(self):
         raise NotImplementedError()
 
-    def list(self):
-        raise NotImplementedError()
+    def list(self) -> PackageDict:
+        return list_installed_packages(self.repodata_packages)
 
     def freeze(self) -> str:
         return freeze_lockfile(self.repodata_packages, self.repodata_info)
