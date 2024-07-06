@@ -9,6 +9,8 @@ from micropip.freeze import freeze_lockfile
 from micropip.list import list_installed_packages
 from micropip.package import PackageDict
 
+from ._compat import REPODATA_INFO, REPODATA_PACKAGES
+
 
 class PackageManager:
     """
@@ -16,16 +18,13 @@ class PackageManager:
 
     Each Manager instance holds its own local state that is
     independent of other instances.
-
-    TODO: Implement all of the following global commands to utilize local state.
     """
 
     def __init__(self) -> None:
         self.index_urls = package_index.DEFAULT_INDEX_URLS
 
-        # TODO: initialize the compatibility layer
-        self.repodata_packages: dict[str, dict[str, Any]] = {}
-        self.repodata_info: dict[str, str] = {}
+        self.repodata_packages: dict[str, dict[str, Any]] = REPODATA_PACKAGES
+        self.repodata_info: dict[str, str] = REPODATA_INFO
 
         pass
 
