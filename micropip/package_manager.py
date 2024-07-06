@@ -6,6 +6,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 from micropip import package_index
 from micropip._commands import mock_package
 from micropip.freeze import freeze_lockfile
+from micropip.install import install
 from micropip.list import list_installed_packages
 from micropip.package import PackageDict
 
@@ -21,15 +22,36 @@ class PackageManager:
     """
 
     def __init__(self) -> None:
-        self.index_urls = package_index.DEFAULT_INDEX_URLS
+        self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
 
         self.repodata_packages: dict[str, dict[str, Any]] = REPODATA_PACKAGES
         self.repodata_info: dict[str, str] = REPODATA_INFO
 
         pass
 
-    def install(self):
-        raise NotImplementedError()
+    async def install(
+        self,
+        requirements: str | list[str],
+        keep_going: bool = False,
+        deps: bool = True,
+        credentials: str | None = None,
+        pre: bool = False,
+        index_urls: list[str] | str | None = None,
+        *,
+        verbose: bool | int = False,
+    ):
+        if index_urls is None:
+            index_urls = self.index_urls
+
+        return await install(
+            requirements,
+            keep_going,
+            deps,
+            credentials,
+            pre,
+            index_urls,
+            verbose=verbose,
+        )
 
     def list(self) -> PackageDict:
         return list_installed_packages(self.repodata_packages)
