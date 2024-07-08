@@ -3,14 +3,13 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
     List,
 )
 
-from micropip import package_index
-from micropip._commands import mock_package
-from micropip.freeze import freeze_lockfile
-from micropip.install import install
-from micropip.list import list_installed_packages
-from micropip.package import PackageDict
-
+from . import package_index
+from ._commands import mock_package
 from ._compat import REPODATA_INFO, REPODATA_PACKAGES
+from .freeze import freeze_lockfile
+from .install import install
+from .list import list_installed_packages
+from .package import PackageDict
 
 
 class PackageManager:
