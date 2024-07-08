@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from conftest import mock_fetch_cls
 
 import micropip.package_index as package_index
 from micropip.package_manager import PackageManager
@@ -61,10 +62,48 @@ def test_freeze():
     }
 
 
-@pytest.mark.skip(reason="Not implemented")
-def test_list():
+@pytest.mark.asyncio
+async def test_list(mock_fetch: mock_fetch_cls):
     manager = get_test_package_manager()
 
-    _package_dict = manager.list()
+    dummy = "dummy"
+    mock_fetch.add_pkg_version(dummy)
+    dummy_url = f"https://dummy.com/{dummy}-1.0.0-py3-none-any.whl"
 
-    # TODO: implement test after implementing manager.install()
+    await manager.install(dummy_url)
+
+    pkg_list = manager.list()
+
+    assert dummy in pkg_list
+    assert pkg_list[dummy].source.lower() == dummy_url
+
+
+@pytest.mark.asyncio
+async def test_custom_index_url(mock_package_index_json_api, monkeypatch):
+    manager = get_test_package_manager()
+
+    mock_server_fake_package = mock_package_index_json_api(
+        pkgs=["fake-pkg-micropip-test"]
+    )
+
+    _wheel_url = ""
+
+    async def _mock_fetch_bytes(url, *args):
+        nonlocal _wheel_url
+        _wheel_url = url
+        return b"fake wheel"
+
+    from micropip import wheelinfo
+
+    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
+
+    manager.set_index_urls([mock_server_fake_package])
+
+    try:
+        await manager.install("fake-pkg-micropip-test")
+    except Exception:
+        # We just check that the custom index url was used
+        # install will fail because the package is not real, but it doesn't matter.
+        pass
+
+    assert "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl" in _wheel_url

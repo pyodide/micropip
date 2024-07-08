@@ -3,11 +3,13 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
     List,
 )
 
-from micropip import package_index
-from micropip._commands import mock_package
-from micropip.freeze import freeze_lockfile
-from micropip.list import list_installed_packages
-from micropip.package import PackageDict
+from . import package_index
+from ._commands import mock_package
+from ._compat import REPODATA_INFO, REPODATA_PACKAGES
+from .freeze import freeze_lockfile
+from .install import install
+from .list import list_installed_packages
+from .package import PackageDict
 
 
 class PackageManager:
@@ -16,21 +18,39 @@ class PackageManager:
 
     Each Manager instance holds its own local state that is
     independent of other instances.
-
-    TODO: Implement all of the following global commands to utilize local state.
     """
 
     def __init__(self) -> None:
-        self.index_urls = package_index.DEFAULT_INDEX_URLS
+        self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
 
-        # TODO: initialize the compatibility layer
-        self.repodata_packages: dict[str, dict[str, Any]] = {}
-        self.repodata_info: dict[str, str] = {}
+        self.repodata_packages: dict[str, dict[str, Any]] = REPODATA_PACKAGES
+        self.repodata_info: dict[str, str] = REPODATA_INFO
 
         pass
 
-    def install(self):
-        raise NotImplementedError()
+    async def install(
+        self,
+        requirements: str | list[str],
+        keep_going: bool = False,
+        deps: bool = True,
+        credentials: str | None = None,
+        pre: bool = False,
+        index_urls: list[str] | str | None = None,
+        *,
+        verbose: bool | int = False,
+    ):
+        if index_urls is None:
+            index_urls = self.index_urls
+
+        return await install(
+            requirements,
+            keep_going,
+            deps,
+            credentials,
+            pre,
+            index_urls,
+            verbose=verbose,
+        )
 
     def list(self) -> PackageDict:
         return list_installed_packages(self.repodata_packages)
