@@ -11,7 +11,7 @@ async def install(
     pre: bool = False,
     index_urls: list[str] | str | None = None,
     *,
-    verbose: bool | int = False,
+    verbose: bool | int | None = None,
 ) -> None:
     if index_urls is None:
         index_urls = package_index.INDEX_URLS[:]

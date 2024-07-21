@@ -35,7 +35,7 @@ class Transaction:
     pyodide_packages: list[PackageMetadata] = field(default_factory=list)
     failed: list[Requirement] = field(default_factory=list)
 
-    verbose: bool | int = False
+    verbose: bool | int | None = None
 
     def __post_init__(self):
         # If index_urls is None, pyodide-lock.json have to be searched first.
@@ -152,10 +152,15 @@ class Transaction:
             else:
                 try:
                     await self._add_requirement_from_package_index(req)
-                except ValueError:
+                except WheelNotFoundError:
                     # If the requirement is not found in package index,
                     # we still have a chance to find it from pyodide lockfile.
-                    if not self._add_requirement_from_pyodide_lock(req):
+                    if self._add_requirement_from_pyodide_lock(req):
+                        logger.debug(
+                            "No wheel found for %r in index, falling back to pyodide lock file.",
+                            req,
+                        )
+                    else:
                         raise
         except ValueError:
             self.failed.append(req)
@@ -238,6 +243,10 @@ class Transaction:
         self.wheels.append(wheel)
 
 
+class WheelNotFoundError(BaseException):
+    pass
+
+
 def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
     """Parse metadata to find the latest version of pure python wheel.
     Parameters
@@ -278,7 +287,7 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         if best_wheel is not None:
             return wheel
 
-    raise ValueError(
+    raise WheelNotFoundError(
         f"Can't find a pure Python 3 wheel for '{req}'.\n"
         f"See: {FAQ_URLS['cant_find_wheel']}\n"
         "You can use `await micropip.install(..., keep_going=True)` "

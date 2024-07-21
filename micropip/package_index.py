@@ -1,4 +1,5 @@
 import json
+import logging
 import string
 import sys
 from collections import defaultdict
@@ -19,6 +20,8 @@ DEFAULT_INDEX_URLS = ["https://pypi.org/simple"]
 INDEX_URLS = DEFAULT_INDEX_URLS
 
 _formatter = string.Formatter()
+
+logger = logging.getLogger("micropip")
 
 
 @dataclass
@@ -83,6 +86,7 @@ class ProjectInfo:
 
         https://peps.python.org/pep-0503
         """
+        logger.debug("Parsing simple_html_api for package: %r", pkgname)
         project_detail = from_project_details_html(data, pkgname)
         name, releases = ProjectInfo._parse_pep691_response(project_detail)  # type: ignore[arg-type]
         return ProjectInfo._compatible_only(name, releases)
@@ -123,6 +127,7 @@ class ProjectInfo:
 
             releases[version].append(file)
 
+        logger.debug("Parsing pep691: %r, %r", name, releases)
         return name, releases
 
     @classmethod
@@ -215,19 +220,53 @@ def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
     return placeholder in fields
 
 
+class UnsupportedParserContentTypeError(BaseException):
+    """
+    Specific Error when trying to parse an PyPI Index.
+
+
+    .. note:
+
+        This used to be a ValueError, but cannot be a subclass of it, otherwise
+        we cannot determine whether we fail to parse the index, or just did not
+        found the wheels
+
+    """
+
+    pass
+
+
 def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectInfo]:
     """
     Select the function to parse the response based on the content type.
     """
+    # This is not proper parsing of the content type, but to do so would require using
+    # either an external dependency like request, cgi (deprecated as of Python 3.13).
+    # we'll just drop all the parameters after the first ; as we want just the content-type:
+    # https://www.ietf.org/rfc/rfc2045.html#page-10
+    raw_content_type = content_type
+    if ";" in content_type:
+        content_type = content_type.split(";")[0].strip()
+
     match content_type:
         case "application/vnd.pypi.simple.v1+json":
+            logger.debug("Found parser for content type : %r", content_type)
             return ProjectInfo.from_simple_json_api
         case "application/json":
+            logger.debug("Found parser for content type : %r", content_type)
             return ProjectInfo.from_json_api
         case "application/vnd.pypi.simple.v1+html" | "text/html":
+            logger.debug("Found parser for content type : %r", content_type)
             return partial(ProjectInfo.from_simple_html_api, pkgname=pkgname)
         case _:
-            raise ValueError(f"Unsupported content type: {content_type}")
+            logger.debug("Unsupported parser content type : %r", content_type)
+            raise UnsupportedParserContentTypeError(
+                f"Unsupported content type: {raw_content_type}"
+            )
+
+
+class IndexMetadataFetchError(BaseException):
+    pass
 
 
 async def query_package(
@@ -264,6 +303,7 @@ async def query_package(
     )
 
     if index_urls is None:
+        logger.debug("No index url provided, falling back to %r", INDEX_URLS)
         index_urls = INDEX_URLS
     elif isinstance(index_urls, str):
         index_urls = [index_urls]
@@ -273,17 +313,22 @@ async def query_package(
             url = url.format(package_name=name)
         else:
             url = f"{url}/{name}/"
+        logger.debug("Searching index url %r", url)
 
         try:
             metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
-        except OSError:
+        except OSError as e:
+            logger.debug("Error fetching %r, skipping. Error was %r", url, e)
             continue
 
         content_type = headers.get("content-type", "").lower()
         parser = _select_parser(content_type, name)
-        return parser(metadata)
+        try:
+            return parser(metadata)
+        except ValueError as e:
+            raise IndexMetadataFetchError("Error parsing Index page") from e
     else:
-        raise ValueError(
+        raise IndexMetadataFetchError(
             f"Can't fetch metadata for '{name}'. "
             "Please make sure you have entered a correct package name "
             "and correctly specified index_urls (if you changed them)."

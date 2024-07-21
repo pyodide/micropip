@@ -87,17 +87,15 @@ def _set_formatter_once() -> None:
     _logger.addHandler(ch)
 
 
-def setup_logging(verbosity: int | bool) -> logging.Logger:
+def setup_logging(verbosity: int | bool | None) -> logging.Logger:
     _set_formatter_once()
-
-    if verbosity >= 2:
-        level_number = logging.DEBUG
-    elif verbosity == 1:  # True == 1
-        level_number = logging.INFO
-    else:
-        level_number = logging.WARNING
-
     assert _logger
-    _logger.setLevel(level_number)
-
+    if verbosity is not None:
+        if verbosity >= 2:
+            level_number = logging.DEBUG
+        elif verbosity == 1:  # True == 1
+            level_number = logging.INFO
+        else:
+            level_number = logging.WARNING
+        _logger.setLevel(level_number)
     return _logger
