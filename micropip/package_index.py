@@ -269,6 +269,10 @@ class IndexMetadataFetchError(BaseException):
     pass
 
 
+class IndexMetadataParseError(BaseException):
+    pass
+
+
 async def query_package(
     name: str,
     fetch_kwargs: dict[str, Any] | None = None,
@@ -318,6 +322,8 @@ async def query_package(
         try:
             metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
         except OSError as e:
+            # Pypi does not currently set cors on 404, we we can't know
+            # whether this is a real OS error or a 404
             logger.debug("Error fetching %r, skipping. Error was %r", url, e)
             continue
 
@@ -326,7 +332,9 @@ async def query_package(
         try:
             return parser(metadata)
         except ValueError as e:
-            raise IndexMetadataFetchError("Error parsing Index page") from e
+            raise IndexMetadataParseError(
+                f"Error parsing Index page for URL: {url} "
+            ) from e
     else:
         raise IndexMetadataFetchError(
             f"Can't fetch metadata for '{name}'. "

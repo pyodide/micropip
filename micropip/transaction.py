@@ -14,7 +14,7 @@ from ._compat import REPODATA_PACKAGES
 from ._utils import best_compatible_tag_index, check_compatible
 from .constants import FAQ_URLS
 from .package import PackageMetadata
-from .package_index import ProjectInfo
+from .package_index import IndexMetadataFetchError, ProjectInfo
 from .wheelinfo import WheelInfo
 
 logger = logging.getLogger("micropip")
@@ -152,7 +152,7 @@ class Transaction:
             else:
                 try:
                     await self._add_requirement_from_package_index(req)
-                except WheelNotFoundError:
+                except (WheelNotFoundError, IndexMetadataFetchError):
                     # If the requirement is not found in package index,
                     # we still have a chance to find it from pyodide lockfile.
                     if self._add_requirement_from_pyodide_lock(req):
