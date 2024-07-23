@@ -162,7 +162,7 @@ class Transaction:
                         )
                     else:
                         raise
-        except ValueError:
+        except (WheelNotFoundError, IndexMetadataFetchError):
             self.failed.append(req)
             if not self.keep_going:
                 raise
