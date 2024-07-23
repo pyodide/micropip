@@ -115,29 +115,15 @@ def test_contain_placeholder():
     assert not package_index._contain_placeholder("https://pkg-index.com/")
 
 
-async def _test_query_package(pkg1, pkg1_index_url, pkg2, pkg2_index_url):
-    project_info = await package_index.query_package(pkg1, index_urls=[pkg1_index_url])
-
-    assert project_info.name == pkg1
-    assert project_info.releases
-
-    project_info = await package_index.query_package(pkg1, index_urls=pkg1_index_url)
-
-    assert project_info.name == pkg1
-    assert project_info.releases
-
-    project_info = await package_index.query_package(
-        pkg1, index_urls=[pkg2_index_url, pkg1_index_url]
-    )
-
-    assert project_info.name == pkg1
-    assert project_info.releases
-
-    with pytest.raises(ValueError, match="Can't fetch metadata"):
-        await package_index.query_package(pkg1, index_urls=[pkg2_index_url])
-
-
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mock_fixture",
+    (
+        "mock_package_index_json_api",
+        "mock_package_index_simple_json_api",
+        "mock_package_index_simple_html_api",
+    ),
+)
 @pytest.mark.parametrize(
     "pkg1, pkg2",
     [
@@ -147,19 +133,20 @@ async def _test_query_package(pkg1, pkg1_index_url, pkg2, pkg2_index_url):
         ("numpy", "black"),
     ],
 )
-async def test_query_package(
-    pkg1,
-    pkg2,
-    mock_package_index_json_api,
-    mock_package_index_simple_json_api,
-    mock_package_index_simple_html_api,
-):
-    for gen_mock_server in (
-        mock_package_index_json_api,
-        mock_package_index_simple_json_api,
-        mock_package_index_simple_html_api,
-    ):
-        mock_server_1 = gen_mock_server(pkgs=[pkg1])
-        mock_server_2 = gen_mock_server(pkgs=[pkg2])
+async def test_query_package(mock_fixture, pkg1, pkg2, request):
+    gen_mock_server = request.getfixturevalue(mock_fixture)
+    pkg1_index_url = gen_mock_server(pkgs=[pkg1])
+    pkg2_index_url = gen_mock_server(pkgs=[pkg2])
 
-        await _test_query_package(pkg1, mock_server_1, pkg2, mock_server_2)
+    for _index_urls in (
+        pkg1_index_url,
+        [pkg1_index_url],
+        [pkg2_index_url, pkg1_index_url],
+    ):
+        project_info = await package_index.query_package(pkg1, index_urls=_index_urls)
+
+        assert project_info.name == pkg1
+        assert project_info.releases
+
+    with pytest.raises(ValueError, match="Can't fetch metadata"):
+        await package_index.query_package(pkg1, index_urls=[pkg2_index_url])
