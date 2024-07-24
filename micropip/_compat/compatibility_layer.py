@@ -13,18 +13,22 @@ class CompatibilityLayer(ABC):
     All of the following methods / properties must be implemented for use both inside and outside of pyodide.
     """
 
-    @property
-    @abstractmethod
-    def REPODATA_INFO(self) -> dict[str, dict[str, str]]:
-        pass
-
-    @property
-    @abstractmethod
-    def REPODATA_PACKAGES(self) -> dict[str, dict[str, Any]]:
-        pass
+    class loadedPackages(ABC):
+        @staticmethod
+        @abstractmethod
+        def to_py():
+            pass
 
     @abstractmethod
-    async def fetch_bytes(self, url: str) -> bytes:
+    def repodata_info() -> dict[str, dict[str, str]]:
+        pass
+
+    @abstractmethod
+    def repodata_packages() -> dict[str, dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
         pass
 
     @abstractmethod
@@ -42,11 +46,6 @@ class CompatibilityLayer(ABC):
         pkg_metadata: "PackageData", dynlibs: list[str]
     ) -> None:
         pass
-
-    class loadedPackages:
-        @staticmethod
-        def to_py():
-            pass
 
     @abstractmethod
     async def loadPackage(self, name: str) -> None:
