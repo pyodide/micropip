@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .wheelinfo import PackageData
+    from ..wheelinfo import PackageData
+
 
 REPODATA_PACKAGES: dict[str, dict[str, Any]] = {}
 
@@ -74,7 +75,7 @@ class pyodide_js_:
 REPODATA_INFO: dict[str, str] = {}
 
 
-def loadPackage(packages: str | list[str]) -> None:
+async def loadPackage(packages: str | list[str]) -> None:
     pass
 
 
