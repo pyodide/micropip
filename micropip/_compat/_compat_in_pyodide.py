@@ -1,6 +1,8 @@
 from pathlib import Path
 from urllib.parse import urlparse
 
+from .compatibility_layer import CompatibilityLayer
+
 from pyodide._package_loader import get_dynlibs
 from pyodide.ffi import IN_BROWSER, to_js
 from pyodide.http import pyfetch
@@ -20,6 +22,10 @@ except ImportError:
     if IN_BROWSER:
         raise
     # Otherwise, this is pytest test collection so let it go.
+
+
+class CompatibilityInPyodide(CompatibilityLayer):
+    pass
 
 
 async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
