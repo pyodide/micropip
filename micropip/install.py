@@ -1,6 +1,8 @@
 import asyncio
 import importlib
+from collections.abc import Coroutine
 from pathlib import Path
+from typing import Any
 
 from packaging.markers import default_environment
 
@@ -155,7 +157,7 @@ async def install(
     if package_names:
         logger.info("Installing collected packages: " + ", ".join(package_names))
 
-    wheel_promises = []
+    wheel_promises: list[Coroutine[Any, Any, None] | asyncio.Task[Any]] = []
     # Install built-in packages
     pyodide_packages = transaction.pyodide_packages
     if len(pyodide_packages):
