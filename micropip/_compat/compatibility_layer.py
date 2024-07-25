@@ -19,47 +19,55 @@ class CompatibilityLayer(ABC):
         def to_py():
             pass
 
+    @staticmethod
     @abstractmethod
-    def repodata_info() -> dict[str, dict[str, str]]:
+    def repodata_info() -> dict[str, str]:
         pass
 
+    @staticmethod
     @abstractmethod
     def repodata_packages() -> dict[str, dict[str, Any]]:
         pass
 
+    @staticmethod
     @abstractmethod
     async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
         pass
 
+    @staticmethod
     @abstractmethod
     async def fetch_string_and_headers(
         url: str, kwargs: dict[str, Any]
     ) -> tuple[str, dict[str, str]]:
         pass
 
+    @staticmethod
     @abstractmethod
     def get_dynlibs(archive: IO[bytes], suffix: str, target_dir: Path) -> list[str]:
         pass
 
+    @staticmethod
     @abstractmethod
     async def loadDynlibsFromPackage(
         pkg_metadata: "PackageData", dynlibs: list[str]
     ) -> None:
         pass
 
+    @staticmethod
     @abstractmethod
-    async def loadPackage(self, name: str) -> None:
+    async def loadPackage(names: str | list[str]) -> None:
         pass
 
+    @staticmethod
     @abstractmethod
     def to_js(
         obj: Any,
         /,
         *,
         depth: int = -1,
-        pyproxies=None,
+        pyproxies: Any,
         create_pyproxies: bool = True,
-        dict_converter=None,
-        default_converter=None,
+        dict_converter: Any,
+        default_converter: Any,
     ) -> Any:
         pass

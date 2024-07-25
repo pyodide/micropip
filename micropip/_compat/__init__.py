@@ -1,69 +1,38 @@
-from pathlib import Path
 import sys
-from typing import IO, TYPE_CHECKING, Any
+
+from .compatibility_layer import CompatibilityLayer
+
+compatibility_layer: type[CompatibilityLayer] | None = None
 
 IN_BROWSER = "_pyodide_core" in sys.modules
 
 if IN_BROWSER:
-    from ._compat_in_pyodide import (
-        CompatibilityInPyodide as CompatibilityLayer,
-    )
+    from ._compat_in_pyodide import CompatibilityInPyodide
+
+    compatibility_layer = CompatibilityInPyodide
 else:
-    from ._compat_not_in_pyodide import (
-        CompatibilityNotInPyodide as CompatibilityLayer,
-    )
+    from ._compat_not_in_pyodide import CompatibilityNotInPyodide
+
+    compatibility_layer = CompatibilityNotInPyodide
 
 
-if TYPE_CHECKING:
-    from ..wheelinfo import PackageData
+REPODATA_INFO = compatibility_layer.repodata_info()
 
-REPODATA_INFO = CompatibilityLayer.repodata_info()
-REPODATA_PACKAGES = CompatibilityLayer.repodata_packages()
+REPODATA_PACKAGES = compatibility_layer.repodata_packages()
 
+fetch_bytes = compatibility_layer.fetch_bytes
 
-async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
-    return CompatibilityLayer.fetch_bytes(url, kwargs)
+fetch_string_and_headers = compatibility_layer.fetch_string_and_headers
 
+loadedPackages = compatibility_layer.loadedPackages
 
-async def fetch_string_and_headers(
-    url: str, kwargs: dict[str, str]
-) -> tuple[str, dict[str, str]]:
-    return CompatibilityLayer.fetch_string_and_headers(url, kwargs)
+loadDynlibsFromPackage = compatibility_layer.loadDynlibsFromPackage
 
+loadPackage = compatibility_layer.loadPackage
 
-loadedPackages = CompatibilityLayer.loadedPackages
+get_dynlibs = compatibility_layer.get_dynlibs
 
-
-async def loadDynlibsFromPackage(pkg_metadata: "PackageData", dynlibs: list[str]):
-    return CompatibilityLayer.loadDynlibsFromPackage(pkg_metadata, dynlibs)
-
-
-async def loadPackage(packages: str | list[str]):
-    return CompatibilityLayer.loadPackage(packages)
-
-
-def get_dynlibs(archive: IO[bytes], suffix: str, target_dir: Path) -> list[str]:
-    return CompatibilityLayer.get_dynlibs(archive, suffix, target_dir)
-
-
-def to_js(
-    obj: Any,
-    /,
-    *,
-    depth: int = -1,
-    pyproxies=None,
-    create_pyproxies: bool = True,
-    dict_converter=None,
-    default_converter=None,
-):
-    return CompatibilityLayer.to_js(
-        obj,
-        depth=depth,
-        pyproxies=pyproxies,
-        create_pyproxies=create_pyproxies,
-        dict_converter=dict_converter,
-        default_converter=default_converter,
-    )
+to_js = compatibility_layer.to_js
 
 
 __all__ = [
