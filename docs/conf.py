@@ -1,3 +1,4 @@
+import os
 import sys
 from importlib import metadata as importlib_metadata
 from pathlib import Path
@@ -25,18 +26,22 @@ intersphinx_mapping = {
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".*"]
 
+
+# -- Options for HTML output -------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
+
 html_css_files = [
     "css/pyodide.css",
 ]
 
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-
-sys.path.append(Path(__file__).parent.parent.as_posix())
-
 html_theme = "sphinx_book_theme"
 html_logo = "_static/img/pyodide-logo.png"
 html_static_path = ["_static"]
+
+
+sys.path.append(Path(__file__).parent.parent.as_posix())
+
 
 try:
     release = importlib_metadata.version("micropip")
