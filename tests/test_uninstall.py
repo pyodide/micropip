@@ -192,7 +192,7 @@ def test_warning_file_removed(selenium_standalone_micropip, wheel_catalog):
             captured = buf.getvalue()
             logs = captured.strip().split("\n")
             if parse(pyodide.__version__) < parse("0.27"):
-                assert len(logs) == 2, logs
+                assert len(logs) == 2, (logs, pyodide.__version__)
                 assert "does not exist" in logs[-1]
                 assert "does not exist" in logs[-2]
             else:
