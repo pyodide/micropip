@@ -39,7 +39,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            logger.warning("Skipping 's' as it is not installed.", package)
+            logger.warning("Skipping '%s' as it is not installed.", package)
 
     for dist in distributions:
         # Note: this value needs to be retrieved before removing files, as
