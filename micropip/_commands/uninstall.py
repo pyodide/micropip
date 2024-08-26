@@ -39,7 +39,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
             dist = importlib.metadata.distribution(package)
             distributions.append(dist)
         except importlib.metadata.PackageNotFoundError:
-            logger.warning(f"Skipping '{package}' as it is not installed.")
+            logger.warning("Skipping '%s' as it is not installed.", package)
 
     for dist in distributions:
         # Note: this value needs to be retrieved before removing files, as
@@ -47,7 +47,7 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
         name = dist.name
         version = dist.version
 
-        logger.info(f"Found existing installation: {name} {version}")
+        logger.info("Found existing installation: %s %s", name, version)
 
         root = get_root(dist)
         files = get_files_in_distribution(dist)
@@ -64,7 +64,9 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                     continue
 
                 logger.warning(
-                    f"A file '{file}' listed in the metadata of '{name}' does not exist.",
+                    "A file '%s' listed in the metadata of '%s' does not exist.",
+                    file,
+                    name,
                 )
 
                 continue
@@ -80,18 +82,18 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                 directory.rmdir()
             except OSError:
                 logger.warning(
-                    f"A directory '{directory}' is not empty after uninstallation of '{name}'. "
+                    "A directory '%s' is not empty after uninstallation of '%s'. "
                     "This might cause problems when installing a new version of the package. ",
+                    directory,
+                    name,
                 )
 
         if hasattr(loadedPackages, name):
             delattr(loadedPackages, name)
         else:
             # This should not happen, but just in case
-            logger.warning(
-                f"a package '{name}' was not found in loadedPackages.",
-            )
+            logger.warning("a package '%s' was not found in loadedPackages.", name)
 
-        logger.info(f"Successfully uninstalled {name}-{version}")
+        logger.info("Successfully uninstalled %s-%s", name, version)
 
     importlib.invalidate_caches()

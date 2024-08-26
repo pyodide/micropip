@@ -155,7 +155,7 @@ async def install(
     ]
 
     if package_names:
-        logger.info("Installing collected packages: " + ", ".join(package_names))
+        logger.info("Installing collected packages: %s", ", ".join(package_names))
 
     wheel_promises: list[Coroutine[Any, Any, None] | asyncio.Task[Any]] = []
     # Install built-in packages
@@ -182,6 +182,6 @@ async def install(
     ]
 
     if packages:
-        logger.info("Successfully installed " + ", ".join(packages))
+        logger.info("Successfully installed %s", ", ".join(packages))
 
     importlib.invalidate_caches()
