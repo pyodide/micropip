@@ -171,6 +171,9 @@ def test_warning_file_removed(selenium_standalone_micropip, wheel_catalog):
         import contextlib
         import io
 
+        import pyodide
+        from packaging.version import parse
+
         with io.StringIO() as buf, contextlib.redirect_stdout(buf):
             await micropip.install(wheel_url)
 
@@ -188,10 +191,12 @@ def test_warning_file_removed(selenium_standalone_micropip, wheel_catalog):
 
             captured = buf.getvalue()
             logs = captured.strip().split("\n")
-
-            assert len(logs) == 2
-            assert "does not exist" in logs[-1]
-            assert "does not exist" in logs[-2]
+            if parse(pyodide.__version__) < parse("0.27"):
+                assert len(logs) == 2, logs
+                assert "does not exist" in logs[-1]
+                assert "does not exist" in logs[-2]
+            else:
+                assert logs == [""]
 
     test_wheel = wheel_catalog.get(TEST_PACKAGE_NAME)
 
