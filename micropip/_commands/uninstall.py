@@ -61,6 +61,9 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                     # - scripts
                     # - entry_points
                     # Since we don't support these, we can ignore them (except for data_files (TODO))
+                    logger.warning(
+                        "skipping file '%s' that is relative to root",
+                    )
                     continue
 
                 logger.warning(
