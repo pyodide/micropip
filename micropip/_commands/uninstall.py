@@ -65,7 +65,8 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                         "skipping file '%s' that is relative to root",
                     )
                     continue
-
+                # see PR 130, it is likely that this is never triggered since Python 3.12
+                # as non existing files are not listed by get_files_in_distribution anymore.
                 logger.warning(
                     f"A file '{file}' listed in the metadata of '{name}' does not exist.",
                 )
