@@ -40,7 +40,7 @@ build-backend = "setuptools.build_meta"
 write_to = "micropip/_version.py"
 
 [tool.ruff]
-select = [
+lint.select = [
   "E",     # pycodestyles
   "W",     # pycodestyles
   "F",     # pyflakes
@@ -54,11 +54,11 @@ select = [
 ]
 # Remove E999 once pattern matching is supported
 # https://github.com/charliermarsh/ruff/issues/282
-ignore = ["E402", "E501", "E731", "E741", "E999"]
+lint.ignore = ["E402", "E501", "E731", "E741", "E999"]
 target-version = "py311"
 
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = [
   "micropip"
 ]
