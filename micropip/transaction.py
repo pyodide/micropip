@@ -140,7 +140,7 @@ class Transaction:
 
         satisfied, ver = self.check_version_satisfied(req)
         if satisfied:
-            logger.info(f"Requirement already satisfied: {req} ({ver})")
+            logger.info("Requirement already satisfied: %s (%s)", req, ver)
             return
 
         try:
@@ -193,7 +193,7 @@ class Transaction:
         # installed the wheel?
         satisfied, ver = self.check_version_satisfied(req)
         if satisfied:
-            logger.info(f"Requirement already satisfied: {req} ({ver})")
+            logger.info("Requirement already satisfied: %s (%s)", req, ver)
 
         await self.add_wheel(wheel, req.extras, specifier=str(req.specifier))
 
@@ -228,8 +228,8 @@ class Transaction:
             version=str(wheel.version),
         )
 
-        logger.info(f"Collecting {wheel.name}{specifier}")
-        logger.info(f"  Downloading {wheel.url.split('/')[-1]}")
+        logger.info("Collecting %s%s", wheel.name, specifier)
+        logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
         await wheel.download(self.fetch_kwargs)
         if self.deps:
