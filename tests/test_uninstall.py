@@ -186,11 +186,10 @@ def test_warning_file_removed(selenium_standalone_micropip, wheel_catalog):
 
             dist = distribution(pkg_name)
             files = dist.files
-            file1 = files[0]
-            file2 = files[1]
-
-            file1.locate().unlink()
-            file2.locate().unlink()
+            for file in (files[0], files[1]):
+                path = file.locate()
+                assert path.name.endswith(".py")
+                path.unlink()
 
             micropip.uninstall(pkg_name)
 
