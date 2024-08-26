@@ -50,6 +50,7 @@ select = [
   "UP",    # pyupgrade
   "I",     # isort
   "PGH",   # pygrep-hooks
+  "G",     # flake8-logging-format
 ]
 # Remove E999 once pattern matching is supported
 # https://github.com/charliermarsh/ruff/issues/282
