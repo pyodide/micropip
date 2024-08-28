@@ -159,49 +159,6 @@ def test_warning_not_installed(selenium_standalone_micropip):
     run(selenium_standalone_micropip)
 
 
-def test_warning_file_removed(selenium_standalone_micropip, wheel_catalog):
-    """
-    Test warning when files in a package are removed by user.
-    """
-
-    @run_in_pyodide()
-    async def run(selenium, pkg_name, wheel_url):
-        from importlib.metadata import distribution
-        import micropip
-        import contextlib
-        import io
-
-        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-            await micropip.install(wheel_url)
-
-            assert pkg_name in micropip.list()
-
-            dist = distribution(pkg_name)
-            files = dist.files
-            file1 = files[0]
-            file2 = files[1]
-
-            file1.locate().unlink()
-            file2.locate().unlink()
-
-            micropip.uninstall(pkg_name)
-
-            captured = buf.getvalue()
-            logs = captured.strip().split("\n")
-
-            assert len(logs) == 2
-            assert "does not exist" in logs[-1]
-            assert "does not exist" in logs[-2]
-
-    test_wheel = wheel_catalog.get(TEST_PACKAGE_NAME)
-
-    run(
-        selenium_standalone_micropip,
-        test_wheel.name,
-        test_wheel.url,
-    )
-
-
 def test_warning_remaining_file(selenium_standalone_micropip, wheel_catalog):
     """
     Test warning when there are remaining files after uninstallation.

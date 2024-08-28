@@ -61,8 +61,12 @@ def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None
                     # - scripts
                     # - entry_points
                     # Since we don't support these, we can ignore them (except for data_files (TODO))
+                    logger.warning(
+                        "skipping file '%s' that is relative to root",
+                    )
                     continue
-
+                # see PR 130, it is likely that this is never triggered since Python 3.12
+                # as non existing files are not listed by get_files_in_distribution anymore.
                 logger.warning(
                     "A file '%s' listed in the metadata of '%s' does not exist.",
                     file,
