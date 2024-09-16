@@ -1,14 +1,14 @@
-import contextlib
 import logging
 import sys
 from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Any
 
 _logger: logging.Logger | None = None
 _indentation: int = 0
 
 
-@contextlib.contextmanager
+@contextmanager
 def indent_log(num: int = 2) -> Generator[None, None, None]:
     """
     A context manager which will cause the log output to be indented for any
@@ -87,17 +87,56 @@ def _set_formatter_once() -> None:
     _logger.addHandler(ch)
 
 
-def setup_logging(verbosity: int | bool) -> logging.Logger:
-    _set_formatter_once()
+class LoggerWrapper:
+    __slots__ = ("logger", "_orig_level")
 
+    logger: logging.Logger
+
+    def __init__(self, logger: logging.Logger):
+        self.logger = logger
+
+    def __getattr__(self, attr):
+        return getattr(self.logger, attr)
+
+    def __setattr(self, attr, value):
+        return setattr(self.logger, attr, value)
+
+    @contextmanager
+    def ctx_level(self, verbosity: int | bool | None = None):
+        cur_level = self.logger.level
+        if verbosity is not None:
+            if verbosity > 2:
+                raise ValueError(
+                    "verbosity should be in 0,1,2, False, True, if you are "
+                    "directly setting level using logging.LEVEL, please "
+                    "directly call `setLevel` on the logger."
+                )
+            elif verbosity >= 2:
+                level_number = logging.DEBUG
+            elif verbosity == 1:  # True == 1
+                level_number = logging.INFO
+            else:
+                level_number = logging.WARNING
+            self.logger.setLevel(level_number)
+        try:
+            yield self.logger
+        finally:
+            self.logger.setLevel(cur_level)
+
+
+def setup_logging() -> LoggerWrapper:
+    _set_formatter_once()
+    assert _logger
+    return LoggerWrapper(_logger)
+
+
+# TODO: expose this somehow
+def set_log_level(verbosity: int | bool):
     if verbosity >= 2:
         level_number = logging.DEBUG
     elif verbosity == 1:  # True == 1
         level_number = logging.INFO
     else:
         level_number = logging.WARNING
-
     assert _logger
     _logger.setLevel(level_number)
-
-    return _logger
