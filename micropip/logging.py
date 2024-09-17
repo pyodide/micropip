@@ -98,7 +98,7 @@ class LoggerWrapper:
     def __getattr__(self, attr):
         return getattr(self.logger, attr)
 
-    def __setattr(self, attr, value):
+    def __setattr__(self, attr, value):
         return setattr(self.logger, attr, value)
 
     @contextmanager
