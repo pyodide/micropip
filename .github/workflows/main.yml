@@ -20,7 +20,7 @@ jobs:
         os: [ubuntu-latest]
         pyodide-version: ['0.27.0a2']
         test-config: [
-          {runner: selenium, runtime: chrome, runtime-version: latest },
+          {runner: selenium, runtime: chrome, runtime-version: "125" },
         ]
 
     steps:
@@ -40,6 +40,12 @@ jobs:
           runner: ${{ matrix.test-config.runner }}
           browser: ${{ matrix.test-config.runtime }}
           browser-version: ${{ matrix.test-config.runtime-version }}
+
+      - name: Overwrite system chrome with installed chrome
+        shell: bash -l {0}
+        run: |
+          rm -f /usr/bin/google-chrome
+          cp 
 
       - name: Install requirements
         shell: bash -l {0}
