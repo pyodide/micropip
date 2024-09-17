@@ -17,10 +17,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
-        pyodide-version: ['0.24.1', '0.25.0', '0.26.2', '0.27.0a2']
+        os: [ubuntu-latest]
+        pyodide-version: ['0.27.0a2']
         test-config: [
-          {runner: selenium, runtime: chrome, runtime-version: latest },
+          # FIXME: recent version of chrome gets timeout
+          {runner: selenium, runtime: chrome, runtime-version: 125 },
         ]
 
     steps:
@@ -28,7 +29,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.11.1
+          python-version: 3.12
 
       - uses: pyodide/pyodide-actions/download-pyodide@v1
         with:
@@ -61,7 +62,7 @@ jobs:
           fail_ci_if_error: false
 
   deploy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     environment: PyPi-deploy
     steps:
@@ -69,7 +70,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.11.1
+          python-version: 3.12
       - name: Install requirements and build wheel
         shell: bash -l {0}
         run: |
