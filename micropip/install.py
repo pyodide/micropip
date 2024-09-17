@@ -22,6 +22,7 @@ async def install(
     index_urls: list[str] | str | None = None,
     *,
     verbose: bool | int = False,
+    **fetch_kwargs,
 ) -> None:
     """Install the given package and all of its dependencies.
 
@@ -115,8 +116,6 @@ async def install(
     ctx = default_environment()
     if isinstance(requirements, str):
         requirements = [requirements]
-
-    fetch_kwargs = dict()
 
     if credentials:
         fetch_kwargs["credentials"] = credentials
