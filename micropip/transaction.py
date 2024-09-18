@@ -35,7 +35,7 @@ class Transaction:
     pyodide_packages: list[PackageMetadata] = field(default_factory=list)
     failed: list[Requirement] = field(default_factory=list)
 
-    verbose: bool | int = False
+    verbose: bool | int | None = None
 
     def __post_init__(self):
         # If index_urls is None, pyodide-lock.json have to be searched first.
