@@ -1,5 +1,4 @@
 import pytest
-from packaging.utils import parse_wheel_filename
 
 from micropip.wheelinfo import WheelInfo
 
@@ -25,7 +24,9 @@ def test_from_package_index():
     size = 1234
     data_dist_info_metadata = True
 
-    wheel = WheelInfo.from_package_index(name, filename, url, version, sha256, size, data_dist_info_metadata)
+    wheel = WheelInfo.from_package_index(
+        name, filename, url, version, sha256, size, data_dist_info_metadata
+    )
 
     assert wheel.name == name
     assert str(wheel.version) == version

@@ -142,7 +142,7 @@ class WheelCatalog:
             return
 
         self._wheels[name] = self.Wheel(
-            path, name, version, path.name, name.replace("-", "_"), url
+            path, name, str(version), path.name, name.replace("-", "_"), url
         )
 
     def get(self, name: str) -> Wheel:
