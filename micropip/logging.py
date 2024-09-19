@@ -88,12 +88,13 @@ def _set_formatter_once() -> None:
 
 
 class LoggerWrapper:
-    __slots__ = ("logger", "_orig_level")
 
-    logger: logging.Logger
+    # need a default value because of __getattr__/__setattr__
+    logger: logging.Logger = None  # type: ignore[assignment]
 
     def __init__(self, logger: logging.Logger):
-        self.logger = logger
+        # Bypassing __setattr__ by setting attributes directly in __dict__
+        self.__dict__["logger"] = logger
 
     def __getattr__(self, attr):
         return getattr(self.logger, attr)
