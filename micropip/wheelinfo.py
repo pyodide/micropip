@@ -87,7 +87,7 @@ class WheelInfo:
         version: Version,
         sha256: str | None,
         size: int | None,
-        data_dist_info_metadata: DistributionMetadata,
+        data_dist_info_metadata: DistributionMetadata = None,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
