@@ -231,8 +231,16 @@ class Transaction:
         logger.info("Collecting %s%s", wheel.name, specifier)
         logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
-        await wheel.download(self.fetch_kwargs)
+        wheel_download_task = asyncio.create_task(wheel.download(self.fetch_kwargs))
         if self.deps:
+            try:
+                await wheel.download_pep658_metadata(self.fetch_kwargs)
+            except OSError:
+                # If something goes wrong while downloading the metadata
+                # we just log the error and continue, as the metadata can be fetched extracted from the wheel.
+                logger.debug("Metadata not available for %s", wheel.name)
+
+            await wheel_download_task
             await self.gather_requirements(wheel.requires(extras))
 
         self.wheels.append(wheel)

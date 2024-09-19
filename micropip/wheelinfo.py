@@ -19,6 +19,7 @@ from ._compat import (
 )
 from ._utils import parse_wheel_filename
 from .metadata import Metadata, safe_name, wheel_dist_info_dir
+from .types import DistributionMetadata
 
 
 @dataclass
@@ -43,6 +44,7 @@ class WheelInfo:
     parsed_url: ParseResult
     sha256: str | None = None
     size: int | None = None  # Size in bytes, if available (PEP 700)
+    data_dist_info_metadata: DistributionMetadata = None  # Wheel's metadata (PEP 658)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -55,6 +57,7 @@ class WheelInfo:
 
     def __post_init__(self):
         self._project_name = safe_name(self.name)
+        self.metadata_url = self.url + ".metadata"
 
     @classmethod
     def from_url(cls, url: str) -> "WheelInfo":
@@ -84,6 +87,7 @@ class WheelInfo:
         version: Version,
         sha256: str | None,
         size: int | None,
+        data_dist_info_metadata: DistributionMetadata,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
@@ -99,6 +103,7 @@ class WheelInfo:
             parsed_url=parsed_url,
             sha256=sha256,
             size=size,
+            data_dist_info_metadata=data_dist_info_metadata,
         )
 
     async def install(self, target: Path) -> None:
@@ -125,10 +130,36 @@ class WheelInfo:
         if self._data is not None:
             return
 
-        self._data = await self._fetch_bytes(fetch_kwargs)
-        with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
-            metadata_path = wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
-            self._metadata = Metadata(zipfile.Path(zf, metadata_path))
+        self._data = await self._fetch_bytes(self.url, fetch_kwargs)
+
+        # The wheel's metadata might be downloaded separately from the wheel itself.
+        # If it is not downloaded yet or if the metadata is not available, extract it from the wheel.
+        if self._metadata is None:
+            with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
+                metadata_path = (
+                    wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+                )
+                self._metadata = Metadata(zipfile.Path(zf, metadata_path))
+
+    async def download_pep658_metadata(
+        self,
+        fetch_kwargs: dict[str, Any],
+    ) -> None:
+        """
+        Download the wheel's metadata. If the metadata is not available, return None.
+        """
+        if self.data_dist_info_metadata is None:
+            return None
+
+        data = await self._fetch_bytes(self.metadata_url, fetch_kwargs)
+
+        match self.data_dist_info_metadata:
+            case {"sha256": checksum}:  # sha256 checksum available
+                _validate_sha256_checksum(data, checksum)
+            case _:  # no checksum available
+                pass
+
+        self._metadata = Metadata(data)
 
     def requires(self, extras: set[str]) -> list[Requirement]:
         """
@@ -143,9 +174,9 @@ class WheelInfo:
         self._requires = requires
         return requires
 
-    async def _fetch_bytes(self, fetch_kwargs: dict[str, Any]):
+    async def _fetch_bytes(self, url: str, fetch_kwargs: dict[str, Any]):
         try:
-            return await fetch_bytes(self.url, fetch_kwargs)
+            return await fetch_bytes(url, fetch_kwargs)
         except OSError as e:
             if self.parsed_url.hostname in [
                 "files.pythonhosted.org",
@@ -154,7 +185,7 @@ class WheelInfo:
                 raise e
             else:
                 raise ValueError(
-                    f"Can't fetch wheel from '{self.url}'. "
+                    f"Can't fetch wheel from '{url}'. "
                     "One common reason for this is when the server blocks "
                     "Cross-Origin Resource Sharing (CORS). "
                     "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
