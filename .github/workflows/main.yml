@@ -52,7 +52,9 @@ jobs:
         run: |
           pytest -v \
             --cov=micropip \
+            --durations=10 \
             --dist-dir=./dist/ \
+            --maxfail=15 \
             --runner=${{ matrix.test-config.runner }} \
             --rt ${{ matrix.test-config.runtime }}
 
