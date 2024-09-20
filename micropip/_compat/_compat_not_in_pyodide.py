@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from urllib.response import addinfourl
 
@@ -14,6 +15,15 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
 
     # Vendored from packaging
     _canonicalize_regex = re.compile(r"[-_.]+")
+
+    class HttpStatusError(Exception):
+        status_code: int
+        message: str
+
+        def __init__(self, status_code: int, message: str):
+            self.status_code = status_code
+            self.message = message
+            super().__init__(message)
 
     class loadedPackages(CompatibilityLayer.loadedPackages):
         @staticmethod
@@ -40,7 +50,11 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
     async def fetch_string_and_headers(
         url: str, kwargs: dict[str, Any]
     ) -> tuple[str, dict[str, str]]:
-        response = CompatibilityNotInPyodide._fetch(url, kwargs=kwargs)
+        try:
+            response = CompatibilityNotInPyodide._fetch(url, kwargs=kwargs)
+        except HTTPError as e:
+            raise CompatibilityNotInPyodide.HttpStatusError(e.code, str(e)) from e
+
         headers = {k.lower(): v for k, v in response.headers.items()}
         return response.read().decode(), headers
 

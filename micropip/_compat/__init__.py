@@ -34,6 +34,8 @@ get_dynlibs = compatibility_layer.get_dynlibs
 
 to_js = compatibility_layer.to_js
 
+HttpStatusError = compatibility_layer.HttpStatusError
+
 
 __all__ = [
     "REPODATA_INFO",
@@ -45,4 +47,5 @@ __all__ = [
     "loadPackage",
     "get_dynlibs",
     "to_js",
+    "HttpStatusError",
 ]

@@ -10,7 +10,7 @@ from typing import Any
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
 
-from ._compat import fetch_string_and_headers
+from ._compat import HttpStatusError, fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
 from .externals.mousebender.simple import from_project_details_html
 from .wheelinfo import WheelInfo
@@ -276,11 +276,33 @@ async def query_package(
 
         try:
             metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
+        except HttpStatusError as e:
+            if e.status_code == 404:
+                continue
+            raise
         except OSError:
-            continue
+            # temporary pyodide compatibility.
+            # pypi now set proper CORS on 404 (https://github.com/pypi/warehouse/pull/16339),
+            # but stable pyodide (<0.27) does not yet have proper HttpStatusError exception
+            # so when: on pyodide and 0.26.x we ignore OSError. Once we drop support for 0.26
+            # all this OSError except clause should just be gone.
+            try:
+                import pyodide
+                from packaging.version import parse
+
+                if parse(pyodide.__version__) > parse("0.27"):
+                    # reraise on more recent pyodide.
+                    raise
+                continue
+            except ImportError:
+                # not in pyodide.
+                raise
 
         content_type = headers.get("content-type", "").lower()
-        parser = _select_parser(content_type, name)
+        try:
+            parser = _select_parser(content_type, name)
+        except ValueError as e:
+            raise ValueError(f"Error trying to decode url: {url}") from e
         return parser(metadata)
     else:
         raise ValueError(
