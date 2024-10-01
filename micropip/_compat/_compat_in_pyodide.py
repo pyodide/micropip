@@ -5,21 +5,9 @@ from urllib.parse import urlparse
 if TYPE_CHECKING:
     pass
 
-import pyodide
-from packaging.version import parse
 from pyodide._package_loader import get_dynlibs
 from pyodide.ffi import IN_BROWSER, to_js
-
-if parse(pyodide.__version__) > parse("0.27"):
-    from pyodide.http import HttpStatusError, pyfetch
-else:
-
-    class HttpStatusError(Exception):  # type: ignore [no-redef]
-        """we just want this to be defined, it is never going to be raised"""
-
-        pass
-
-    from pyodide.http import pyfetch
+from pyodide.http import HttpStatusError, pyfetch
 
 from .compatibility_layer import CompatibilityLayer
 

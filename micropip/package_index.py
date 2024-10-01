@@ -280,23 +280,6 @@ async def query_package(
             if e.status_code == 404:
                 continue
             raise
-        except OSError:
-            # temporary pyodide compatibility.
-            # pypi now set proper CORS on 404 (https://github.com/pypi/warehouse/pull/16339),
-            # but stable pyodide (<0.27) does not yet have proper HttpStatusError exception
-            # so when: on pyodide and 0.26.x we ignore OSError. Once we drop support for 0.26
-            # all this OSError except clause should just be gone.
-            try:
-                import pyodide
-                from packaging.version import parse
-
-                if parse(pyodide.__version__) > parse("0.27"):
-                    # reraise on more recent pyodide.
-                    raise
-                continue
-            except ImportError:
-                # not in pyodide.
-                raise
 
         content_type = headers.get("content-type", "").lower()
         try:
