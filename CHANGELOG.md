@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [#132](https://github.com/pyodide/micropip/pull/132)
 
 - When multiple index urls are given, micropip.install will now correctly
-  fallback to the next index url when one index url fails to find a pacakge.
+  fallback to the next index url when one index url fails to find a package.
   [#129](https://github.com/pyodide/micropip/pull/129)
 
 ## [0.6.0] - 2024/01/31
