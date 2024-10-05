@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 from pyodide._package_loader import get_dynlibs
 from pyodide.ffi import IN_BROWSER, to_js
-from pyodide.http import pyfetch
+from pyodide.http import HttpStatusError, pyfetch
 
 from .compatibility_layer import CompatibilityLayer
 
@@ -28,6 +28,15 @@ except ImportError:
 
 
 class CompatibilityInPyodide(CompatibilityLayer):
+    class HttpStatusError(Exception):
+        status_code: int
+        message: str
+
+        def __init__(self, status_code: int, message: str):
+            self.status_code = status_code
+            self.message = message
+            super().__init__(message)
+
     @staticmethod
     def repodata_info() -> dict[str, str]:
         return REPODATA_INFO
@@ -50,7 +59,11 @@ class CompatibilityInPyodide(CompatibilityLayer):
     async def fetch_string_and_headers(
         url: str, kwargs: dict[str, str]
     ) -> tuple[str, dict[str, str]]:
-        response = await pyfetch(url, **kwargs)
+        try:
+            response = await pyfetch(url, **kwargs)
+            response.raise_for_status()
+        except HttpStatusError as e:
+            raise CompatibilityInPyodide.HttpStatusError(e.status, str(e)) from e
 
         content = await response.string()
         headers: dict[str, str] = response.headers

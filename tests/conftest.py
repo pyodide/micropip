@@ -347,6 +347,7 @@ def mock_fetch(monkeypatch, mock_importlib):
 def _mock_package_index_gen(
     httpserver,
     pkgs=("black", "pytest", "numpy", "pytz", "snowballstemmer"),
+    pkgs_not_found=(),
     content_type="application/json",
     suffix="_json.json.gz",
 ):
@@ -361,6 +362,10 @@ def _mock_package_index_gen(
             data,
             content_type=content_type,
             headers={"Access-Control-Allow-Origin": "*"},
+        )
+    for pkg in pkgs_not_found:
+        httpserver.expect_request(f"/{base}/{pkg}/").respond_with_data(
+            "Not found", status=404, content_type="text/plain"
         )
 
     index_url = httpserver.url_for(base)

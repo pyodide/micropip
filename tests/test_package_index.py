@@ -135,8 +135,8 @@ def test_contain_placeholder():
 )
 async def test_query_package(mock_fixture, pkg1, pkg2, request):
     gen_mock_server = request.getfixturevalue(mock_fixture)
-    pkg1_index_url = gen_mock_server(pkgs=[pkg1])
-    pkg2_index_url = gen_mock_server(pkgs=[pkg2])
+    pkg1_index_url = gen_mock_server(pkgs=[pkg1], pkgs_not_found=[pkg2])
+    pkg2_index_url = gen_mock_server(pkgs=[pkg2], pkgs_not_found=[pkg1])
 
     for _index_urls in (
         pkg1_index_url,
