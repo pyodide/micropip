@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added support for PEP-658.
+  [#139](https://github.com/pyodide/micropip/pull/139)
+
 ## [0.6.0] - 2024/01/31
 
 ### Fixed
