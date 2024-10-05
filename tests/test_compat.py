@@ -19,12 +19,7 @@ def test_404(selenium_standalone_micropip, httpserver, request):
 
         from micropip._compat import HttpStatusError, fetch_string_and_headers
 
-        if parse(pyodide.__version__) > parse("0.27"):
-            ExpectedErrorClass = HttpStatusError
-        else:
-            ExpectedErrorClass = OSError
-
-        with pytest.raises(ExpectedErrorClass):
+        with pytest.raises(HttpStatusError):
             await fetch_string_and_headers(url, {})
 
     httpserver.expect_request("/404").respond_with_data(
