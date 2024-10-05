@@ -10,7 +10,7 @@ from typing import Any
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
 
-from ._compat import fetch_string_and_headers
+from ._compat import HttpStatusError, fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
 from .externals.mousebender.simple import from_project_details_html
 from .wheelinfo import WheelInfo
@@ -276,11 +276,16 @@ async def query_package(
 
         try:
             metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
-        except OSError:
-            continue
+        except HttpStatusError as e:
+            if e.status_code == 404:
+                continue
+            raise
 
         content_type = headers.get("content-type", "").lower()
-        parser = _select_parser(content_type, name)
+        try:
+            parser = _select_parser(content_type, name)
+        except ValueError as e:
+            raise ValueError(f"Error trying to decode url: {url}") from e
         return parser(metadata)
     else:
         raise ValueError(

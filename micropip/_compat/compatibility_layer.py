@@ -13,6 +13,14 @@ class CompatibilityLayer(ABC):
     All of the following methods / properties must be implemented for use both inside and outside of pyodide.
     """
 
+    class HttpStatusError(ABC, Exception):
+        status_code: int
+        message: str
+
+        @abstractmethod
+        def __init__(self, status_code: int, message: str):
+            pass
+
     class loadedPackages(ABC):
         @staticmethod
         @abstractmethod
