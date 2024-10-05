@@ -13,9 +13,7 @@ def test_404(selenium_standalone_micropip, httpserver, request):
 
     @run_in_pyodide(packages=["micropip", "packaging"])
     async def _inner_test_404_raise(selenium, url):
-        import pyodide
         import pytest
-        from packaging.version import parse
 
         from micropip._compat import HttpStatusError, fetch_string_and_headers
 
