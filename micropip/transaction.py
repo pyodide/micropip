@@ -184,7 +184,7 @@ class Transaction:
         add it to the package list and return True. Otherwise, return False.
         """
         metadata = await package_index.query_package(
-            req.name, self.fetch_kwargs, index_urls=self.index_urls
+            req.name, self.index_urls, self.fetch_kwargs,
         )
 
         wheel = find_wheel(metadata, req)
