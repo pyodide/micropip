@@ -28,7 +28,7 @@ class Transaction:
     deps: bool
     pre: bool
     fetch_kwargs: dict[str, str]
-    index_urls: list[str] | str | None
+    index_urls: list[str] | str
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
     wheels: list[WheelInfo] = field(default_factory=list)
