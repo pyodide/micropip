@@ -3,8 +3,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
     List,
 )
 
-from . import package_index
-from ._commands import mock_package
+from . import package_index, mock_package
 from ._compat import REPODATA_INFO, REPODATA_PACKAGES
 from .freeze import freeze_lockfile
 from .install import install
@@ -37,7 +36,7 @@ class PackageManager:
         pre: bool = False,
         index_urls: list[str] | str | None = None,
         *,
-        verbose: bool | int = False,
+        verbose: bool | int | None = None,
     ):
         if index_urls is None:
             index_urls = self.index_urls
