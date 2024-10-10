@@ -3,7 +3,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
     List,
 )
 
-from . import package_index, mock_package
+from . import package_index, _mock_package
 from ._compat import REPODATA_INFO, REPODATA_PACKAGES
 from .freeze import freeze_lockfile
 from .install import install
@@ -65,15 +65,15 @@ class PackageManager:
         modules: dict[str, str | None] | None = None,
         persistent: bool = False,
     ):
-        return mock_package.add_mock_package(
+        return _mock_package.add_mock_package(
             name, version, modules=modules, persistent=persistent
         )
 
     def list_mock_packages(self):
-        return mock_package.list_mock_packages()
+        return _mock_package.list_mock_packages()
 
     def remove_mock_package(self, name: str):
-        return mock_package.remove_mock_package(name)
+        return _mock_package.remove_mock_package(name)
 
     def uninstall(self):
         raise NotImplementedError()
