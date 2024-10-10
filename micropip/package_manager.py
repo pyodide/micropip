@@ -43,11 +43,11 @@ class PackageManager:
 
         return await install(
             requirements,
+            index_urls,
             keep_going,
             deps,
             credentials,
             pre,
-            index_urls,
             verbose=verbose,
         )
 
