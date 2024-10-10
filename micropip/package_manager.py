@@ -3,7 +3,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
     List,
 )
 
-from . import package_index, _mock_package
+from . import _mock_package, package_index
 from ._compat import REPODATA_INFO, REPODATA_PACKAGES
 from .freeze import freeze_lockfile
 from .install import install

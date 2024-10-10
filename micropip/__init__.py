@@ -1,5 +1,4 @@
 from ._commands.uninstall import uninstall
-
 from .package_manager import PackageManager
 
 try:
