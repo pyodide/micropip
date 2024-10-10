@@ -286,7 +286,7 @@ class mock_fetch_cls:
         self.metadata_map[filename] = metadata
         self.top_level_map[filename] = top_level
 
-    async def query_package(self, pkgname, kwargs, index_urls=None):
+    async def query_package(self, pkgname, index_urls, kwargs):
         from micropip.package_index import ProjectInfo
 
         try:
