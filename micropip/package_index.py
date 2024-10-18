@@ -218,6 +218,10 @@ def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
     return placeholder in fields
 
 
+class UnsupportedContentTypeError(Exception):
+    pass
+
+
 def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectInfo]:
     """
     Select the function to parse the response based on the content type.
@@ -234,7 +238,13 @@ def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectIn
         ):
             return partial(ProjectInfo.from_simple_html_api, pkgname=pkgname)
         case _:
-            raise ValueError(f"Unsupported content type: {content_type}")
+            raise UnsupportedContentTypeError(
+                f"Unsupported content type: {content_type}"
+            )
+
+
+class NoValidIndexForPackageError(Exception):
+    pass
 
 
 async def query_package(
@@ -296,14 +306,11 @@ async def query_package(
             raise
 
         content_type = headers.get("content-type", "").lower()
-        try:
-            parser = _select_parser(content_type, name)
-        except ValueError as e:
-            raise ValueError(f"Error trying to decode url: {url}") from e
+        parser = _select_parser(content_type, name)
         return parser(metadata)
     else:
-        raise ValueError(
-            f"Can't fetch metadata for '{name}'. "
+        raise NoValidIndexForPackageError(
+            f"Can't fetch metadata for {name!r}. "
             "Please make sure you have entered a correct package name "
             "and correctly specified index_urls (if you changed them)."
         )
