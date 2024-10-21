@@ -13,6 +13,7 @@ from packaging.version import InvalidVersion, Version
 
 from ._compat import HttpStatusError, fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
+from .errors import PackageNotFoundOnAnyIndexError, UnsupportedContentTypeError
 from .externals.mousebender.simple import from_project_details_html
 from .wheelinfo import WheelInfo
 
@@ -218,10 +219,6 @@ def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
     return placeholder in fields
 
 
-class UnsupportedContentTypeError(Exception):
-    pass
-
-
 def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectInfo]:
     """
     Select the function to parse the response based on the content type.
@@ -241,10 +238,6 @@ def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectIn
             raise UnsupportedContentTypeError(
                 f"Unsupported content type: {content_type}"
             )
-
-
-class NoValidIndexForPackageError(Exception):
-    pass
 
 
 async def query_package(
@@ -309,7 +302,7 @@ async def query_package(
         parser = _select_parser(content_type, name)
         return parser(metadata)
     else:
-        raise NoValidIndexForPackageError(
+        raise PackageNotFoundOnAnyIndexError(
             f"Can't fetch metadata for {name!r}. "
             "Please make sure you have entered a correct package name "
             "and correctly specified index_urls (if you changed them)."

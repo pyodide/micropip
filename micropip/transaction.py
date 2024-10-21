@@ -13,8 +13,9 @@ from . import package_index
 from ._compat import REPODATA_PACKAGES
 from ._utils import best_compatible_tag_index, check_compatible
 from .constants import FAQ_URLS
+from .errors import NoCompatibleWheelError
 from .package import PackageMetadata
-from .package_index import NoValidIndexForPackageError, ProjectInfo
+from .package_index import PackageNotFoundOnAnyIndexError, ProjectInfo
 from .wheelinfo import WheelInfo
 
 logger = logging.getLogger("micropip")
@@ -153,7 +154,7 @@ class Transaction:
             else:
                 try:
                     await self._add_requirement_from_package_index(req)
-                except NoValidIndexForPackageError:
+                except PackageNotFoundOnAnyIndexError:
                     logger.warning(
                         "Transaction: package %r was not found in any index, "
                         "falling back to pyodide lock file",
@@ -178,7 +179,7 @@ class Transaction:
                         )
 
                         raise
-        except (NoCompatibleWheelError, NoValidIndexForPackageError):
+        except (NoCompatibleWheelError, PackageNotFoundOnAnyIndexError):
             self.failed.append(req)
             if not self.keep_going:
                 raise
@@ -261,10 +262,6 @@ class Transaction:
             await self.gather_requirements(wheel.requires(extras))
 
         self.wheels.append(wheel)
-
-
-class NoCompatibleWheelError(Exception):
-    pass
 
 
 def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
