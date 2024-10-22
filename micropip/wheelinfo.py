@@ -43,6 +43,7 @@ class WheelInfo:
     parsed_url: ParseResult
     sha256: str | None = None
     size: int | None = None  # Size in bytes, if available (PEP 700)
+    yanked: bool | str | None = None  # Yanked status, if available (PEP 592)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -84,6 +85,7 @@ class WheelInfo:
         version: Version,
         sha256: str | None,
         size: int | None,
+        yanked: bool | str | None,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
@@ -99,6 +101,7 @@ class WheelInfo:
             parsed_url=parsed_url,
             sha256=sha256,
             size=size,
+            yanked=yanked,
         )
 
     async def install(self, target: Path) -> None:

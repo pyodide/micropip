@@ -157,6 +157,8 @@ class ProjectInfo:
                 # This key is not available in the Simple API HTML response, so this field may be None
                 size = file.get("size")
 
+                yanked = file.get("yanked")
+
                 yield WheelInfo.from_package_index(
                     name=name,
                     filename=filename,
@@ -164,6 +166,7 @@ class ProjectInfo:
                     version=version,
                     sha256=sha256,
                     size=size,
+                    yanked=yanked,
                 )
 
         releases_compatible = {

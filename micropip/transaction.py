@@ -284,6 +284,8 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
 
         wheels = releases[ver]
         for wheel in wheels:
+            if wheel.yanked:
+                continue
             tag_index = best_compatible_tag_index(wheel.tags)
             if tag_index is not None and tag_index < best_tag_index:
                 best_wheel = wheel
