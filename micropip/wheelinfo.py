@@ -54,6 +54,9 @@ class WheelInfo:
     _dist_info: Path | None = None
 
     def __post_init__(self):
+        assert (
+            self.url.startwith(p) for p in ("http:", "https:", "emfs:", "file:")
+        ), self.url
         self._project_name = safe_name(self.name)
 
     @classmethod
@@ -63,6 +66,8 @@ class WheelInfo:
         See https://www.python.org/dev/peps/pep-0427/#file-name-convention
         """
         parsed_url = urlparse(url)
+        if parsed_url.scheme == "":
+            url = "file:///" + url
         file_name = Path(parsed_url.path).name
         name, version, build, tags = parse_wheel_filename(file_name)
         return WheelInfo(
