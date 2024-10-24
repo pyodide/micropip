@@ -2,7 +2,7 @@ import hashlib
 import io
 import json
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import ParseResult, urlparse
@@ -46,7 +46,7 @@ class WheelInfo:
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
-    _data: bytes | None = None  # Wheel file contents.
+    _data: bytes | None = field(default=None, repr=False)  # Wheel file contents.
     _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
 

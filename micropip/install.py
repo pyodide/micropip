@@ -157,7 +157,7 @@ async def install(
         logger.debug(
             "Installing packages %r and wheels %r ",
             transaction.pyodide_packages,
-            transaction.wheels,
+            [w.filename for w in transaction.wheels],
         )
         if package_names:
             logger.info("Installing collected packages: %s", ", ".join(package_names))
