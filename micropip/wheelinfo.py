@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import logging
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,6 +20,8 @@ from ._compat import (
 )
 from ._utils import parse_wheel_filename
 from .metadata import Metadata, safe_name, wheel_dist_info_dir
+
+logger = logging.getLogger("micropip")
 
 
 @dataclass
@@ -149,8 +152,16 @@ class WheelInfo:
         return requires
 
     async def _fetch_bytes(self, fetch_kwargs: dict[str, Any]):
+        if self.parsed_url.scheme not in ("https", "http", "emfs"):
+            # Don't raise ValueError it gets swallowed
+            raise TypeError(
+                f"Cannot download from a non-remote location: {self.url!r} ({self.parsed_url!r})"
+            )
         try:
-            return await fetch_bytes(self.url, fetch_kwargs)
+            logger.debug("Fetching URL %r", self.url)
+            bytes = await fetch_bytes(self.url, fetch_kwargs)
+            logger.debug("Fetched URL %r", self.url)
+            return bytes
         except OSError as e:
             if self.parsed_url.hostname in [
                 "files.pythonhosted.org",

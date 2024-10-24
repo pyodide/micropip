@@ -197,8 +197,6 @@ class Transaction:
             req.name, self.fetch_kwargs, index_urls=self.index_urls
         )
 
-        logger.debug("Transaction: got metadata %r for requirement %r", metadata, req)
-
         wheel = find_wheel(metadata, req)
 
         logger.debug("Transaction: Selected wheel: %r", wheel)
@@ -246,6 +244,7 @@ class Transaction:
         logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
         await wheel.download(self.fetch_kwargs)
+        logger.debug("  Downloaded %s", wheel.url.split("/")[-1])
         if self.deps:
             await self.gather_requirements(wheel.requires(extras))
 
