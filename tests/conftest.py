@@ -290,7 +290,9 @@ class mock_fetch_cls:
         from micropip.package_index import ProjectInfo
 
         try:
-            return ProjectInfo.from_json_api(self.releases_map[pkgname])
+            return ProjectInfo.from_json_api(
+                self.releases_map[pkgname], index_base_url=""
+            )
         except KeyError as e:
             raise ValueError(
                 f"Can't fetch metadata for '{pkgname}' from PyPI. "
