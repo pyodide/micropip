@@ -1,4 +1,5 @@
 import json
+import logging
 import string
 import sys
 from collections import defaultdict
@@ -18,6 +19,8 @@ from .wheelinfo import WheelInfo
 DEFAULT_INDEX_URLS = ["https://pypi.org/simple"]
 
 _formatter = string.Formatter()
+
+logger = logging.getLogger("micropip")
 
 
 @dataclass
@@ -223,7 +226,11 @@ def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectIn
             return ProjectInfo.from_simple_json_api
         case "application/json":
             return ProjectInfo.from_json_api
-        case "application/vnd.pypi.simple.v1+html" | "text/html":
+        case (
+            "application/vnd.pypi.simple.v1+html"
+            | "text/html"
+            | "text/html; charset=utf-8"
+        ):
             return partial(ProjectInfo.from_simple_html_api, pkgname=pkgname)
         case _:
             raise ValueError(f"Unsupported content type: {content_type}")
@@ -263,16 +270,22 @@ async def query_package(
         index_urls = [index_urls]
 
     for url in index_urls:
+        logger.debug("Looping through index urls: %r", url)
         if _contain_placeholder(url):
             url = url.format(package_name=name)
+            logger.debug("Formatting url with package name : %r", url)
         else:
             url = f"{url}/{name}/"
-
+            logger.debug("Url has no placeholder, appending package name : %r", url)
         try:
             metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
         except HttpStatusError as e:
             if e.status_code == 404:
+                logger.debug("NotFound (404) for %r, trying next index.", url)
                 continue
+            logger.debug(
+                "Error fetching %r (%s), trying next index.", url, e.status_code
+            )
             raise
 
         content_type = headers.get("content-type", "").lower()

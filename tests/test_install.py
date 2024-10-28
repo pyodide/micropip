@@ -257,7 +257,7 @@ async def test_fetch_wheel_fail(monkeypatch, wheel_base):
 
     msg = "Access-Control-Allow-Origin"
     with pytest.raises(ValueError, match=msg):
-        await micropip.install("htps://x.com/xxx-1.0.0-py3-none-any.whl")
+        await micropip.install("https://x.com/xxx-1.0.0-py3-none-any.whl")
 
 
 @pytest.mark.skip_refcount_check

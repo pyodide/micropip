@@ -142,9 +142,9 @@ def check_compatible(filename: str) -> None:
     try:
         tags = parse_tags(filename)
     except InvalidWheelFilename:
-        raise ValueError(f"Wheel filename is invalid: {filename}") from None
+        raise ValueError(f"Wheel filename is invalid: {filename!r}") from None
     except InvalidVersion:
-        raise ValueError(f"Wheel version is invalid: {filename}") from None
+        raise ValueError(f"Wheel version is invalid: {filename!r}") from None
 
     tag: Tag = next(iter(tags))
     if "emscripten" not in tag.platform:

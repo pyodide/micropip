@@ -270,7 +270,7 @@ class mock_fetch_cls:
         releases[version] = [
             {
                 "filename": filename,
-                "url": filename,
+                "url": f"http://fake.domain/f/{filename}",
                 "digests": {
                     "sha256": Wildcard(),
                 },

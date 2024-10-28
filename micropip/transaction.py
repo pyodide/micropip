@@ -146,6 +146,7 @@ class Transaction:
         try:
             if self.search_pyodide_lock_first:
                 if self._add_requirement_from_pyodide_lock(req):
+                    logger.debug("Transaction: package found in lock file: %r", req)
                     return
 
                 await self._add_requirement_from_package_index(req)
@@ -153,9 +154,18 @@ class Transaction:
                 try:
                     await self._add_requirement_from_package_index(req)
                 except ValueError:
+                    logger.debug(
+                        "Transaction: package %r not found in index, will search lock file",
+                        req,
+                    )
+
                     # If the requirement is not found in package index,
                     # we still have a chance to find it from pyodide lockfile.
                     if not self._add_requirement_from_pyodide_lock(req):
+                        logger.debug(
+                            "Transaction: package %r not found in lock file", req
+                        )
+
                         raise
         except ValueError:
             self.failed.append(req)
@@ -189,7 +199,11 @@ class Transaction:
             self.fetch_kwargs,
         )
 
+        logger.debug("Transaction: got metadata %r for requirement %r", metadata, req)
+
         wheel = find_wheel(metadata, req)
+
+        logger.debug("Transaction: Selected wheel: %r", wheel)
 
         # Maybe while we were downloading pypi_json some other branch
         # installed the wheel?
