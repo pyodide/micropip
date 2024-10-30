@@ -17,6 +17,7 @@ from ._utils import is_package_compatible, parse_version
 from .externals.mousebender.simple import from_project_details_html
 from .wheelinfo import WheelInfo
 
+PYPI = "PYPI"
 PYPI_URL = "https://pypi.org/simple"
 DEFAULT_INDEX_URLS = [PYPI_URL]
 INDEX_URLS = DEFAULT_INDEX_URLS
@@ -290,7 +291,7 @@ async def query_package(
     elif isinstance(index_urls, str):
         index_urls = [index_urls]
 
-    index_urls = [PYPI_URL if url == "PYPI" else url for url in index_urls]
+    index_urls = [PYPI_URL if url == PYPI else url for url in index_urls]
 
     for url in index_urls:
         logger.debug("Looping through index urls: %r", url)
