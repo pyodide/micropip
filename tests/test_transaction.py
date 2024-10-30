@@ -181,7 +181,7 @@ def _pypi_metadata(package, versions_to_tags):
         releases[version] = release
 
     metadata = {"releases": releases}
-    return ProjectInfo.from_json_api(metadata, index_base_url="")
+    return ProjectInfo.from_json_api(metadata)
 
 
 def test_last_version_from_pypi():

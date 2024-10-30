@@ -27,7 +27,7 @@ def test_project_info_from_json(name):
     test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
     test_data = _read_gzipped_testfile(test_file)
 
-    info = package_index.ProjectInfo.from_json_api(test_data, index_base_url="")
+    info = package_index.ProjectInfo.from_json_api(test_data)
     _check_project_info(info)
 
 
@@ -38,7 +38,7 @@ def test_project_info_from_simple_json(name):
     test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
     test_data = _read_gzipped_testfile(test_file)
 
-    info = package_index.ProjectInfo.from_simple_json_api(test_data, index_base_url="")
+    info = package_index.ProjectInfo.from_simple_json_api(test_data)
     _check_project_info(info)
 
 
@@ -67,11 +67,9 @@ def test_project_info_equal(name):
     test_data_json = _read_gzipped_testfile(test_file_json)
     test_data_simple_json = _read_gzipped_testfile(test_file_simple_json)
 
-    index_json = package_index.ProjectInfo.from_json_api(
-        test_data_json, index_base_url=""
-    )
+    index_json = package_index.ProjectInfo.from_json_api(test_data_json)
     index_simple_json = package_index.ProjectInfo.from_simple_json_api(
-        test_data_simple_json, index_base_url=""
+        test_data_simple_json
     )
 
     assert index_json.name == index_simple_json.name

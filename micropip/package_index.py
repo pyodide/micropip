@@ -42,9 +42,7 @@ class ProjectInfo:
     releases: dict[Version, Generator[WheelInfo, None, None]]
 
     @staticmethod
-    def from_json_api(
-        data: str | bytes | dict[str, Any], index_base_url: str
-    ) -> "ProjectInfo":
+    def from_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
         """
         Parse JSON API response
 
@@ -72,9 +70,7 @@ class ProjectInfo:
         return ProjectInfo._compatible_only(name, releases)
 
     @staticmethod
-    def from_simple_json_api(
-        data: str | bytes | dict[str, Any], index_base_url: str
-    ) -> "ProjectInfo":
+    def from_simple_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
         """
         Parse Simple JSON API response
 
@@ -82,7 +78,9 @@ class ProjectInfo:
         """
 
         data_dict = json.loads(data) if isinstance(data, str | bytes) else data
-        name, releases = ProjectInfo._parse_pep691_response(data_dict, index_base_url)
+        name, releases = ProjectInfo._parse_pep691_response(
+            data_dict, index_base_url=""
+        )
         return ProjectInfo._compatible_only(name, releases)
 
     @staticmethod
@@ -236,11 +234,9 @@ def _select_parser(
     """
     match content_type:
         case "application/vnd.pypi.simple.v1+json":
-            return partial(
-                ProjectInfo.from_simple_json_api, index_base_url=index_base_url
-            )
+            return ProjectInfo.from_simple_json_api
         case "application/json":
-            return partial(ProjectInfo.from_json_api, index_base_url=index_base_url)
+            return ProjectInfo.from_json_api
         case (
             "application/vnd.pypi.simple.v1+html"
             | "text/html"
