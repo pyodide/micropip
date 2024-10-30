@@ -18,6 +18,7 @@ def _check_project_info(project_info: package_index.ProjectInfo):
             assert file.filename in file.url
             if file.sha256 is not None:
                 assert len(file.sha256) == 64
+            assert file.url.startswith("https://")
 
 
 @pytest.mark.parametrize(
@@ -50,7 +51,7 @@ def test_project_info_from_simple_html(name):
     test_data = _read_gzipped_testfile(test_file)
 
     info = package_index.ProjectInfo.from_simple_html_api(
-        test_data.decode("utf-8"), name, index_base_url=""
+        test_data.decode("utf-8"), name, index_base_url="https://files.pythonhosted.org"
     )
     _check_project_info(info)
 
