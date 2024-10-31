@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-from conftest import _read_gzipped_testfile
 
 TEST_METADATA_DIR = Path(__file__).parent / "test_data" / "metadata"
 
@@ -10,17 +9,17 @@ TEST_METADATA_DIR = Path(__file__).parent / "test_data" / "metadata"
     "metadata_path, extras, expected",
     [
         (
-            "boto3-1.28.51-py3-none-any.whl.metadata.gz",
+            "boto3-1.28.51-py3-none-any.whl.metadata",
             (),
             ["botocore", "jmespath", "s3transfer"],
         ),
         (
-            "requests-2.31.0-py3-none-any.whl.metadata.gz",
+            "requests-2.31.0-py3-none-any.whl.metadata",
             (),
             ["certifi", "urllib3", "charset-normalizer", "idna"],
         ),
         (
-            "requests-2.31.0-py3-none-any.whl.metadata.gz",
+            "requests-2.31.0-py3-none-any.whl.metadata",
             (
                 "socks",
                 "use_chardet_on_py3",
@@ -32,7 +31,7 @@ TEST_METADATA_DIR = Path(__file__).parent / "test_data" / "metadata"
 def test_Metadata_requires(metadata_path, extras, expected):
     from micropip.metadata import Metadata
 
-    metadata = _read_gzipped_testfile(TEST_METADATA_DIR / metadata_path)
+    metadata = (TEST_METADATA_DIR / metadata_path).read_bytes()
     m = Metadata(metadata)
 
     reqs = m.requires(extras)
@@ -43,9 +42,9 @@ def test_Metadata_requires(metadata_path, extras, expected):
 def test_Metadata_extra_invalid():
     from micropip.metadata import Metadata
 
-    metadata = _read_gzipped_testfile(
-        TEST_METADATA_DIR / "boto3-1.28.51-py3-none-any.whl.metadata.gz"
-    )
+    metadata = (
+        TEST_METADATA_DIR / "boto3-1.28.51-py3-none-any.whl.metadata"
+    ).read_bytes()
     m = Metadata(metadata)
     extras = ("invalid",)
 
@@ -56,9 +55,9 @@ def test_Metadata_extra_invalid():
 def test_Metadata_marker():
     from micropip.metadata import Metadata
 
-    metadata = _read_gzipped_testfile(
-        TEST_METADATA_DIR / "urllib3-2.0.5-py3-none-any.whl.metadata.gz"
-    )
+    metadata = (
+        TEST_METADATA_DIR / "urllib3-2.0.5-py3-none-any.whl.metadata"
+    ).read_bytes()
     m = Metadata(metadata)
     extras = ("brotli", "zstd")
 
@@ -78,9 +77,9 @@ def test_Metadata_marker():
 def test_Metadata_extra_of_requires():
     from micropip.metadata import Metadata
 
-    metadata = _read_gzipped_testfile(
-        TEST_METADATA_DIR / "boto3-1.28.51-py3-none-any.whl.metadata.gz"
-    )
+    metadata = (
+        TEST_METADATA_DIR / "boto3-1.28.51-py3-none-any.whl.metadata"
+    ).read_bytes()
     m = Metadata(metadata)
     extras = ("crt",)
 
