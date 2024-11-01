@@ -20,7 +20,6 @@ from .wheelinfo import WheelInfo
 PYPI = "PYPI"
 PYPI_URL = "https://pypi.org/simple"
 DEFAULT_INDEX_URLS = [PYPI_URL]
-INDEX_URLS = DEFAULT_INDEX_URLS
 
 _formatter = string.Formatter()
 
@@ -254,8 +253,8 @@ def _select_parser(
 
 async def query_package(
     name: str,
+    index_urls: list[str] | str,
     fetch_kwargs: dict[str, Any] | None = None,
-    index_urls: list[str] | str | None = None,
 ) -> ProjectInfo:
     """
     Query for a package from package indexes.
@@ -264,16 +263,13 @@ async def query_package(
     ----------
     name
         Name of the package to search for.
-    fetch_kwargs
-        Keyword arguments to pass to the fetch function.
     index_urls
         A list of URLs or a single URL to use as the package index.
-        If None, the default index URL is used.
-
         If a list of URLs is provided, it will be tried in order until
         it finds a package. If no package is found, an error will be raised.
+    fetch_kwargs
+        Keyword arguments to pass to the fetch function.
     """
-    global INDEX_URLS
 
     _fetch_kwargs = fetch_kwargs.copy() if fetch_kwargs else {}
 
@@ -285,10 +281,7 @@ async def query_package(
         "accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
     )
 
-    if index_urls is None:
-        logger.debug("index_urls is None, falling back to default, %s", INDEX_URLS)
-        index_urls = INDEX_URLS
-    elif isinstance(index_urls, str):
+    if isinstance(index_urls, str):
         index_urls = [index_urls]
 
     index_urls = [PYPI_URL if url == PYPI else url for url in index_urls]

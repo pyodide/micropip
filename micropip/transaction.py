@@ -28,7 +28,7 @@ class Transaction:
     deps: bool
     pre: bool
     fetch_kwargs: dict[str, str]
-    index_urls: list[str] | str | None
+    index_urls: list[str] | str
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
     wheels: list[WheelInfo] = field(default_factory=list)
@@ -194,7 +194,9 @@ class Transaction:
         add it to the package list and return True. Otherwise, return False.
         """
         metadata = await package_index.query_package(
-            req.name, self.fetch_kwargs, index_urls=self.index_urls
+            req.name,
+            self.index_urls,
+            self.fetch_kwargs,
         )
 
         logger.debug("Transaction: got metadata %r for requirement %r", metadata, req)

@@ -6,7 +6,6 @@ from typing import Any
 
 from packaging.markers import default_environment
 
-from . import package_index
 from ._compat import loadPackage, to_js
 from .constants import FAQ_URLS
 from .logging import setup_logging
@@ -15,11 +14,11 @@ from .transaction import Transaction
 
 async def install(
     requirements: str | list[str],
+    index_urls: list[str] | str,
     keep_going: bool = False,
     deps: bool = True,
     credentials: str | None = None,
     pre: bool = False,
-    index_urls: list[str] | str | None = None,
     *,
     verbose: bool | int | None = None,
 ) -> None:
@@ -127,9 +126,6 @@ async def install(
         from site import getsitepackages
 
         wheel_base = Path(getsitepackages()[0])
-
-        if index_urls is None:
-            index_urls = package_index.INDEX_URLS[:]
 
         transaction = Transaction(
             ctx=ctx,  # type: ignore[arg-type]

@@ -54,6 +54,8 @@ def test_parse_wheel_url3():
 
 
 def create_transaction(Transaction):
+    from micropip.package_index import DEFAULT_INDEX_URLS
+
     return Transaction(
         wheels=[],
         locked={},
@@ -65,7 +67,7 @@ def create_transaction(Transaction):
         ctx={},
         ctx_extras=[],
         fetch_kwargs={},
-        index_urls=None,
+        index_urls=DEFAULT_INDEX_URLS,
     )
 
 
