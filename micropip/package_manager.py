@@ -259,7 +259,9 @@ class PackageManager:
         """
         return _mock_package.remove_mock_package(name)
 
-    def uninstall(self, packages: str | list[str], *, verbose: bool | int = False) -> None:
+    def uninstall(
+        self, packages: str | list[str], *, verbose: bool | int = False
+    ) -> None:
         """Uninstall the given packages.
 
         This function only supports uninstalling packages that are installed
