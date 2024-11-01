@@ -1,0 +1,25 @@
+{
+    "files": [
+        {
+            "core-metadata": false,
+            "data-dist-info-metadata": false,
+            "filename": "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl",
+            "hashes": {
+                "sha256": "c8e1716e83cc398ae16824e5572ae04e0d9fc2c6b985fb0f900f5f0c96ecba1a"
+            },
+            "requires-python": "",
+            "size": 93002,
+            "upload-time": "2021-11-16T18:38:34.792729Z",
+            "url": "http://nop.com/fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl",
+            "yanked": false
+        },
+    ],
+    "meta": {
+        "_last-serial": 12040363,
+        "api-version": "1.1"
+    },
+    "name": "fake-pkg-micropip-test",
+    "versions": [
+        "1.0.0"
+    ]
+}

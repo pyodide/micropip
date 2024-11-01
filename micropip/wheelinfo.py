@@ -149,8 +149,14 @@ class WheelInfo:
         return requires
 
     async def _fetch_bytes(self, fetch_kwargs: dict[str, Any]):
+        if self.parsed_url.scheme not in ("https", "http", "emfs"):
+            # Don't raise ValueError it gets swallowed
+            raise TypeError(
+                f"Cannot download from a non-remote location: {self.url!r} ({self.parsed_url!r})"
+            )
         try:
-            return await fetch_bytes(self.url, fetch_kwargs)
+            bytes = await fetch_bytes(self.url, fetch_kwargs)
+            return bytes
         except OSError as e:
             if self.parsed_url.hostname in [
                 "files.pythonhosted.org",
