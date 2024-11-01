@@ -1,4 +1,3 @@
-from ._commands.uninstall import uninstall
 from .package_manager import PackageManager
 
 try:
@@ -15,9 +14,7 @@ freeze = _package_manager_singleton.freeze
 add_mock_package = _package_manager_singleton.add_mock_package
 list_mock_packages = _package_manager_singleton.list_mock_packages
 remove_mock_package = _package_manager_singleton.remove_mock_package
-
-# TODO: port uninstall
-# uninstall = _package_manager_singleton.uninstall
+uninstall = _package_manager_singleton.uninstall
 
 __all__ = [
     "install",
