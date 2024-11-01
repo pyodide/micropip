@@ -6,18 +6,18 @@ try:
 except ImportError:
     pass
 
-singleton_package_manager = PackageManager()
+_package_manager_singleton = PackageManager()
 
-install = singleton_package_manager.install
-set_index_urls = singleton_package_manager.set_index_urls
-list = singleton_package_manager.list
-freeze = singleton_package_manager.freeze
-add_mock_package = singleton_package_manager.add_mock_package
-list_mock_packages = singleton_package_manager.list_mock_packages
-remove_mock_package = singleton_package_manager.remove_mock_package
+install = _package_manager_singleton.install
+set_index_urls = _package_manager_singleton.set_index_urls
+list = _package_manager_singleton.list
+freeze = _package_manager_singleton.freeze
+add_mock_package = _package_manager_singleton.add_mock_package
+list_mock_packages = _package_manager_singleton.list_mock_packages
+remove_mock_package = _package_manager_singleton.remove_mock_package
 
 # TODO: port uninstall
-# uninstall = singleton_package_manager.uninstall
+# uninstall = _package_manager_singleton.uninstall
 
 __all__ = [
     "install",
