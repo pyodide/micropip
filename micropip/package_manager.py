@@ -260,7 +260,7 @@ class PackageManager:
         return _mock_package.remove_mock_package(name)
 
     def uninstall(
-        self, packages: str | list[str], *, verbose: bool | int = False
+        self, packages: str | List[str], *, verbose: bool | int = False
     ) -> None:
         """Uninstall the given packages.
 
