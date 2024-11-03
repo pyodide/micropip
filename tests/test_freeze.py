@@ -87,7 +87,7 @@ def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog, tmp
     assert lockfile.packages["snowballstemmer"].file_name == url
     assert lockfile.packages["snowballstemmer"].name == "snowballstemmer"
     assert lockfile.packages["snowballstemmer"].depends == []
-    assert lockfile.packages["snowballstemmer"].imports == ["snowball"]
+    assert lockfile.packages["snowballstemmer"].imports == ["snowballstemmer"]
     assert lockfile.packages["snowballstemmer"].install_dir == "site"
     assert not lockfile.packages["snowballstemmer"].unvendored_tests
     assert lockfile.packages["snowballstemmer"].version == snowball_wheel.version
