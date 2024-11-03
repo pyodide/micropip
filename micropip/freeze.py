@@ -13,17 +13,6 @@ from ._utils import fix_package_dependencies
 def freeze_lockfile(
     lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
 ) -> str:
-    """Produce a json string which can be used as the contents of the
-    ``repodata.json`` lock file.
-
-    If you later load Pyodide with this lock file, you can use
-    :js:func:`pyodide.loadPackage` to load packages that were loaded with :py:mod:`micropip`
-    this time. Loading packages with :js:func:`~pyodide.loadPackage` is much faster
-    and you will always get consistent versions of all your dependencies.
-
-    You can use your custom lock file by passing an appropriate url to the
-    ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
-    """
     return json.dumps(freeze_data(lockfile_packages, lockfile_info))
 
 

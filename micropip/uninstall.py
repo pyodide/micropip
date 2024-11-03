@@ -2,32 +2,12 @@ import importlib
 import importlib.metadata
 from importlib.metadata import Distribution
 
-from .._compat import loadedPackages
-from .._utils import get_files_in_distribution, get_root
-from ..logging import setup_logging
+from ._compat import loadedPackages
+from ._utils import get_files_in_distribution, get_root
+from .logging import setup_logging
 
 
 def uninstall(packages: str | list[str], *, verbose: bool | int = False) -> None:
-    """Uninstall the given packages.
-
-    This function only supports uninstalling packages that are installed
-    using a wheel file, i.e. packages that have distribution metadata.
-
-    It is possible to reinstall a package after uninstalling it, but
-    note that modules / functions that are already imported will not be
-    automatically removed from the namespace. So make sure to reload
-    the module after reinstalling by e.g. running `importlib.reload(module)`.
-
-    Parameters
-    ----------
-    packages
-        Packages to uninstall.
-
-    verbose
-        Print more information about the process.
-        By default, micropip is silent. Setting ``verbose=True`` will print
-        similar information as pip.
-    """
     with setup_logging().ctx_level(verbose) as logger:
 
         if isinstance(packages, str):

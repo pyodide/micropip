@@ -113,69 +113,6 @@ def add_mock_package(
     modules: dict[str, str | None] | None = None,
     persistent: bool = False,
 ) -> None:
-    """
-    Add a mock version of a package to the package dictionary.
-
-    This means that if it is a dependency, it is skipped on install.
-
-    By default a single empty module is installed with the same
-    name as the package. You can alternatively give one or more modules to make a
-    set of named modules.
-
-    The modules parameter is usually a dictionary mapping module name to module text.
-
-    .. code-block:: python
-
-        {
-            "mylovely_module":'''
-            def module_method(an_argument):
-                print("This becomes a module level argument")
-
-            module_value = "this value becomes a module level variable"
-            print("This is run on import of module")
-            '''
-        }
-
-    If you are adding the module in non-persistent mode, you can also pass functions
-    which are used to initialize the module on loading (as in `importlib.abc.loader.exec_module` ).
-    This allows you to do things like use `unittest.mock.MagicMock` classes for modules.
-
-    .. code-block:: python
-
-        def init_fn(module):
-            module.dict["WOO"]="hello"
-            print("Initing the module now!")
-
-        ...
-
-        {
-            "mylovely_module": init_fn
-        }
-
-    Parameters
-    ----------
-    name :
-
-        Package name to add
-
-    version :
-
-        Version of the package. This should be a semantic version string,
-        e.g. 1.2.3
-
-    modules :
-
-        Dictionary of module_name:string pairs.
-        The string contains the source of the mock module or is blank for
-        an empty module.
-
-    persistent :
-
-        If this is True, modules will be written to the file system, so they
-        persist between runs of python (assuming the file system persists).
-        If it is False, modules will be stored inside micropip in memory only.
-    """
-
     if modules is None:
         # make a single mock module with this name
         modules = {name: ""}
@@ -238,9 +175,6 @@ Author-email: {name}@micro.pip.non-working-fake-host
 
 
 def list_mock_packages() -> list[str]:
-    """
-    List all mock packages currently installed.
-    """
     mock_packages = [
         dist.name
         for dist in importlib.metadata.distributions()
@@ -251,10 +185,6 @@ def list_mock_packages() -> list[str]:
 
 
 def remove_mock_package(name: str) -> None:
-    """
-    Remove a mock package.
-    """
-
     d = importlib.metadata.distribution(name)
     installer = d.read_text("INSTALLER")
 
