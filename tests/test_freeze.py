@@ -76,7 +76,7 @@ def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog):
 
     lockfile_content = selenium.run_async(f"""
         await micropip.install("{url}")
-        return micropip.freeze()
+        micropip.freeze()
     """)
 
     lockfile = PyodideLockSpec.from_json(lockfile_content)
