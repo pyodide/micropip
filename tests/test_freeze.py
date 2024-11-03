@@ -84,11 +84,11 @@ def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog, tmp
         f.write(lockfile_content)
 
     lockfile = PyodideLockSpec.from_json(lockfile_path)
-    assert lockfile.packages["snowballstemmer"]["file_name"] == url
-    assert lockfile.packages["snowballstemmer"]["name"] == "snowballstemmer"
-    assert lockfile.packages["snowballstemmer"]["depends"] == []
-    assert lockfile.packages["snowballstemmer"]["imports"] == ["snowball"]
-    assert lockfile.packages["snowballstemmer"]["install_dir"] == "site"
-    assert not lockfile.packages["snowballstemmer"]["unvendored_tests"]
-    assert lockfile.packages["snowballstemmer"]["version"] == snowball_wheel.version
+    assert lockfile.packages["snowballstemmer"].file_name == url
+    assert lockfile.packages["snowballstemmer"].name == "snowballstemmer"
+    assert lockfile.packages["snowballstemmer"].depends == []
+    assert lockfile.packages["snowballstemmer"].imports == ["snowball"]
+    assert lockfile.packages["snowballstemmer"].install_dir == "site"
+    assert not lockfile.packages["snowballstemmer"].unvendored_tests
+    assert lockfile.packages["snowballstemmer"].version == snowball_wheel.version
 
