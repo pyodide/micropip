@@ -277,7 +277,7 @@ class mock_fetch_cls:
         releases[version] = [
             {
                 "filename": filename,
-                "url": filename,
+                "url": f"http://fake.domain/f/{filename}",
                 "digests": {
                     "sha256": Wildcard(),
                 },
@@ -293,7 +293,7 @@ class mock_fetch_cls:
         self.metadata_map[filename] = metadata
         self.top_level_map[filename] = top_level
 
-    async def query_package(self, pkgname, kwargs, index_urls=None):
+    async def query_package(self, pkgname, index_urls, kwargs):
         from micropip.package_index import ProjectInfo
 
         try:
@@ -349,7 +349,7 @@ def _mock_package_index_gen(
     pkgs=("black", "pytest", "numpy", "pytz", "snowballstemmer"),
     pkgs_not_found=(),
     content_type="application/json",
-    suffix="_json.json.gz",
+    suffix="_json.json",
 ):
     # Run a mock server that serves as a package index
     import secrets
@@ -357,7 +357,7 @@ def _mock_package_index_gen(
     base = secrets.token_hex(16)
 
     for pkg in pkgs:
-        data = _read_gzipped_testfile(TEST_PYPI_RESPONSE_DIR / f"{pkg}{suffix}")
+        data = (TEST_PYPI_RESPONSE_DIR / f"{pkg}{suffix}").read_bytes()
         httpserver.expect_request(f"/{base}/{pkg}/").respond_with_data(
             data,
             content_type=content_type,
@@ -378,7 +378,7 @@ def mock_package_index_json_api(httpserver):
     return functools.partial(
         _mock_package_index_gen,
         httpserver=httpserver,
-        suffix="_json.json.gz",
+        suffix="_json.json",
         content_type="application/json",
     )
 
@@ -388,7 +388,7 @@ def mock_package_index_simple_json_api(httpserver):
     return functools.partial(
         _mock_package_index_gen,
         httpserver=httpserver,
-        suffix="_simple.json.gz",
+        suffix="_simple.json",
         content_type="application/vnd.pypi.simple.v1+json",
     )
 
@@ -398,6 +398,6 @@ def mock_package_index_simple_html_api(httpserver):
     return functools.partial(
         _mock_package_index_gen,
         httpserver=httpserver,
-        suffix="_simple.html.gz",
+        suffix="_simple.html",
         content_type="text/html",
     )

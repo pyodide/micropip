@@ -1,7 +1,6 @@
 import pytest
-from conftest import TEST_PYPI_RESPONSE_DIR, _read_gzipped_testfile
+from conftest import TEST_PYPI_RESPONSE_DIR
 
-import micropip._commands.index_urls as index_urls
 import micropip.package_index as package_index
 
 
@@ -18,14 +17,15 @@ def _check_project_info(project_info: package_index.ProjectInfo):
             assert file.filename in file.url
             if file.sha256 is not None:
                 assert len(file.sha256) == 64
+            assert file.url.startswith("https://")
 
 
 @pytest.mark.parametrize(
     "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
 )
 def test_project_info_from_json(name):
-    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
-    test_data = _read_gzipped_testfile(test_file)
+    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json"
+    test_data = test_file.read_bytes()
 
     info = package_index.ProjectInfo.from_json_api(test_data)
     _check_project_info(info)
@@ -35,8 +35,8 @@ def test_project_info_from_json(name):
     "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
 )
 def test_project_info_from_simple_json(name):
-    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
-    test_data = _read_gzipped_testfile(test_file)
+    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json"
+    test_data = test_file.read_bytes()
 
     info = package_index.ProjectInfo.from_simple_json_api(test_data)
     _check_project_info(info)
@@ -46,13 +46,30 @@ def test_project_info_from_simple_json(name):
     "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
 )
 def test_project_info_from_simple_html(name):
-    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.html.gz"
-    test_data = _read_gzipped_testfile(test_file)
+    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.html"
+    test_data = test_file.read_bytes()
 
     info = package_index.ProjectInfo.from_simple_html_api(
-        test_data.decode("utf-8"), name
+        test_data.decode("utf-8"), name, index_base_url="https://files.pythonhosted.org"
     )
     _check_project_info(info)
+
+
+@pytest.mark.parametrize("name", ["black"])
+def test_project_info_no_base_from_simple_html(name):
+    """
+    This test that the black_simple.html.gz does not have
+    absolute url, we test that if we don't pass the https:// domain,
+    t_check_project_info will indeed fail.
+    """
+    test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.html"
+    test_data = test_file.read_bytes()
+
+    info = package_index.ProjectInfo.from_simple_html_api(
+        test_data.decode("utf-8"), name, index_base_url="no_base"
+    )
+    with pytest.raises(AssertionError):
+        _check_project_info(info)
 
 
 @pytest.mark.parametrize(
@@ -61,11 +78,11 @@ def test_project_info_from_simple_html(name):
 def test_project_info_equal(name):
     # The different ways of parsing the same data should result in the same
     # Simple HTML API does not contain `versions` key, so it is not easy to compare...
-    test_file_json = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json.gz"
-    test_file_simple_json = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json.gz"
+    test_file_json = TEST_PYPI_RESPONSE_DIR / f"{name}_json.json"
+    test_file_simple_json = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.json"
 
-    test_data_json = _read_gzipped_testfile(test_file_json)
-    test_data_simple_json = _read_gzipped_testfile(test_file_simple_json)
+    test_data_json = test_file_json.read_bytes()
+    test_data_simple_json = test_file_simple_json.read_bytes()
 
     index_json = package_index.ProjectInfo.from_json_api(test_data_json)
     index_simple_json = package_index.ProjectInfo.from_simple_json_api(
@@ -87,24 +104,6 @@ def test_project_info_equal(name):
             assert f_json.url == f_simple_json.url
             assert f_json.version == f_simple_json.version
             assert f_json.sha256 == f_simple_json.sha256
-
-
-def test_set_index_urls():
-    default_index_urls = package_index.DEFAULT_INDEX_URLS
-    assert package_index.INDEX_URLS == default_index_urls
-
-    valid_url1 = "https://pkg-index.com/{package_name}/json/"
-    valid_url2 = "https://another-pkg-index.com/{package_name}"
-    valid_url3 = "https://another-pkg-index.com/simple/"
-    try:
-        index_urls.set_index_urls(valid_url1)
-        assert package_index.INDEX_URLS == [valid_url1]
-
-        index_urls.set_index_urls([valid_url1, valid_url2, valid_url3])
-        assert package_index.INDEX_URLS == [valid_url1, valid_url2, valid_url3]
-    finally:
-        index_urls.set_index_urls(default_index_urls)
-        assert package_index.INDEX_URLS == default_index_urls
 
 
 def test_contain_placeholder():

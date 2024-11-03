@@ -1,4 +1,5 @@
 import json
+import logging
 import string
 import sys
 from collections import defaultdict
@@ -6,6 +7,7 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
@@ -16,10 +18,13 @@ from .externals.mousebender.simple import from_project_details_html
 from .types import DistributionMetadata
 from .wheelinfo import WheelInfo
 
-DEFAULT_INDEX_URLS = ["https://pypi.org/simple"]
-INDEX_URLS = DEFAULT_INDEX_URLS
+PYPI = "PYPI"
+PYPI_URL = "https://pypi.org/simple"
+DEFAULT_INDEX_URLS = [PYPI_URL]
 
 _formatter = string.Formatter()
+
+logger = logging.getLogger("micropip")
 
 
 @dataclass
@@ -74,23 +79,27 @@ class ProjectInfo:
         """
 
         data_dict = json.loads(data) if isinstance(data, str | bytes) else data
-        name, releases = ProjectInfo._parse_pep691_response(data_dict)
+        name, releases = ProjectInfo._parse_pep691_response(
+            data_dict, index_base_url=""
+        )
         return ProjectInfo._compatible_only(name, releases)
 
     @staticmethod
-    def from_simple_html_api(data: str, pkgname: str) -> "ProjectInfo":
+    def from_simple_html_api(
+        data: str, pkgname: str, index_base_url: str
+    ) -> "ProjectInfo":
         """
         Parse Simple HTML API response
 
         https://peps.python.org/pep-0503
         """
         project_detail = from_project_details_html(data, pkgname)
-        name, releases = ProjectInfo._parse_pep691_response(project_detail)  # type: ignore[arg-type]
+        name, releases = ProjectInfo._parse_pep691_response(project_detail, index_base_url)  # type: ignore[arg-type]
         return ProjectInfo._compatible_only(name, releases)
 
     @staticmethod
     def _parse_pep691_response(
-        resp: dict[str, Any]
+        resp: dict[str, Any], index_base_url: str
     ) -> tuple[str, dict[Version, list[Any]]]:
         name = resp["name"]
 
@@ -121,10 +130,47 @@ class ProjectInfo:
                 version = parse_version(filename)
             except (InvalidVersion, InvalidWheelFilename):
                 continue
+            if file["url"].startswith("/"):
+                file["url"] = index_base_url + file["url"]
 
             releases[version].append(file)
 
         return name, releases
+
+    @classmethod
+    def _compatible_wheels(
+        cls, files: list[dict[str, Any]], version: Version, name: str
+    ) -> Generator[WheelInfo, None, None]:
+        for file in files:
+            filename = file["filename"]
+
+            # Checking compatibility takes a bit of time,
+            # so we use a generator to avoid doing it for all files.
+            compatible = is_package_compatible(filename)
+            if not compatible:
+                continue
+
+            # JSON API has a "digests" key, while Simple API has a "hashes" key.
+            hashes = file["digests"] if "digests" in file else file["hashes"]
+            sha256 = hashes.get("sha256")
+
+            # Check if the metadata file is available (PEP 658)
+            data_dist_info_metadata: DistributionMetadata = file.get(
+                "data-dist-info-metadata"
+            )
+
+            # Size of the file in bytes, if available (PEP 700)
+            # This key is not available in the Simple API HTML response, so this field may be None
+            size = file.get("size")
+            yield WheelInfo.from_package_index(
+                name=name,
+                filename=filename,
+                url=file["url"],
+                version=version,
+                sha256=sha256,
+                size=size,
+                data_dist_info_metadata=data_dist_info_metadata,
+            )
 
     @classmethod
     def _compatible_only(
@@ -135,43 +181,8 @@ class ProjectInfo:
         Checking compatibility takes a bit of time, so we use a generator to avoid doing it if not needed.
         """
 
-        def _compatible_wheels(
-            files: list[dict[str, Any]], version: Version
-        ) -> Generator[WheelInfo, None, None]:
-            for file in files:
-                filename = file["filename"]
-
-                # Checking compatibility takes a bit of time,
-                # so we use a generator to avoid doing it for all files.
-                compatible = is_package_compatible(filename)
-                if not compatible:
-                    continue
-
-                # JSON API has a "digests" key, while Simple API has a "hashes" key.
-                hashes = file["digests"] if "digests" in file else file["hashes"]
-                sha256 = hashes.get("sha256")
-
-                # Check if the metadata file is available (PEP 658)
-                data_dist_info_metadata: DistributionMetadata = file.get(
-                    "data-dist-info-metadata"
-                )
-
-                # Size of the file in bytes, if available (PEP 700)
-                # This key is not available in the Simple API HTML response, so this field may be None
-                size = file.get("size")
-
-                yield WheelInfo.from_package_index(
-                    name=name,
-                    filename=filename,
-                    url=file["url"],
-                    version=version,
-                    sha256=sha256,
-                    size=size,
-                    data_dist_info_metadata=data_dist_info_metadata,
-                )
-
         releases_compatible = {
-            version: _compatible_wheels(files, version)
+            version: cls._compatible_wheels(files, version, name=name)
             for version, files in releases.items()
         }
 
@@ -222,7 +233,9 @@ def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
     return placeholder in fields
 
 
-def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectInfo]:
+def _select_parser(
+    content_type: str, pkgname: str, index_base_url: str
+) -> Callable[[str], ProjectInfo]:
     """
     Select the function to parse the response based on the content type.
     """
@@ -231,16 +244,24 @@ def _select_parser(content_type: str, pkgname: str) -> Callable[[str], ProjectIn
             return ProjectInfo.from_simple_json_api
         case "application/json":
             return ProjectInfo.from_json_api
-        case "application/vnd.pypi.simple.v1+html" | "text/html":
-            return partial(ProjectInfo.from_simple_html_api, pkgname=pkgname)
+        case (
+            "application/vnd.pypi.simple.v1+html"
+            | "text/html"
+            | "text/html; charset=utf-8"
+        ):
+            return partial(
+                ProjectInfo.from_simple_html_api,
+                pkgname=pkgname,
+                index_base_url=index_base_url,
+            )
         case _:
             raise ValueError(f"Unsupported content type: {content_type}")
 
 
 async def query_package(
     name: str,
+    index_urls: list[str] | str,
     fetch_kwargs: dict[str, Any] | None = None,
-    index_urls: list[str] | str | None = None,
 ) -> ProjectInfo:
     """
     Query for a package from package indexes.
@@ -249,16 +270,13 @@ async def query_package(
     ----------
     name
         Name of the package to search for.
-    fetch_kwargs
-        Keyword arguments to pass to the fetch function.
     index_urls
         A list of URLs or a single URL to use as the package index.
-        If None, the default index URL is used.
-
         If a list of URLs is provided, it will be tried in order until
         it finds a package. If no package is found, an error will be raised.
+    fetch_kwargs
+        Keyword arguments to pass to the fetch function.
     """
-    global INDEX_URLS
 
     _fetch_kwargs = fetch_kwargs.copy() if fetch_kwargs else {}
 
@@ -270,27 +288,35 @@ async def query_package(
         "accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
     )
 
-    if index_urls is None:
-        index_urls = INDEX_URLS
-    elif isinstance(index_urls, str):
+    if isinstance(index_urls, str):
         index_urls = [index_urls]
 
+    index_urls = [PYPI_URL if url == PYPI else url for url in index_urls]
+
     for url in index_urls:
+        logger.debug("Looping through index urls: %r", url)
         if _contain_placeholder(url):
             url = url.format(package_name=name)
+            logger.debug("Formatting url with package name : %r", url)
         else:
             url = f"{url}/{name}/"
-
+            logger.debug("Url has no placeholder, appending package name : %r", url)
         try:
             metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
         except HttpStatusError as e:
             if e.status_code == 404:
+                logger.debug("NotFound (404) for %r, trying next index.", url)
                 continue
+            logger.debug(
+                "Error fetching %r (%s), trying next index.", url, e.status_code
+            )
             raise
 
         content_type = headers.get("content-type", "").lower()
         try:
-            parser = _select_parser(content_type, name)
+            base_url = urlunparse(urlparse(url)._replace(path=""))
+
+            parser = _select_parser(content_type, name, index_base_url=base_url)
         except ValueError as e:
             raise ValueError(f"Error trying to decode url: {url}") from e
         return parser(metadata)

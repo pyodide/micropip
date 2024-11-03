@@ -2,7 +2,7 @@ import hashlib
 import io
 import json
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import ParseResult, urlparse
@@ -48,7 +48,7 @@ class WheelInfo:
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
-    _data: bytes | None = None  # Wheel file contents.
+    _data: bytes | None = field(default=None, repr=False)  # Wheel file contents.
     _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
 
@@ -56,6 +56,9 @@ class WheelInfo:
     _dist_info: Path | None = None
 
     def __post_init__(self):
+        assert (
+            self.url.startwith(p) for p in ("http:", "https:", "emfs:", "file:")
+        ), self.url
         self._project_name = safe_name(self.name)
         self.metadata_url = self.url + ".metadata"
 
@@ -66,6 +69,8 @@ class WheelInfo:
         See https://www.python.org/dev/peps/pep-0427/#file-name-convention
         """
         parsed_url = urlparse(url)
+        if parsed_url.scheme == "":
+            url = "file:///" + url
         file_name = Path(parsed_url.path).name
         name, version, build, tags = parse_wheel_filename(file_name)
         return WheelInfo(
@@ -175,8 +180,14 @@ class WheelInfo:
         return requires
 
     async def _fetch_bytes(self, url: str, fetch_kwargs: dict[str, Any]):
+        if self.parsed_url.scheme not in ("https", "http", "emfs"):
+            # Don't raise ValueError it gets swallowed
+            raise TypeError(
+                f"Cannot download from a non-remote location: {url!r} ({self.parsed_url!r})"
+            )
         try:
-            return await fetch_bytes(url, fetch_kwargs)
+            bytes = await fetch_bytes(url, fetch_kwargs)
+            return bytes
         except OSError as e:
             if self.parsed_url.hostname in [
                 "files.pythonhosted.org",

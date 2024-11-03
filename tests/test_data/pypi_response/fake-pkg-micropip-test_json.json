@@ -1,0 +1,59 @@
+{
+    "info": {
+        "author": "",
+        "author_email": "",
+        "bugtrack_url": null,
+        "classifiers": [],
+        "description": "",
+        "description_content_type": "text/x-rst",
+        "docs_url": null,
+        "download_url": "",
+        "downloads": {
+            "last_day": -1,
+            "last_month": -1,
+            "last_week": -1
+        },
+        "home_page": "",
+        "keywords": "",
+        "license": "BSD-3-Clause",
+        "maintainer": "",
+        "maintainer_email": "",
+        "name": "fake-pkg-micropip-test",
+        "package_url": "",
+        "platform": "",
+        "project_url": "",
+        "project_urls": {
+            "Homepage": ""
+        },
+        "release_url": "",
+        "requires_dist": null,
+        "requires_python": "",
+        "summary": "",
+        "version": "1.0.0",
+        "yanked": false,
+        "yanked_reason": null
+    },
+    "last_serial": 12040363,
+    "releases": {
+        "2.0.0": [
+            {
+                "comment_text": "",
+                "digests": {},
+                "downloads": -1,
+                "filename": "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl",
+                "has_sig": false,
+                "md5_digest": "cde6b1a608f6796bb8c3680139a37f6b",
+                "packagetype": "bdist_wheel",
+                "python_version": "py2.py3",
+                "requires_python": null,
+                "size": 93002,
+                "upload_time": "2021-11-16T18:38:34",
+                "upload_time_iso_8601": "2021-11-16T18:38:34.792729Z",
+                "url": "http://nop.com/fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl",
+                "yanked": false,
+                "yanked_reason": null
+            }
+        ]
+    },
+    "vulnerabilities": []
+}
