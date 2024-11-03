@@ -1,6 +1,6 @@
 import pytest
-from pytest_pyodide import run_in_pyodide
 from conftest import mock_fetch_cls
+
 
 @pytest.mark.asyncio
 async def test_freeze(mock_fetch: mock_fetch_cls, mock_importlib: None) -> None:
@@ -66,7 +66,6 @@ async def test_freeze_fix_depends(
     assert dep2_metadata["imports"] == toplevel[2]
 
 
-
 def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog, tmp_path):
     from pyodide_lock import PyodideLockSpec
 
@@ -74,10 +73,12 @@ def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog, tmp
     snowball_wheel = wheel_catalog.get("snowballstemmer")
     url = snowball_wheel.url
 
-    lockfile_content = selenium.run_async(f"""
+    lockfile_content = selenium.run_async(
+        f"""
         await micropip.install("{url}")
         micropip.freeze()
-    """)
+    """
+    )
 
     lockfile_path = tmp_path / "lockfile.json"
     with open(lockfile_path, "w") as f:
@@ -91,4 +92,3 @@ def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog, tmp
     assert lockfile.packages["snowballstemmer"].install_dir == "site"
     assert not lockfile.packages["snowballstemmer"].unvendored_tests
     assert lockfile.packages["snowballstemmer"].version == snowball_wheel.version
-
