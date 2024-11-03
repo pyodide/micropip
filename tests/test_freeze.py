@@ -74,7 +74,7 @@ def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog):
     snowball_wheel = wheel_catalog.get("snowballstemmer")
     url = snowball_wheel.url
 
-    lockfile_content = selenium.run(f"""
+    lockfile_content = selenium.run_async(f"""
         await micropip.install("{url}")
         return micropip.freeze()
     """)
