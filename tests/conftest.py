@@ -129,7 +129,7 @@ class WheelCatalog:
         return self._httpserver.url_for(f"/{path.name}")
 
     def add_wheel(self, path: Path, replace: bool = True):
-        name, version = parse_wheel_filename(path.name)[0:1]
+        name, version = parse_wheel_filename(path.name)[0:2]
         url = self._register_handler(path)
 
         if name in self._wheels and not replace:
