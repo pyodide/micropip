@@ -2,7 +2,7 @@ import functools
 import json
 from importlib.metadata import Distribution
 from pathlib import Path
-from sysconfig import get_platform
+from sysconfig import get_config_var, get_platform
 
 from packaging.requirements import Requirement
 from packaging.tags import Tag
@@ -62,8 +62,15 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
 
 
 @functools.cache
-def sys_tags() -> list[Tag]:
-    return list(sys_tags_orig())
+def sys_tags() -> tuple[Tag, ...]:
+    new_tags = []
+    abi_version = get_config_var("PYODIDE_ABI_VERSION")
+    pyodide_platform_tag = f"pyodide_{abi_version}_wasm32"
+    for tag in sys_tags_orig():
+        if "emscripten" in tag.platform:
+            new_tags.append(Tag(tag.interpreter, tag.abi, pyodide_platform_tag))
+        new_tags.append(tag)
+    return tuple(new_tags)
 
 
 @functools.cache
