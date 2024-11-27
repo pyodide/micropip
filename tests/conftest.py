@@ -129,14 +129,12 @@ class WheelCatalog:
         return self._httpserver.url_for(f"/{endpoint}")
 
     def add_wheel(self, path: Path, replace: bool = True):
-        name, version = parse_wheel_filename(path.name)[:2]
+        name, version = parse_wheel_filename(path.name)[0:2]
         url = self._register_handler(path.name, path.read_bytes())
 
         metadata_file_endpoint = path.with_suffix(".whl.metadata")
-        metadata_file_gzipped = path.with_suffix(".whl.metadata.gz")
-        if metadata_file_gzipped.exists():
-            data = _read_gzipped_testfile(metadata_file_gzipped)
-            self._register_handler(metadata_file_endpoint.name, data)
+        if metadata_file_endpoint.exists():
+            self._register_handler(metadata_file_endpoint.name, metadata_file_endpoint.read_bytes())
 
         if name in self._wheels and not replace:
             return

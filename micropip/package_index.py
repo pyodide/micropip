@@ -221,6 +221,9 @@ def _fast_check_incompatibility(filename: str) -> bool:
     if not filename.endswith(".whl"):
         return False
 
+    if filename.endswith("wasm32.whl") and sys.platform == "emscripten":
+        return True
+
     if sys.platform not in filename and not filename.endswith("-none-any.whl"):
         return False
 

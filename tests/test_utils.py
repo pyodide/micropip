@@ -3,6 +3,7 @@ from importlib.metadata import distribution
 
 import pytest
 from conftest import CPVER, EMSCRIPTEN_VER, PLATFORM
+from pytest_pyodide import run_in_pyodide
 
 import micropip._utils as _utils
 
@@ -101,6 +102,18 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
     wheel_name = f"{pkg}-{interp}-{abi}-{arch}.whl"
     with ctx:
         check_compatible(wheel_name)
+
+
+@run_in_pyodide
+def test_check_compatible_wasm32(selenium_standalone_micropip):
+    """
+    Here we check in particular that pyodide_2024_0_wasm32 wheels are seen as
+    compatible as the platform is emscripten
+    """
+    from micropip._utils import check_compatible
+
+    wheel_name = "pywavelets-1.8.0.dev0-cp312-cp312-pyodide_2024_0_wasm32.whl"
+    check_compatible(wheel_name)
 
 
 _best_tag_test_cases = (
