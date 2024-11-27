@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added support for PEP-658.
+  [#139](https://github.com/pyodide/micropip/pull/139)
+
 ## [0.7.2] - 2024/11/26
 
 ### Fixed
@@ -28,9 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   links when referencing wheels. [#150](https://github.com/pyodide/micropip/pull/150)
 
 ### Added
-
-- Added support for PEP-658.
-  [#139](https://github.com/pyodide/micropip/pull/139)
 
 - `micropip.install(index_urls=[...])` parameter now supports the special value
   `"PYPI"` to refer the `http://pypi.org/simple/` index instead of having to
