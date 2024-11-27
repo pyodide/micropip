@@ -134,7 +134,9 @@ class WheelCatalog:
 
         metadata_file_endpoint = path.with_suffix(".whl.metadata")
         if metadata_file_endpoint.exists():
-            self._register_handler(metadata_file_endpoint.name, metadata_file_endpoint.read_bytes())
+            self._register_handler(
+                metadata_file_endpoint.name, metadata_file_endpoint.read_bytes()
+            )
 
         if name in self._wheels and not replace:
             return
