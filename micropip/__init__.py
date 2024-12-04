@@ -5,11 +5,13 @@ try:
 except ImportError:
     pass
 
-_package_manager_singleton = PackageManager()
+from ._compat import compatibility_layer
+
+_package_manager_singleton = PackageManager(compatibility_layer)
 
 install = _package_manager_singleton.install
 set_index_urls = _package_manager_singleton.set_index_urls
-list = _package_manager_singleton.list
+list = _package_manager_singleton.list_packages
 freeze = _package_manager_singleton.freeze
 add_mock_package = _package_manager_singleton.add_mock_package
 list_mock_packages = _package_manager_singleton.list_mock_packages

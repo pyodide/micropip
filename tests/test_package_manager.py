@@ -63,7 +63,7 @@ def test_freeze():
 
 
 @pytest.mark.asyncio
-async def test_list(mock_fetch: mock_fetch_cls):
+async def test_list_packages(mock_fetch: mock_fetch_cls):
     manager = get_test_package_manager()
 
     dummy = "dummy"
@@ -72,7 +72,7 @@ async def test_list(mock_fetch: mock_fetch_cls):
 
     await manager.install(dummy_url)
 
-    pkg_list = manager.list()
+    pkg_list = manager.list_packages()
 
     assert dummy in pkg_list
     assert pkg_list[dummy].source.lower() == dummy_url
