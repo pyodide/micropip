@@ -1,5 +1,3 @@
-import json
-
 import pytest
 from conftest import mock_fetch_cls
 
