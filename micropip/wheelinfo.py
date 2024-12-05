@@ -146,6 +146,12 @@ class WheelInfo:
                 )
                 self._metadata = Metadata(zipfile.Path(zf, metadata_path))
 
+    def pep658_metadata_available(self) -> bool:
+        """
+        Check if the wheel's metadata is exposed via PEP 658.
+        """
+        return self.data_dist_info_metadata is not None
+
     async def download_pep658_metadata(
         self,
         fetch_kwargs: dict[str, Any],
