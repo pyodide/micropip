@@ -59,7 +59,7 @@ jobs:
             --maxfail=15 \
             --runner=${{ matrix.test-config.runner }} \
             --rt ${{ matrix.test-config.runtime }}
-      
+
       - name: Run integration tests
         if: needs.check-integration-test-trigger.outputs.run-integration-test
         shell: bash -l {0}
@@ -76,7 +76,7 @@ jobs:
         if: ${{ github.event.repo.name == 'pyodide/micropip' || github.event_name == 'pull_request' }}
         with:
           fail_ci_if_error: false
-  
+
   check-integration-test-trigger:
     name: test-integration-test-trigger
     runs-on: ubuntu-latest
