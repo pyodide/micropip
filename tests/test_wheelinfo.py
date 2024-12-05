@@ -112,6 +112,7 @@ async def test_download_pep658_metadata(wheel_catalog):
         data_dist_info_metadata=True,
     )
 
+    assert wheel_with_metadata.pep658_metadata_available()
     assert wheel_with_metadata._metadata is None
     await wheel_with_metadata.download_pep658_metadata({})
     assert wheel_with_metadata._metadata is not None
@@ -132,6 +133,7 @@ async def test_download_pep658_metadata(wheel_catalog):
         data_dist_info_metadata=None,
     )
 
+    assert not wheel_without_metadata.pep658_metadata_available()
     assert wheel_without_metadata._metadata is None
     await wheel_without_metadata.download_pep658_metadata({})
     assert wheel_without_metadata._metadata is None
