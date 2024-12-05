@@ -64,7 +64,8 @@ jobs:
         if: needs.check-integration-test-trigger.outputs.run-integration-test
         shell: bash -l {0}
         run: |
-          pytest -v tests \
+          pytest -v tests/integration \
+            --integration \
             --cov=micropip \
             --durations=10 \
             --dist-dir=./dist/ \
