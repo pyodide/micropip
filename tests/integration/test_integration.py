@@ -1,5 +1,5 @@
-# integration tests for micropip
-# these test often requires querying to the real packages existing in PyPI,
+# Integration tests for micropip
+# These test often requires querying to the real packages existing in PyPI,
 # to test the micropip's ability to install packages from real world package indexes.
 
 # To prevent sending many requests to remote servers, these tests are disabled by default.
