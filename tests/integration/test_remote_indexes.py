@@ -1,7 +1,7 @@
 # This file contains tests that actually query remote package indexes,
 # to ensure that micropip works with real-world package indexes.
 # Since running these tests will send many requests to remote servers,
-# these tests are disabled by default in CI.
+# these tests are disabled by default in CI and local testing.
 #
 # To run these tests, add `--run-remote-index-tests` flag, or
 # these tests can also be run in Github Actions manually.

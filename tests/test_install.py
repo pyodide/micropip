@@ -6,28 +6,6 @@ from pytest_pyodide import run_in_pyodide
 import micropip
 
 
-def test_install_simple(selenium_standalone_micropip):
-    selenium = selenium_standalone_micropip
-    assert (
-        selenium.run_js(
-            """
-            return await pyodide.runPythonAsync(`
-                import os
-                import micropip
-                from pyodide.ffi import to_js
-                # Package 'pyodide-micropip-test' has dependency on 'snowballstemmer'
-                # It is used to test markers support
-                await micropip.install('pyodide-micropip-test')
-                import snowballstemmer
-                stemmer = snowballstemmer.stemmer('english')
-                to_js(stemmer.stemWords('go going goes gone'.split()))
-            `);
-            """
-        )
-        == ["go", "go", "goe", "gone"]
-    )
-
-
 def test_install_custom_url(selenium_standalone_micropip, wheel_catalog):
     selenium = selenium_standalone_micropip
     snowball_wheel = wheel_catalog.get("snowballstemmer")
