@@ -14,6 +14,7 @@ def integration_test_only(func):
         if not pytestconfig.getoption("--integration"):
             pytest.skip("Integration tests are skipped. Use --integration to run them.")
         func(selenium_standalone_micropip, pytestconfig)
+
     return wrapper
 
 
