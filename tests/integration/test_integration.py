@@ -60,7 +60,7 @@ def test_integration_uninstall_basic(selenium_standalone_micropip, pytestconfig)
 
         micropip.uninstall("snowballstemmer")
 
-        packages = await micropip.list()
+        packages = micropip.list()
         assert "snowballstemmer" not in packages
 
     _run(selenium_standalone_micropip)
@@ -81,6 +81,6 @@ def test_integration_freeze_basic(selenium_standalone_micropip, pytestconfig):
         snowballstemmer.stemmer("english")
 
         lockfile = micropip.freeze()
-        assert "snowballstemmer" in json.loads(lockfile)
+        assert "snowballstemmer" in json.loads(lockfile)["packages"]
 
     _run(selenium_standalone_micropip)
