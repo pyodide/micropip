@@ -258,7 +258,11 @@ class Transaction:
                     # If something goes wrong while downloading the metadata,
                     # we have to wait for the wheel to be downloaded.
                     await wheel_download_task
-                await self.gather_requirements(wheel.requires(extras))
+                
+                await asyncio.gather(
+                    self.gather_requirements(wheel.requires(extras)),
+                    wheel_download_task,
+                )
 
             # Case 2) If metadata file is not available,
             #         we have to wait for the wheel to be downloaded.
