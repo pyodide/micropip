@@ -3,7 +3,7 @@
 # to test the micropip's ability to install packages from real world package indexes.
 
 # To prevent sending many requests to remote servers, these tests are disabled by default.
-# To run these tests locally, add `--integration` flag, when inovking pytest.
+# To run these tests locally, invoke pytest with the `--integration` flag.
 
 from pytest_pyodide import run_in_pyodide
 
