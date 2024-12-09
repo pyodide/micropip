@@ -12,6 +12,7 @@ concurrency:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    needs: [check-integration-test-trigger]
     env:
       DISPLAY: :99
     strategy:
@@ -51,7 +52,20 @@ jobs:
       - name: Run tests
         shell: bash -l {0}
         run: |
-          pytest -v \
+          pytest -v tests \
+            --cov=micropip \
+            --durations=10 \
+            --dist-dir=./dist/ \
+            --maxfail=15 \
+            --runner=${{ matrix.test-config.runner }} \
+            --rt ${{ matrix.test-config.runtime }}
+
+      - name: Run integration tests
+        if: needs.check-integration-test-trigger.outputs.run-integration-test
+        shell: bash -l {0}
+        run: |
+          pytest -v tests/integration \
+            --integration \
             --cov=micropip \
             --durations=10 \
             --dist-dir=./dist/ \
@@ -63,6 +77,32 @@ jobs:
         if: ${{ github.event.repo.name == 'pyodide/micropip' || github.event_name == 'pull_request' }}
         with:
           fail_ci_if_error: false
+
+  check-integration-test-trigger:
+    name: test-integration-test-trigger
+    runs-on: ubuntu-latest
+    outputs:
+      run-integration-test: ${{ steps.check-integration-test-trigger.outputs.trigger }}
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - id: check-integration-test-trigger
+        name: Check integration test trigger
+        shell: bash
+        run: |
+          set -e -x
+
+          COMMIT_MSG=$(git log --no-merges -1 --oneline)
+
+          # The integration tests will be triggered on push or on pull_request when the commit
+          # message contains "[integration]" or if it is pushed to main branch.
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ||
+                "$COMMIT_MSG" =~ \[integration\] ]]; then
+              echo "trigger=true" >> "$GITHUB_OUTPUT"
+          fi
 
   deploy:
     runs-on: ubuntu-latest

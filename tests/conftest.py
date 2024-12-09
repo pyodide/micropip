@@ -23,6 +23,13 @@ def pytest_addoption(parser):
         help="Run tests that query remote package indexes.",
     )
 
+    parser.addoption(
+        "--integration",
+        action="store_true",
+        default=None,
+        help="Run integration tests.",
+    )
+
 
 EMSCRIPTEN_VER = "3.1.14"
 PLATFORM = f"emscripten_{EMSCRIPTEN_VER.replace('.', '_')}_wasm32"
