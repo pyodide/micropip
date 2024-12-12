@@ -142,9 +142,9 @@ class WheelInfo:
         if self._metadata is None:
             with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
                 metadata_path = (
-                    wheel_dist_info_dir(zf, self.name) + "/" + Metadata.PKG_INFO
+                    Path(wheel_dist_info_dir(zf, self.name)) / Metadata.PKG_INFO
                 )
-                self._metadata = Metadata(zipfile.Path(zf, metadata_path))
+                self._metadata = Metadata(zipfile.Path(zf, str(metadata_path)))
 
     def pep658_metadata_available(self) -> bool:
         """
