@@ -44,7 +44,7 @@ class WheelInfo:
     parsed_url: ParseResult
     sha256: str | None = None
     size: int | None = None  # Size in bytes, if available (PEP 700)
-    data_dist_info_metadata: DistributionMetadata = None  # Wheel's metadata (PEP 658)
+    core_metadata: DistributionMetadata = None  # Wheel's metadata (PEP 658 / PEP-714)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -92,7 +92,7 @@ class WheelInfo:
         version: Version,
         sha256: str | None,
         size: int | None,
-        data_dist_info_metadata: DistributionMetadata = None,
+        core_metadata: DistributionMetadata = None,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
@@ -108,7 +108,7 @@ class WheelInfo:
             parsed_url=parsed_url,
             sha256=sha256,
             size=size,
-            data_dist_info_metadata=data_dist_info_metadata,
+            core_metadata=core_metadata,
         )
 
     async def install(self, target: Path) -> None:
@@ -150,7 +150,7 @@ class WheelInfo:
         """
         Check if the wheel's metadata is exposed via PEP 658.
         """
-        return self.data_dist_info_metadata is not None
+        return self.core_metadata is not None
 
     async def download_pep658_metadata(
         self,
@@ -159,12 +159,12 @@ class WheelInfo:
         """
         Download the wheel's metadata. If the metadata is not available, return None.
         """
-        if self.data_dist_info_metadata is None:
+        if self.core_metadata is None:
             return None
 
         data = await self._fetch_bytes(self.metadata_url, fetch_kwargs)
 
-        match self.data_dist_info_metadata:
+        match self.core_metadata:
             case {"sha256": checksum}:  # sha256 checksum available
                 _validate_sha256_checksum(data, checksum)
             case _:  # no checksum available
