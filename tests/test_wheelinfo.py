@@ -184,7 +184,7 @@ async def test_download_pep658_metadata_checksum(wheel_catalog):
         pytest_wheel.version,
         sha256,
         size,
-        data_dist_info_metadata={"sha256": checksum},
+        core_metadata={"sha256": checksum},
     )
 
     assert wheel._metadata is None
