@@ -22,10 +22,10 @@ def test_from_package_index():
     version = "0.0.1"
     sha256 = "dummy-sha256"
     size = 1234
-    data_dist_info_metadata = True
+    core_metadata = True
 
     wheel = WheelInfo.from_package_index(
-        name, filename, url, version, sha256, size, data_dist_info_metadata
+        name, filename, url, version, sha256, size, core_metadata
     )
 
     assert wheel.name == name
@@ -34,7 +34,7 @@ def test_from_package_index():
     assert wheel.filename == filename
     assert wheel.size == size
     assert wheel.sha256 == sha256
-    assert wheel.data_dist_info_metadata == data_dist_info_metadata
+    assert wheel.core_metadata == core_metadata
 
 
 def test_extract(wheel_catalog, tmp_path):
@@ -109,7 +109,7 @@ async def test_download_pep658_metadata(wheel_catalog):
         pytest_wheel.version,
         sha256,
         size,
-        data_dist_info_metadata=True,
+        core_metadata=True,
     )
 
     assert wheel_with_metadata.pep658_metadata_available()
@@ -130,7 +130,7 @@ async def test_download_pep658_metadata(wheel_catalog):
         pytest_wheel.version,
         sha256,
         size,
-        data_dist_info_metadata=None,
+        core_metadata=None,
     )
 
     assert not wheel_without_metadata.pep658_metadata_available()
@@ -146,7 +146,7 @@ async def test_download_pep658_metadata(wheel_catalog):
         pytest_wheel.version,
         sha256,
         size,
-        data_dist_info_metadata=None,
+        core_metadata=None,
     )
 
     assert wheel._metadata is None
@@ -169,7 +169,7 @@ async def test_download_pep658_metadata_checksum(wheel_catalog):
         pytest_wheel.version,
         sha256,
         size,
-        data_dist_info_metadata={"sha256": "dummy-sha256"},
+        core_metadata={"sha256": "dummy-sha256"},
     )
 
     assert wheel._metadata is None
