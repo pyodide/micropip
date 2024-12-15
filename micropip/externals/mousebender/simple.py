@@ -5,10 +5,9 @@ import html
 import html.parser
 import urllib.parse
 import warnings
-from typing import Any, Dict, List, Optional, Union, Literal, TypeAlias, TypedDict
+from typing import Any, Dict, Literal, TypeAlias, TypedDict  # noqa: UP035 mypy needs `Dict`
 
 import packaging.utils
-
 
 ACCEPT_JSON_V1 = "application/vnd.pypi.simple.v1+json"
 
@@ -38,17 +37,17 @@ _Meta_1_0 = TypedDict("_Meta_1_0", {"api-version": Literal["1.0"]})
 _Meta_1_1 = TypedDict("_Meta_1_1", {"api-version": Literal["1.1"]})
 
 
-_HashesDict: TypeAlias = Dict[str, str]
+_HashesDict: TypeAlias = Dict[str, str]  # noqa: UP006,UP040 mypy is not yet ready to for `type` and `dict`.
 
 _OptionalProjectFileDetails_1_0 = TypedDict(
     "_OptionalProjectFileDetails_1_0",
     {
         "requires-python": str,
-        "dist-info-metadata": Union[bool, _HashesDict],
+        "dist-info-metadata": bool | _HashesDict,
         "gpg-sig": bool,
-        "yanked": Union[bool, str],
+        "yanked": bool | str,
         # PEP-714
-        "core-metadata": Union[bool, _HashesDict],
+        "core-metadata": bool | _HashesDict,
     },
     total=False,
 )
@@ -66,13 +65,13 @@ _OptionalProjectFileDetails_1_1 = TypedDict(
     "_OptionalProjectFileDetails_1_1",
     {
         "requires-python": str,
-        "dist-info-metadata": Union[bool, _HashesDict],
+        "dist-info-metadata": bool | _HashesDict,
         "gpg-sig": bool,
-        "yanked": Union[bool, str],
+        "yanked": bool | str,
         # PEP 700
         "upload-time": str,
         # PEP 714
-        "core-metadata": Union[bool, _HashesDict],
+        "core-metadata": bool | _HashesDict,
     },
     total=False,
 )
@@ -103,13 +102,13 @@ class ProjectDetails_1_1(TypedDict):
     name: packaging.utils.NormalizedName
     files: list[ProjectFileDetails_1_1]
     # PEP 700
-    versions: List[str]
+    versions: list[str]
 
 
-ProjectDetails: TypeAlias = Union[ProjectDetails_1_0, ProjectDetails_1_1]
+ProjectDetails: TypeAlias = ProjectDetails_1_0 | ProjectDetails_1_1  # noqa: UP040 mypy is not yet ready to for `type`.
 
 
-def _check_version(tag: str, attrs: Dict[str, Optional[str]]) -> None:
+def _check_version(tag: str, attrs: dict[str, str | None]) -> None:
     if (
         tag == "meta"
         and attrs.get("name") == "pypi:repository-version"
@@ -126,11 +125,11 @@ def _check_version(tag: str, attrs: Dict[str, Optional[str]]) -> None:
 
 class _ArchiveLinkHTMLParser(html.parser.HTMLParser):
     def __init__(self) -> None:
-        self.archive_links: List[Dict[str, Any]] = []
+        self.archive_links: list[dict[str, Any]] = []
         super().__init__()
 
     def handle_starttag(
-        self, tag: str, attrs_list: list[tuple[str, Optional[str]]]
+        self, tag: str, attrs_list: list[tuple[str, str | None]]
     ) -> None:
         attrs = dict(attrs_list)
         _check_version(tag, attrs)
@@ -149,7 +148,7 @@ class _ArchiveLinkHTMLParser(html.parser.HTMLParser):
         _, _, raw_filename = parsed_url.path.rpartition("/")
         filename = urllib.parse.unquote(raw_filename)
         url = urllib.parse.urlunparse((*parsed_url[:5], ""))
-        args: Dict[str, Any] = {"filename": filename, "url": url}
+        args: dict[str, Any] = {"filename": filename, "url": url}
         # PEP 503:
         # The URL SHOULD include a hash in the form of a URL fragment with the
         # following syntax: #<hashname>=<hashvalue> ...
@@ -210,7 +209,7 @@ def from_project_details_html(html: str, name: str) -> ProjectDetails_1_0:
     """
     parser = _ArchiveLinkHTMLParser()
     parser.feed(html)
-    files: List[ProjectFileDetails_1_0] = []
+    files: list[ProjectFileDetails_1_0] = []
     for archive_link in parser.archive_links:
         details: ProjectFileDetails_1_0 = {
             "filename": archive_link["filename"],

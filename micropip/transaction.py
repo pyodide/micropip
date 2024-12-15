@@ -48,9 +48,9 @@ class Transaction:
         self,
         requirements: list[str] | list[Requirement],
     ) -> None:
-        requirement_promises = []
-        for requirement in requirements:
-            requirement_promises.append(self.add_requirement(requirement))
+        requirement_promises = [
+            self.add_requirement(requirement) for requirement in requirements
+        ]
 
         await asyncio.gather(*requirement_promises)
 
@@ -132,7 +132,7 @@ class Transaction:
             # self.ctx_extras is empty and hence the eval_marker() function
             # will not be called at all.
             if not req.marker.evaluate(self.ctx) and not any(
-                [eval_marker(e) for e in self.ctx_extras]
+                eval_marker(e) for e in self.ctx_extras
             ):
                 return
         # Is some version of this package is already installed?

@@ -249,7 +249,7 @@ async def test_install_with_credentials(selenium):
     fetch_response_mock = MagicMock()
 
     async def myfunc():
-        return json.dumps(dict())
+        return json.dumps({})
 
     fetch_response_mock.string.side_effect = myfunc
 

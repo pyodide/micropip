@@ -35,7 +35,7 @@ def test_Metadata_requires(metadata_path, extras, expected):
     m = Metadata(metadata)
 
     reqs = m.requires(extras)
-    reqs_set = set([r.name for r in reqs])
+    reqs_set = {r.name for r in reqs}
     assert reqs_set == set(expected)
 
 
