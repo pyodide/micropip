@@ -126,18 +126,24 @@ class WheelCatalog:
     def __exit__(self, *args: Any):
         self._httpserver.__exit__(*args)
 
-    def _register_handler(self, path: Path) -> str:
-        self._httpserver.expect_request(f"/{path.name}").respond_with_data(
-            path.read_bytes(),
+    def _register_handler(self, endpoint: str, data: bytes) -> str:
+        self._httpserver.expect_request(f"/{endpoint}").respond_with_data(
+            data,
             content_type="application/zip",
             headers={"Access-Control-Allow-Origin": "*"},
         )
 
-        return self._httpserver.url_for(f"/{path.name}")
+        return self._httpserver.url_for(f"/{endpoint}")
 
     def add_wheel(self, path: Path, replace: bool = True):
         name, version = parse_wheel_filename(path.name)[0:2]
-        url = self._register_handler(path)
+        url = self._register_handler(path.name, path.read_bytes())
+
+        metadata_file_endpoint = path.with_suffix(".whl.metadata")
+        if metadata_file_endpoint.exists():
+            self._register_handler(
+                metadata_file_endpoint.name, metadata_file_endpoint.read_bytes()
+            )
 
         if name in self._wheels and not replace:
             return

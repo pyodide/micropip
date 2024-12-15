@@ -47,6 +47,8 @@ _OptionalProjectFileDetails_1_0 = TypedDict(
         "dist-info-metadata": Union[bool, _HashesDict],
         "gpg-sig": bool,
         "yanked": Union[bool, str],
+        # PEP-714
+        "core-metadata": Union[bool, _HashesDict],
     },
     total=False,
 )
@@ -69,6 +71,8 @@ _OptionalProjectFileDetails_1_1 = TypedDict(
         "yanked": Union[bool, str],
         # PEP 700
         "upload-time": str,
+        # PEP 714
+        "core-metadata": Union[bool, _HashesDict],
     },
     total=False,
 )
@@ -173,8 +177,14 @@ class _ArchiveLinkHTMLParser(html.parser.HTMLParser):
         # PEP 658:
         # ... each anchor tag pointing to a distribution MAY have a
         # data-dist-info-metadata attribute.
-        if "data-dist-info-metadata" in attrs:
-            found_metadata = attrs.get("data-dist-info-metadata")
+        # PEP 714:
+        # Clients consuming any of the HTML representations of the Simple API
+        # MUST read the PEP 658 metadata from the key data-core-metadata if it
+        # is present. They MAY optionally use the legacy data-dist-info-metadata
+        # if it is present but data-core-metadata is not.
+        metadata_fields = ["data-core-metadata", "data-dist-info-metadata"]
+        if any((metadata_field := field) in attrs for field in metadata_fields):
+            found_metadata = attrs.get(metadata_field)
             if found_metadata and found_metadata != "true":
                 # The repository SHOULD provide the hash of the Core Metadata
                 # file as the data-dist-info-metadata attribute's value using
@@ -212,12 +222,16 @@ def from_project_details_html(html: str, name: str) -> ProjectDetails_1_0:
         if "metadata" in archive_link:
             algorithm, value = archive_link["metadata"]
             if algorithm:
-                details["dist-info-metadata"] = {algorithm: value}
+                value = {algorithm: value}
             else:
-                details["dist-info-metadata"] = True
+                value = True
+
+            for key in ["core-metadata", "dist-info-metadata"]:
+                details[key] = value  # type: ignore[literal-required]
+
         for key in {"requires-python", "yanked", "gpg-sig"}:
             if key in archive_link:
-                details[key] = archive_link[key]  # type: ignore
+                details[key] = archive_link[key]  # type: ignore[literal-required]
         files.append(details)
     return {
         "meta": {"api-version": "1.0"},

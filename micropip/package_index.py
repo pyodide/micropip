@@ -15,6 +15,7 @@ from packaging.version import InvalidVersion, Version
 from ._compat import HttpStatusError, fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
 from .externals.mousebender.simple import from_project_details_html
+from .types import DistributionMetadata
 from .wheelinfo import WheelInfo
 
 PYPI = "PYPI"
@@ -153,6 +154,11 @@ class ProjectInfo:
             hashes = file["digests"] if "digests" in file else file["hashes"]
             sha256 = hashes.get("sha256")
 
+            # Check if the metadata file is available (PEP 658 / PEP-714)
+            core_metadata: DistributionMetadata = file.get("core-metadata") or file.get(
+                "data-dist-info-metadata"
+            )
+
             # Size of the file in bytes, if available (PEP 700)
             # This key is not available in the Simple API HTML response, so this field may be None
             size = file.get("size")
@@ -163,6 +169,7 @@ class ProjectInfo:
                 version=version,
                 sha256=sha256,
                 size=size,
+                core_metadata=core_metadata,
             )
 
     @classmethod
