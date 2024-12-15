@@ -24,11 +24,9 @@ test = [
   "pyodide-lock==v0.1.0a8",
 ]
 
-
 [project.urls]
 "Homepage" = "https://github.com/pyodide/micropip"
 "Bug Tracker" = "https://github.com/pyodide/micropip/issues"
-
 
 
 [build-system]
@@ -41,23 +39,18 @@ build-backend = "setuptools.build_meta"
 write_to = "micropip/_version.py"
 
 [tool.ruff]
+line-length = 122
 lint.select = [
   "E",     # pycodestyles
   "W",     # pycodestyles
   "F",     # pyflakes
-  "B0",    # bugbear (all B0* checks enabled by default)
-  "B904",  # bugbear (Within an except clause, raise exceptions with raise ... from err)
-  "B905",  # bugbear (zip() without an explicit strict= parameter set.)
+  "B",     # bugbear
   "UP",    # pyupgrade
   "I",     # isort
   "PGH",   # pygrep-hooks
   "G",     # flake8-logging-format
 ]
-# Remove E999 once pattern matching is supported
-# https://github.com/charliermarsh/ruff/issues/282
-lint.ignore = ["E402", "E501", "E731", "E741", "E999"]
-target-version = "py311"
-
+target-version = "py312"
 
 [tool.ruff.lint.isort]
 known-first-party = [
