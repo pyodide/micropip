@@ -2,7 +2,7 @@ import sys
 
 from .compatibility_layer import CompatibilityLayer
 
-compatibility_layer: type[CompatibilityLayer] | None = None
+compatibility_layer: type[CompatibilityLayer]
 
 IN_BROWSER = "_pyodide_core" in sys.modules
 
@@ -16,9 +16,9 @@ else:
     compatibility_layer = CompatibilityNotInPyodide
 
 
-REPODATA_INFO = compatibility_layer.repodata_info()
+REPODATA_INFO = compatibility_layer.repodata_info
 
-REPODATA_PACKAGES = compatibility_layer.repodata_packages()
+REPODATA_PACKAGES = compatibility_layer.repodata_packages
 
 fetch_bytes = compatibility_layer.fetch_bytes
 
