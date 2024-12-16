@@ -5,7 +5,7 @@ import html
 import html.parser
 import urllib.parse
 import warnings
-from typing import Any, Dict, Literal, TypeAlias, TypedDict  # noqa: UP035 mypy needs `Dict`
+from typing import Any, Literal, TypedDict
 
 import packaging.utils
 
@@ -37,17 +37,17 @@ _Meta_1_0 = TypedDict("_Meta_1_0", {"api-version": Literal["1.0"]})
 _Meta_1_1 = TypedDict("_Meta_1_1", {"api-version": Literal["1.1"]})
 
 
-_HashesDict: TypeAlias = Dict[str, str]  # noqa: UP006,UP040 mypy is not yet ready to for `type` and `dict`.
+_HashesDict: type = dict[str, str]  # Mypy upgrade should fix -- `_HashesDict: TypeAlias = Dict[str, str]`
 
 _OptionalProjectFileDetails_1_0 = TypedDict(
     "_OptionalProjectFileDetails_1_0",
     {
         "requires-python": str,
-        "dist-info-metadata": bool | _HashesDict,
+        "dist-info-metadata": bool | _HashesDict,  # type: ignore[valid-type]
         "gpg-sig": bool,
         "yanked": bool | str,
         # PEP-714
-        "core-metadata": bool | _HashesDict,
+        "core-metadata": bool | _HashesDict,  # type: ignore[valid-type]
     },
     total=False,
 )
@@ -58,20 +58,20 @@ class ProjectFileDetails_1_0(_OptionalProjectFileDetails_1_0):
 
     filename: str
     url: str
-    hashes: _HashesDict
+    hashes: _HashesDict  # type: ignore[valid-type]
 
 
 _OptionalProjectFileDetails_1_1 = TypedDict(
     "_OptionalProjectFileDetails_1_1",
     {
         "requires-python": str,
-        "dist-info-metadata": bool | _HashesDict,
+        "dist-info-metadata": bool | _HashesDict,  # type: ignore[valid-type]
         "gpg-sig": bool,
         "yanked": bool | str,
         # PEP 700
         "upload-time": str,
         # PEP 714
-        "core-metadata": bool | _HashesDict,
+        "core-metadata": bool | _HashesDict,  # type: ignore[valid-type]
     },
     total=False,
 )
@@ -82,7 +82,7 @@ class ProjectFileDetails_1_1(_OptionalProjectFileDetails_1_1):
 
     filename: str
     url: str
-    hashes: _HashesDict
+    hashes: _HashesDict  # type: ignore[valid-type]
     # PEP 700
     size: int
 
@@ -105,7 +105,7 @@ class ProjectDetails_1_1(TypedDict):
     versions: list[str]
 
 
-ProjectDetails: TypeAlias = ProjectDetails_1_0 | ProjectDetails_1_1  # noqa: UP040 mypy is not yet ready to for `type`.
+ProjectDetails: type = ProjectDetails_1_0 | ProjectDetails_1_1  # type: ignore[assignment]  # Mypy wants `UnionType`
 
 
 def _check_version(tag: str, attrs: dict[str, str | None]) -> None:
