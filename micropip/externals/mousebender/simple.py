@@ -5,9 +5,10 @@ import html
 import html.parser
 import urllib.parse
 import warnings
-from typing import Any, Literal, TypedDict
+from typing import Any, Dict, List, Optional, Union, Literal, TypeAlias, TypedDict
 
 import packaging.utils
+
 
 ACCEPT_JSON_V1 = "application/vnd.pypi.simple.v1+json"
 
@@ -37,17 +38,17 @@ _Meta_1_0 = TypedDict("_Meta_1_0", {"api-version": Literal["1.0"]})
 _Meta_1_1 = TypedDict("_Meta_1_1", {"api-version": Literal["1.1"]})
 
 
-_HashesDict: type = dict[str, str]  # Mypy upgrade should fix -- `_HashesDict: TypeAlias = Dict[str, str]`
+_HashesDict: TypeAlias = Dict[str, str]
 
 _OptionalProjectFileDetails_1_0 = TypedDict(
     "_OptionalProjectFileDetails_1_0",
     {
         "requires-python": str,
-        "dist-info-metadata": bool | _HashesDict,  # type: ignore[valid-type]
+        "dist-info-metadata": Union[bool, _HashesDict],
         "gpg-sig": bool,
-        "yanked": bool | str,
+        "yanked": Union[bool, str],
         # PEP-714
-        "core-metadata": bool | _HashesDict,  # type: ignore[valid-type]
+        "core-metadata": Union[bool, _HashesDict],
     },
     total=False,
 )
@@ -58,20 +59,20 @@ class ProjectFileDetails_1_0(_OptionalProjectFileDetails_1_0):
 
     filename: str
     url: str
-    hashes: _HashesDict  # type: ignore[valid-type]
+    hashes: _HashesDict
 
 
 _OptionalProjectFileDetails_1_1 = TypedDict(
     "_OptionalProjectFileDetails_1_1",
     {
         "requires-python": str,
-        "dist-info-metadata": bool | _HashesDict,  # type: ignore[valid-type]
+        "dist-info-metadata": Union[bool, _HashesDict],
         "gpg-sig": bool,
-        "yanked": bool | str,
+        "yanked": Union[bool, str],
         # PEP 700
         "upload-time": str,
         # PEP 714
-        "core-metadata": bool | _HashesDict,  # type: ignore[valid-type]
+        "core-metadata": Union[bool, _HashesDict],
     },
     total=False,
 )
@@ -82,7 +83,7 @@ class ProjectFileDetails_1_1(_OptionalProjectFileDetails_1_1):
 
     filename: str
     url: str
-    hashes: _HashesDict  # type: ignore[valid-type]
+    hashes: _HashesDict
     # PEP 700
     size: int
 
@@ -102,13 +103,13 @@ class ProjectDetails_1_1(TypedDict):
     name: packaging.utils.NormalizedName
     files: list[ProjectFileDetails_1_1]
     # PEP 700
-    versions: list[str]
+    versions: List[str]
 
 
-ProjectDetails: type = ProjectDetails_1_0 | ProjectDetails_1_1  # type: ignore[assignment]  # Mypy wants `UnionType`
+ProjectDetails: TypeAlias = Union[ProjectDetails_1_0, ProjectDetails_1_1]
 
 
-def _check_version(tag: str, attrs: dict[str, str | None]) -> None:
+def _check_version(tag: str, attrs: Dict[str, Optional[str]]) -> None:
     if (
         tag == "meta"
         and attrs.get("name") == "pypi:repository-version"
@@ -125,11 +126,11 @@ def _check_version(tag: str, attrs: dict[str, str | None]) -> None:
 
 class _ArchiveLinkHTMLParser(html.parser.HTMLParser):
     def __init__(self) -> None:
-        self.archive_links: list[dict[str, Any]] = []
+        self.archive_links: List[Dict[str, Any]] = []
         super().__init__()
 
     def handle_starttag(
-        self, tag: str, attrs_list: list[tuple[str, str | None]]
+        self, tag: str, attrs_list: list[tuple[str, Optional[str]]]
     ) -> None:
         attrs = dict(attrs_list)
         _check_version(tag, attrs)
@@ -148,7 +149,7 @@ class _ArchiveLinkHTMLParser(html.parser.HTMLParser):
         _, _, raw_filename = parsed_url.path.rpartition("/")
         filename = urllib.parse.unquote(raw_filename)
         url = urllib.parse.urlunparse((*parsed_url[:5], ""))
-        args: dict[str, Any] = {"filename": filename, "url": url}
+        args: Dict[str, Any] = {"filename": filename, "url": url}
         # PEP 503:
         # The URL SHOULD include a hash in the form of a URL fragment with the
         # following syntax: #<hashname>=<hashvalue> ...
@@ -209,7 +210,7 @@ def from_project_details_html(html: str, name: str) -> ProjectDetails_1_0:
     """
     parser = _ArchiveLinkHTMLParser()
     parser.feed(html)
-    files: list[ProjectFileDetails_1_0] = []
+    files: List[ProjectFileDetails_1_0] = []
     for archive_link in parser.archive_links:
         details: ProjectFileDetails_1_0 = {
             "filename": archive_link["filename"],

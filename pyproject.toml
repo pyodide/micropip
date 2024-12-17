@@ -39,6 +39,7 @@ build-backend = "setuptools.build_meta"
 write_to = "micropip/_version.py"
 
 [tool.ruff]
+exclude = ["micropip/externals"]
 line-length = 120
 lint.select = [
   "B",     # bugbear
