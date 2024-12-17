@@ -27,13 +27,13 @@ jobs:
         ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.12
 
-      - uses: pyodide/pyodide-actions/download-pyodide@v1
+      - uses: pyodide/pyodide-actions/download-pyodide@v2
         with:
           version: ${{ matrix.pyodide-version }}
           to: dist
@@ -73,7 +73,7 @@ jobs:
             --runner=${{ matrix.test-config.runner }} \
             --rt ${{ matrix.test-config.runtime }}
 
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v5
         if: ${{ github.event.repo.name == 'pyodide/micropip' || github.event_name == 'pull_request' }}
         with:
           fail_ci_if_error: false
@@ -85,7 +85,7 @@ jobs:
       run-integration-test: ${{ steps.check-integration-test-trigger.outputs.trigger }}
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@cbb722410c2e876e24abbe8de2cc27693e501dcb # v4.2.2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -109,9 +109,9 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     environment: PyPi-deploy
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.12
       - name: Install requirements and build wheel
