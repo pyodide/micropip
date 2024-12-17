@@ -28,7 +28,7 @@ async def install(
         if isinstance(requirements, str):
             requirements = [requirements]
 
-        fetch_kwargs = dict()
+        fetch_kwargs = {}
 
         if credentials:
             fetch_kwargs["credentials"] = credentials
@@ -84,10 +84,9 @@ async def install(
             )
 
         # Now install PyPI packages
-        for wheel in transaction.wheels:
-            # detect whether the wheel metadata is from PyPI or from custom location
-            # wheel metadata from PyPI has SHA256 checksum digest.
-            wheel_promises.append(wheel.install(wheel_base))
+        # detect whether the wheel metadata is from PyPI or from custom location
+        # wheel metadata from PyPI has SHA256 checksum digest.
+        wheel_promises.extend(wheel.install(wheel_base) for wheel in transaction.wheels)
 
         await asyncio.gather(*wheel_promises)
 

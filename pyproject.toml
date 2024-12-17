@@ -39,17 +39,23 @@ build-backend = "setuptools.build_meta"
 write_to = "micropip/_version.py"
 
 [tool.ruff]
-line-length = 122
+exclude = ["micropip/externals"]
+line-length = 120
 lint.select = [
-  "E",     # pycodestyles
-  "W",     # pycodestyles
-  "F",     # pyflakes
   "B",     # bugbear
-  "UP",    # pyupgrade
-  "I",     # isort
-  "PGH",   # pygrep-hooks
+  "C4",    # flake8-comprehensions
+  "C90",   # mccabe code complexity
+  "E",     # pycodestyle errors
+  "F",     # pyflakes
   "G",     # flake8-logging-format
+  "I",     # isort
+  "PERF",  # perflint
+  "PGH",   # pygrep-hooks
+  "UP",    # pyupgrade
+  "W",     # pycodestyle whitespace
 ]
+lint.flake8-comprehensions.allow-dict-calls-with-keyword-arguments = true
+lint.mccabe.max-complexity = 13
 target-version = "py312"
 
 [tool.ruff.lint.isort]

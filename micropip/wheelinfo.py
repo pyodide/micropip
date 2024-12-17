@@ -52,7 +52,8 @@ class WheelInfo:
     _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
 
-    # Path to the .dist-info directory. This is only available after extracting the wheel, i.e. after calling `extract()`.
+    # Path to the .dist-info directory.
+    # This is only available after extracting the wheel, i.e. after calling `extract()`.
     _dist_info: Path | None = None
 
     def __post_init__(self):
