@@ -20,11 +20,9 @@ def freeze_data(
 ) -> dict[str, Any]:
     pyodide_packages = deepcopy(lockfile_packages)
     packages = dict(load_pip_packages())
-    packages.update({
-        name: info
-        for name, info in pyodide_packages.items()
-        if name not in packages
-    })
+    packages.update(
+        {name: info for name, info in pyodide_packages.items() if name not in packages}
+    )
 
     # Sort
     packages = dict(sorted(packages.items()))
