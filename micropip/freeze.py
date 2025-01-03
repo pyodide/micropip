@@ -1,5 +1,4 @@
 import importlib.metadata
-import itertools
 import json
 from collections.abc import Iterator
 from copy import deepcopy
@@ -20,11 +19,15 @@ def freeze_data(
     lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
 ) -> dict[str, Any]:
     pyodide_packages = deepcopy(lockfile_packages)
-    pip_packages = load_pip_packages()
-    package_items = itertools.chain(pyodide_packages.items(), pip_packages)
+    packages = dict(load_pip_packages())
+    packages.update({
+        name: info
+        for name, info in pyodide_packages.items()
+        if name not in packages
+    })
 
     # Sort
-    packages = dict(sorted(package_items))
+    packages = dict(sorted(packages.items()))
     return {
         "info": lockfile_info,
         "packages": packages,
