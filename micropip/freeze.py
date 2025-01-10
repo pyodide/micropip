@@ -9,11 +9,15 @@ from packaging.utils import canonicalize_name
 from ._utils import fix_package_dependencies
 
 
-def freeze_lockfile(lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]) -> str:
+def freeze_lockfile(
+    lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
+) -> str:
     return json.dumps(freeze_data(lockfile_packages, lockfile_info))
 
 
-def freeze_data(lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]) -> dict[str, Any]:
+def freeze_data(
+    lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
+) -> dict[str, Any]:
     packages = deepcopy(lockfile_packages)
     packages.update(load_pip_packages())
 
