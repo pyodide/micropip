@@ -9,22 +9,13 @@ from packaging.utils import canonicalize_name
 from ._utils import fix_package_dependencies
 
 
-def freeze_lockfile(
-    lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
-) -> str:
+def freeze_lockfile(lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]) -> str:
     return json.dumps(freeze_data(lockfile_packages, lockfile_info))
 
 
-def freeze_data(
-    lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]
-) -> dict[str, Any]:
-    pyodide_packages = deepcopy(lockfile_packages)
-    packages = dict(load_pip_packages())
-    packages.update({
-        name: info
-        for name, info in pyodide_packages.items()
-        if name not in packages
-    })
+def freeze_data(lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str]) -> dict[str, Any]:
+    packages = deepcopy(lockfile_packages)
+    packages.update(load_pip_packages())
 
     # Sort
     packages = dict(sorted(packages.items()))
