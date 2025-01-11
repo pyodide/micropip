@@ -66,8 +66,17 @@ async def test_freeze_fix_depends(
     assert dep2_metadata["imports"] == toplevel[2]
 
 
-@pytest.mark.parametrize("name", ["pytest", "snowballstemmer"])
-def test_freeze_lockfile_compat(name, selenium_standalone_micropip, wheel_catalog, tmp_path):
+@pytest.mark.parametrize(("name", "depends"), [
+    ["pytest", {"attrs", "iniconfig", "packaging", "pluggy"}],
+    ["snowballstemmer", set()],
+])
+def test_freeze_lockfile_compat(
+    name,
+    depends,
+    selenium_standalone_micropip,
+    wheel_catalog,
+    tmp_path
+):
     from pyodide_lock import PyodideLockSpec
 
     selenium = selenium_standalone_micropip
@@ -89,7 +98,7 @@ def test_freeze_lockfile_compat(name, selenium_standalone_micropip, wheel_catalo
     package = lockfile.packages[name]
     assert package.file_name == url
     assert package.name == name
-    assert package.depends == []
+    assert set(package.depends) == depends
     assert name in package.imports
     assert package.install_dir == "site"
     assert not package.unvendored_tests
