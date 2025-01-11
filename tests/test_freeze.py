@@ -66,16 +66,15 @@ async def test_freeze_fix_depends(
     assert dep2_metadata["imports"] == toplevel[2]
 
 
-@pytest.mark.parametrize(("name", "depends"), [
-    ["pytest", {"attrs", "iniconfig", "packaging", "pluggy"}],
-    ["snowballstemmer", set()],
-])
+@pytest.mark.parametrize(
+    ("name", "depends"),
+    [
+        ["pytest", {"attrs", "iniconfig", "packaging", "pluggy"}],
+        ["snowballstemmer", set()],
+    ],
+)
 def test_freeze_lockfile_compat(
-    name,
-    depends,
-    selenium_standalone_micropip,
-    wheel_catalog,
-    tmp_path
+    name, depends, selenium_standalone_micropip, wheel_catalog, tmp_path
 ):
     from pyodide_lock import PyodideLockSpec
 
