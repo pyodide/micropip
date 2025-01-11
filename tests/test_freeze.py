@@ -67,7 +67,9 @@ async def test_freeze_fix_depends(
 
 
 @pytest.mark.parametrize("name", ["pytest", "snowballstemmer"])
-def test_freeze_lockfile_compat(name, selenium_standalone_micropip, wheel_catalog, tmp_path):
+def test_freeze_lockfile_compat(
+    name, selenium_standalone_micropip, wheel_catalog, tmp_path
+):
     from pyodide_lock import PyodideLockSpec
 
     selenium = selenium_standalone_micropip
