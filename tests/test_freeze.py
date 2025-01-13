@@ -66,12 +66,21 @@ async def test_freeze_fix_depends(
     assert dep2_metadata["imports"] == toplevel[2]
 
 
-def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog, tmp_path):
+@pytest.mark.parametrize(
+    ("name", "depends"),
+    [
+        ["pytest", {"attrs", "iniconfig", "packaging", "pluggy"}],
+        ["snowballstemmer", set()],
+    ],
+)
+def test_freeze_lockfile_compat(
+    name, depends, selenium_standalone_micropip, wheel_catalog, tmp_path
+):
     from pyodide_lock import PyodideLockSpec
 
     selenium = selenium_standalone_micropip
-    snowball_wheel = wheel_catalog.get("snowballstemmer")
-    url = snowball_wheel.url
+    wheel = wheel_catalog.get(name)
+    url = wheel.url
 
     lockfile_content = selenium.run_async(
         f"""
@@ -85,10 +94,11 @@ def test_freeze_lockfile_compat(selenium_standalone_micropip, wheel_catalog, tmp
         f.write(lockfile_content)
 
     lockfile = PyodideLockSpec.from_json(lockfile_path)
-    assert lockfile.packages["snowballstemmer"].file_name == url
-    assert lockfile.packages["snowballstemmer"].name == "snowballstemmer"
-    assert lockfile.packages["snowballstemmer"].depends == []
-    assert lockfile.packages["snowballstemmer"].imports == ["snowballstemmer"]
-    assert lockfile.packages["snowballstemmer"].install_dir == "site"
-    assert not lockfile.packages["snowballstemmer"].unvendored_tests
-    assert lockfile.packages["snowballstemmer"].version == snowball_wheel.version
+    package = lockfile.packages[name]
+    assert package.file_name == url
+    assert package.name == name
+    assert set(package.depends) == depends
+    assert name in package.imports
+    assert package.install_dir == "site"
+    assert not package.unvendored_tests
+    assert package.version == wheel.version
