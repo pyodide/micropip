@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fix a bug that prevented non-standard relative urls to be treated as such 
+  (the ones that starts with `../` or `./`)
+  [#174](https://github.com/pyodide/micropip/pull/174)
+
 ## [0.8.0] - 2024/12/15
 
 ### Added
