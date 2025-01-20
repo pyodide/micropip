@@ -7,7 +7,7 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
-from urllib.parse import urlparse, urlunparse, urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
