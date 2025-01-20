@@ -7,7 +7,7 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse, urljoin
 
 from packaging.utils import InvalidWheelFilename
 from packaging.version import InvalidVersion, Version
@@ -130,8 +130,10 @@ class ProjectInfo:
                 version = parse_version(filename)
             except (InvalidVersion, InvalidWheelFilename):
                 continue
-            if file["url"].startswith("/"):
-                file["url"] = index_base_url + file["url"]
+
+            is_absolute_url = bool(urlparse(file["url"]).netloc)
+            if not is_absolute_url:
+                file["url"] = urljoin(index_base_url, file["url"])
 
             releases[version].append(file)
 
