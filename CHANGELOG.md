@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix a bug that prevented non-standard relative urls to be treated as such 
+- Fix a bug that prevented non-standard relative urls to be treated as such
   (the ones that starts with `../` or `./`)
   [#174](https://github.com/pyodide/micropip/pull/174)
 
