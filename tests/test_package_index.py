@@ -43,7 +43,8 @@ def test_project_info_from_simple_json(name):
 
 
 @pytest.mark.parametrize(
-    "name", ["numpy", "black", "pytest", "snowballstemmer", "pytz"]
+    "name",
+    ["numpy", "black", "pytest", "snowballstemmer", "pytz", "relative-urls-test"],
 )
 def test_project_info_from_simple_html(name):
     test_file = TEST_PYPI_RESPONSE_DIR / f"{name}_simple.html"
