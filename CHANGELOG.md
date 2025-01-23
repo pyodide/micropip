@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for constraining indirect dependencies via
   `micropip.install(..., constraints=[...])`. and `micropip.set_constraints([...])`
-  [#xyz](https://github.com/pyodide/micropip/pull/xyz)
+  [#177](https://github.com/pyodide/micropip/pull/177)
 
 ### Fixed
 
