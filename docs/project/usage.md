@@ -71,7 +71,8 @@ You can pass multiple packages to `micropip.install`:
 await micropip.install(["pkg1", "pkg2"])
 ```
 
-You can specify additional constraints:
+A dependency can specify be refined per the [PEP-508] spec:
+
 
 ```python
 await micropip.install("snowballstemmer==2.2.0")
@@ -79,10 +80,31 @@ await micropip.install("snowballstemmer>=2.2.0")
 await micropip.install("snowballstemmer[all]")
 ```
 
+[PEP-508]: https://peps.python.org/pep-0508
+
+### Disabling dependency resolution
+
 micropip does dependency resolution by default, but you can disable it,
 this is useful if you want to install a package that has a dependency
 which is not a pure Python package, but it is not mandatory for your use case:
 
 ```python
 await micropip.install("pkg", deps=False)
+```
+
+### Constraining indirect dependencies
+
+Dependency resolution can be further customized with optional `constraints`: these
+provide the versions (or URLs of wheels)
+
+```python
+await micropip.install("pkg", constraints=["other-pkg ==0.1.1"])
+```
+
+Default `constraints` may be provided to be used by all subsequent calls to
+`micropip.install`:
+
+```python
+micropip.set_constraints = ["other-pkg ==0.1.1"]
+await micropip.install("pkg")
 ```

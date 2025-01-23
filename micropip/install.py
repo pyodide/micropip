@@ -20,6 +20,7 @@ async def install(
     credentials: str | None = None,
     pre: bool = False,
     *,
+    constraints: list[str] | None = None,
     verbose: bool | int | None = None,
 ) -> None:
     with setup_logging().ctx_level(verbose) as logger:
@@ -49,6 +50,7 @@ async def install(
             fetch_kwargs=fetch_kwargs,
             verbose=verbose,
             index_urls=index_urls,
+            constraints=constraints,
         )
         await transaction.gather_requirements(requirements)
 

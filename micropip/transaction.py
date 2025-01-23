@@ -36,6 +36,7 @@ class Transaction:
     failed: list[Requirement] = field(default_factory=list)
 
     verbose: bool | int | None = None
+    constraints: list[str] | None = None
 
     def __post_init__(self):
         # If index_urls is None, pyodide-lock.json have to be searched first.

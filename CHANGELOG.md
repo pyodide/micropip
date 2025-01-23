@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added support for constraining indirect dependencies via
+  `micropip.install(..., constraints=[...])`. and `micropip.set_constraints([...])`
+  [#xyz](https://github.com/pyodide/micropip/pull/xyz)
+
 ### Fixed
 
 - Fix a bug that prevented non-standard relative urls to be treated as such
