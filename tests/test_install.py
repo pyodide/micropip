@@ -116,7 +116,27 @@ def test_install_constraints(selenium_standalone_micropip):
         """
         await pyodide.runPythonAsync(`
             import pytz
-            assert pytz.__version__ == "2020.5"
+            assert pytz.__version__ == "2020.5", pytz.__version__
+        `);
+        """
+    )
+
+def test_install_constraints_defaults(selenium_standalone_micropip):
+    selenium = selenium_standalone_micropip
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+            import micropip
+            micropip.set_constraints(["pytz == 2020.5"])
+            await micropip.install("pytz");
+        `);
+        """
+    )
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+            import pytz
+            assert pytz.__version__ == "2020.5", pytz.__version__
         `);
         """
     )
