@@ -72,17 +72,17 @@ class Transaction:
         await asyncio.gather(*requirement_promises)
 
     async def add_requirement(self, req: str | Requirement) -> None:
-        if isinstance(req, Requirement):
-            return await self.add_requirement_inner(req)
+        req = self.constrain_requirement(
+            req if isinstance(req, Requirement) else Requirement(req)
+        )
 
-        if not urlparse(req).path.endswith(".whl"):
-            return await self.add_requirement_inner(Requirement(req))
+        if req.url and urlparse(req.url).path.endswith(".whl"):
+            # custom download location
+            wheel = WheelInfo.from_url(req.url)
+            check_compatible(wheel.filename)
+            return await self.add_wheel(wheel, extras=set(), specifier="")
 
-        # custom download location
-        wheel = WheelInfo.from_url(req)
-        check_compatible(wheel.filename)
-
-        await self.add_wheel(wheel, extras=set(), specifier="")
+        await self.add_requirement_inner(req)
 
     def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
         ver = None

@@ -99,15 +99,39 @@ def test_install_mixed_case2(selenium_standalone_micropip, jinja2):
     )
 
 
-def test_install_constraints(selenium_standalone_micropip):
+PYTZ_2020_5_WHEEL = "pytz-2020.5-py2.py3-none-any.whl"
+PYTZ_2020_5_URL = f"https://files.pythonhosted.org/packages/89/06/2c2d3034b4d6bf22f2a4ae546d16925898658a33b4400cfb7e2c1e2871a3/{PYTZ_2020_5_WHEEL}"
+
+
+@pytest.mark.parametrize(
+    "pytz",
+    [
+        "pytz == 2020.5",
+        "pytz >=2020.4,<2020.6",
+        f"pytz @ {PYTZ_2020_5_URL}",
+        f"pytz @ emfs:{PYTZ_2020_5_WHEEL}",
+    ],
+)
+def test_install_constraints(pytz, selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
+    if PYTZ_2020_5_WHEEL in pytz and PYTZ_2020_5_URL not in pytz:
+        selenium.run_js(
+            f"""
+            await pyodide.runPythonAsync(`
+                from pyodide.http import pyfetch
+                resp = await pyfetch("{PYTZ_2020_5_URL}")
+                await resp._into_file(open("{PYTZ_2020_5_WHEEL}", "wb"))
+            `);
+            """
+        )
+
     selenium.run_js(
-        """
+        f"""
         await pyodide.runPythonAsync(`
             import micropip
             await micropip.install(
                 "pytz",
-                constraints=["pytz == 2020.5"]
+                constraints=["{pytz}"]
             );
         `);
         """
@@ -120,6 +144,7 @@ def test_install_constraints(selenium_standalone_micropip):
         `);
         """
     )
+
 
 def test_install_constraints_defaults(selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
