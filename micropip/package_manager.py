@@ -323,3 +323,16 @@ class PackageManager:
             urls = [urls]
 
         self.index_urls = urls[:]
+
+    def set_constraints(self, constraints: List[str]):  # noqa: UP006
+        """
+        Set the default constraints to use when looking up packages.
+
+        Parameters
+        ----------
+        constraints
+            A list of PEP-508 requirements, each of which must include a name and
+            version, but no ``[extras]``.
+        """
+
+        self.constraints = constraints[:]

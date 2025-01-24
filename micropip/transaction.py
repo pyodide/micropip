@@ -55,7 +55,7 @@ class Transaction:
             if con.extras:
                 logger.debug("Transaction: discarding [extras] constraint: %s", con)
                 continue
-            if not con.url or len(con.specifier):
+            if not (con.url or len(con.specifier)):
                 logger.debug("Transaction: discarding versionless constraint: %s", con)
                 continue
             con.name = canonicalize_name(con.name)
