@@ -121,6 +121,7 @@ def test_install_constraints(selenium_standalone_micropip):
         """
     )
 
+
 def test_install_constraints_defaults(selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
     selenium.run_js(
