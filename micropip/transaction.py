@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
-from packaging.requirements import Requirement
+from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
 from . import package_index
@@ -72,17 +72,25 @@ class Transaction:
         await asyncio.gather(*requirement_promises)
 
     async def add_requirement(self, req: str | Requirement) -> None:
-        req = self.constrain_requirement(
-            req if isinstance(req, Requirement) else Requirement(req)
-        )
+        if isinstance(req, Requirement):
+            return await self.add_requirement_inner(req)
 
-        if req.url and urlparse(req.url).path.endswith(".whl"):
+        try:
+            req = self.constrain_requirement(Requirement(req))
+            url = req.url
+        except InvalidRequirement:
+            url = f"{req}"
+
+        if not (url and urlparse(url).path.endswith(".whl")):
+            return await self.add_requirement_inner(
+                req if isinstance(req, Requirement) else Requirement(req)
+            )
+
+        if url:
             # custom download location
-            wheel = WheelInfo.from_url(req.url)
+            wheel = WheelInfo.from_url(url)
             check_compatible(wheel.filename)
             return await self.add_wheel(wheel, extras=set(), specifier="")
-
-        await self.add_requirement_inner(req)
 
     def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
         ver = None
