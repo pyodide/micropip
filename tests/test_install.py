@@ -99,6 +99,29 @@ def test_install_mixed_case2(selenium_standalone_micropip, jinja2):
     )
 
 
+def test_install_constraints(selenium_standalone_micropip):
+    selenium = selenium_standalone_micropip
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+            import micropip
+            await micropip.install(
+                "pytz",
+                constraints=["pytz == 2020.5"]
+            );
+        `);
+        """
+    )
+    selenium.run_js(
+        """
+        await pyodide.runPythonAsync(`
+            import pytz
+            assert pytz.__version__ == "2020.5"
+        `);
+        """
+    )
+
+
 @pytest.mark.asyncio
 async def test_package_with_extra(mock_fetch):
     mock_fetch.add_pkg_version("depa")
