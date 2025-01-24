@@ -94,17 +94,31 @@ await micropip.install("pkg", deps=False)
 
 ### Constraining indirect dependencies
 
-Dependency resolution can be further customized with optional `constraints`: these
-provide the versions (or URLs of wheels)
+Dependency resolution can be further customized with optional `constraints`: as
+described in the [`pip`](https://pip.pypa.io/en/stable/user_guide/#constraints-files)
+documentation, these must provide a name and version (or URL), and may not request
+`[extras]`.
 
 ```python
-await micropip.install("pkg", constraints=["other-pkg ==0.1.1"])
+await micropip.install(
+    "pkg",
+    constraints=[
+        "other-pkg ==0.1.1",
+        "some-other-pkg <2",
+        "yet-another-pkg@https://example.com/yet_another_pkg-0.1.2-py3-none-any.whl",
+        # invalid examples                         # why?
+        # yet_another_pkg-0.1.2-py3-none-any.whl   # missing name
+        # something-completely[different] ==0.1.1  # extras
+        # package-with-no-version                  # missing version or URL
+    ]
+)
 ```
 
-Default `constraints` may be provided to be used by all subsequent calls to
-`micropip.install`:
+`micropip.set_constraints` replaces any default constraints for all subsequent
+calls to `micropip.install` that don't specify constraints:
 
 ```python
 micropip.set_constraints = ["other-pkg ==0.1.1"]
-await micropip.install("pkg")
+await micropip.install("pkg")                         # uses defaults
+await micropip.install("another-pkg", constraints=[]) # ignores defaults
 ```

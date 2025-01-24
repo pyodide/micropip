@@ -38,12 +38,28 @@ class Transaction:
     verbose: bool | int | None = None
     constraints: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # If index_urls is None, pyodide-lock.json have to be searched first.
         # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
         self.search_pyodide_lock_first = (
             self.index_urls == package_index.DEFAULT_INDEX_URLS
         )
+
+        self.constrained_reqs: dict[str, Requirement] = {}
+
+        for constraint in self.constraints or []:
+            con = Requirement(constraint)
+            if not con.name:
+                logger.debug("Transaction: discarding nameless constraint: %s", con)
+                continue
+            if con.extras:
+                logger.debug("Transaction: discarding [extras] constraint: %s", con)
+                continue
+            if not con.url or len(con.specifier):
+                logger.debug("Transaction: discarding versionless constraint: %s", con)
+                continue
+            con.name = canonicalize_name(con.name)
+            self.constrained_reqs[con.name] = con
 
     async def gather_requirements(
         self,
@@ -88,6 +104,14 @@ class Transaction:
             f"Requested '{req}', " f"but {req.name}=={ver} is already installed"
         )
 
+    def constrain_requirement(self, req: Requirement) -> Requirement:
+        """Provide a constrained requirement, if available, or the original."""
+        constrained_req = self.constrained_reqs.get(canonicalize_name(req.name))
+        if constrained_req:
+            logger.debug("Transaction: %s constrained to %s", req, constrained_req)
+            return constrained_req
+        return req
+
     async def add_requirement_inner(
         self,
         req: Requirement,
@@ -99,6 +123,8 @@ class Transaction:
         """
         for e in req.extras:
             self.ctx_extras.append({"extra": e})
+
+        req = self.constrain_requirement(req)
 
         if self.pre:
             req.specifier.prereleases = True
@@ -136,6 +162,7 @@ class Transaction:
                 eval_marker(e) for e in self.ctx_extras
             ):
                 return
+
         # Is some version of this package is already installed?
         req.name = canonicalize_name(req.name)
 
