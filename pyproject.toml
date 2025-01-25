@@ -13,7 +13,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dynamic = ["version"]
-dependencies = ["packaging>=23.0"]
+
 [project.optional-dependencies]
 test = [
   "pytest-httpserver",
