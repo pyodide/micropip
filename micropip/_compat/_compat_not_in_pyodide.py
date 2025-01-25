@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class CompatibilityNotInPyodide(CompatibilityLayer):
 
     # Vendored from packaging
+    # TODO: use packaging APIs here instead?
     _canonicalize_regex = re.compile(r"[-_.]+")
 
     class HttpStatusError(Exception):
