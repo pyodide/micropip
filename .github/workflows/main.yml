@@ -28,6 +28,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-python@v5
         with:
@@ -88,6 +90,7 @@ jobs:
       - uses: actions/checkout@cbb722410c2e876e24abbe8de2cc27693e501dcb # v4.2.2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          submodules: recursive
 
       - id: check-integration-test-trigger
         name: Check integration test trigger
@@ -110,6 +113,8 @@ jobs:
     environment: PyPi-deploy
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-python@v5
         with:
