@@ -10,9 +10,10 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 import pytest
-from packaging.utils import parse_wheel_filename
 from pytest_httpserver import HTTPServer
 from pytest_pyodide import spawn_web_server
+
+from micropip._vendored.packaging.utils import parse_wheel_filename
 
 
 def pytest_addoption(parser):

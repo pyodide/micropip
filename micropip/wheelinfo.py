@@ -7,10 +7,6 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import ParseResult, urlparse
 
-from packaging.requirements import Requirement
-from packaging.tags import Tag
-from packaging.version import Version
-
 from ._compat import (
     fetch_bytes,
     get_dynlibs,
@@ -18,6 +14,9 @@ from ._compat import (
     loadedPackages,
 )
 from ._utils import parse_wheel_filename
+from ._vendored.packaging.requirements import Requirement
+from ._vendored.packaging.tags import Tag
+from ._vendored.packaging.version import Version
 from .metadata import Metadata, safe_name, wheel_dist_info_dir
 from .types import DistributionMetadata
 

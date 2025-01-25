@@ -4,9 +4,8 @@ from collections.abc import Iterator
 from copy import deepcopy
 from typing import Any
 
-from packaging.utils import canonicalize_name
-
 from ._utils import fix_package_dependencies
+from ._vendored.packaging.utils import canonicalize_name
 
 
 def freeze_lockfile(

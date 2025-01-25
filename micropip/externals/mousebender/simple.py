@@ -7,11 +7,10 @@ import urllib.parse
 import warnings
 from typing import Any, Dict, List, Optional, Union, Literal, TypeAlias, TypedDict
 
-import packaging.utils
+import micropip._vendored.packaging.utils as packaging_utils
 
 
 ACCEPT_JSON_V1 = "application/vnd.pypi.simple.v1+json"
-
 
 
 class UnsupportedAPIVersion(Exception):
@@ -92,7 +91,7 @@ class ProjectDetails_1_0(TypedDict):
     """A :class:`~typing.TypedDict` for a project details response (:pep:`691`)."""
 
     meta: _Meta_1_0
-    name: packaging.utils.NormalizedName
+    name: packaging_utils.NormalizedName
     files: list[ProjectFileDetails_1_0]
 
 
@@ -100,7 +99,7 @@ class ProjectDetails_1_1(TypedDict):
     """A :class:`~typing.TypedDict` for a project details response (:pep:`700`)."""
 
     meta: _Meta_1_1
-    name: packaging.utils.NormalizedName
+    name: packaging_utils.NormalizedName
     files: list[ProjectFileDetails_1_1]
     # PEP 700
     versions: List[str]
@@ -235,6 +234,6 @@ def from_project_details_html(html: str, name: str) -> ProjectDetails_1_0:
         files.append(details)
     return {
         "meta": {"api-version": "1.0"},
-        "name": packaging.utils.canonicalize_name(name),
+        "name": packaging_utils.canonicalize_name(name),
         "files": files,
     }
