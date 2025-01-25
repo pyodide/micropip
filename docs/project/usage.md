@@ -105,9 +105,8 @@ As described in the [`pip` documentation][pip-constraints], each constraint:
   - _must_ provide a name
   - _must_ provide exactly one of
     - a set of version specifiers
-    - a URL, and _may not_ request
+    - a URL
   - _must not_  request any `[extras]`
-
 
 Invalid constraints will be silently discarded, or logged if `verbose` is provided.
 
