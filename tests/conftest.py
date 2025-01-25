@@ -13,7 +13,7 @@ import pytest
 from pytest_httpserver import HTTPServer
 from pytest_pyodide import spawn_web_server
 
-from micropip._vendored.packaging.utils import parse_wheel_filename
+from micropip._vendored.packaging.src.packaging.utils import parse_wheel_filename
 
 
 def pytest_addoption(parser):

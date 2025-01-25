@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from ._compat import loadPackage, to_js
-from ._vendored.packaging.markers import default_environment
+from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
 from .logging import setup_logging
 from .transaction import Transaction

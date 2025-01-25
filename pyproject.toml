@@ -64,7 +64,12 @@ known-first-party = [
 ]
 
 [tool.mypy]
+exclude = ["micropip/_vendored/"]
 python_version = "3.12"
 show_error_codes = true
 warn_unreachable = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "micropip._vendored.*"
+warn_unreachable = false

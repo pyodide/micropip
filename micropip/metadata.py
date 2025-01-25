@@ -7,8 +7,8 @@ import zipfile
 from collections.abc import Iterable
 from pathlib import Path
 
-from ._vendored.packaging.requirements import Requirement
-from ._vendored.packaging.utils import canonicalize_name
+from ._vendored.packaging.src.packaging.requirements import Requirement
+from ._vendored.packaging.src.packaging.utils import canonicalize_name
 
 
 def safe_name(name):
