@@ -2,7 +2,8 @@ from contextlib import contextmanager
 from importlib.metadata import distribution
 
 import pytest
-from conftest import CPVER, EMSCRIPTEN_VER, PLATFORM
+from conftest import CPVER, EMSCRIPTEN_VER, INVALID_CONSTRAINT_MESSAGES, PLATFORM
+from packaging.requirements import Requirement
 from pytest_pyodide import run_in_pyodide
 
 import micropip._utils as _utils
@@ -150,3 +151,45 @@ def test_best_compatible_tag(package, version, incompatible_tags, compatible_tag
     sorted_tags = sorted(tags, key=best_compatible_tag_index)
     sorted_tags.reverse()
     assert sorted_tags == tags
+
+
+def test_validate_constraints_valid(valid_constraint):
+    constraints = [valid_constraint] if valid_constraint else []
+    reqs, msgs = _utils.validate_constraints(constraints)
+    assert len(reqs) == len(constraints)
+    assert not msgs
+
+
+def test_validate_constraints_invalid(invalid_constraint):
+    reqs, msgs = _utils.validate_constraints([invalid_constraint])
+    assert not reqs
+    for constraint, msg in msgs.items():
+        msg = msgs[constraint]
+        assert INVALID_CONSTRAINT_MESSAGES[constraint] in msg
+
+
+def test_constrain_requirement(valid_constraint):
+    req = Requirement("pytest")
+    constraints = [valid_constraint] if valid_constraint else []
+    assert not req.specifier
+    constrained_reqs, msg = _utils.validate_constraints(constraints)
+    assert not msg
+    constrained = _utils.constrain_requirement(req, constrained_reqs)
+
+    if constraints:
+        assert constrained.specifier or constrained.url
+        assert not (constrained.specifier and constrained.url)
+    else:
+        assert not (constrained.specifier or constrained.url)
+
+
+def test_constrain_requirement_direct_url(valid_constraint, wheel_catalog):
+    constraints = [valid_constraint] if valid_constraint else []
+    wheel = wheel_catalog.get("pytest")
+    url = f"{wheel.url}?foo"
+    req = Requirement(f"pytest @ {url}")
+    assert not req.specifier
+    constrained_reqs, msg = _utils.validate_constraints(constraints)
+    assert not msg
+    constrained = _utils.constrain_requirement(req, constrained_reqs)
+    assert constrained.url == url

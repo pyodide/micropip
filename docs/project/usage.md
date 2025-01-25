@@ -71,16 +71,16 @@ You can pass multiple packages to `micropip.install`:
 await micropip.install(["pkg1", "pkg2"])
 ```
 
-A dependency can specify be refined per the [PEP-508] spec:
+A dependency can be refined as per the [PEP-508] spec:
 
+[pep-508]: https://peps.python.org/pep-0508
 
 ```python
 await micropip.install("snowballstemmer==2.2.0")
 await micropip.install("snowballstemmer>=2.2.0")
+await micropip.install("snowballstemmer @ https://.../snowballstemmer.*.whl")
 await micropip.install("snowballstemmer[all]")
 ```
-
-[PEP-508]: https://peps.python.org/pep-0508
 
 ### Disabling dependency resolution
 
@@ -94,31 +94,52 @@ await micropip.install("pkg", deps=False)
 
 ### Constraining indirect dependencies
 
-Dependency resolution can be further customized with optional `constraints`: as
-described in the [`pip`](https://pip.pypa.io/en/stable/user_guide/#constraints-files)
-documentation, these must provide a name and version (or URL), and may not request
-`[extras]`.
+Dependency resolution can be further customized with optional `constraints`:
+these modify both _direct_ and _indirect_ dependency resolutions, while direct URLs
+in either a requirement or constraint will generally bypass any other specifiers.
+
+As described in the [`pip` documentation][pip-constraints], each constraint:
+
+[pip-constraints]: https://pip.pypa.io/en/stable/user_guide/#constraints-files
+
+  - _must_ provide a name
+  - _must_ provide exactly one of
+    - a set of version specifiers
+    - a URL, and _may not_ request
+  - _must not_  request any `[extras]`
+
+
+Invalid constraints will be silently discarded, or logged if `verbose` is provided.
 
 ```python
 await micropip.install(
     "pkg",
     constraints=[
-        "other-pkg ==0.1.1",
-        "some-other-pkg <2",
+        "other-pkg==0.1.1",
+        "some-other-pkg<2",
         "yet-another-pkg@https://example.com/yet_another_pkg-0.1.2-py3-none-any.whl",
-        # invalid examples                         # why?
-        # yet_another_pkg-0.1.2-py3-none-any.whl   # missing name
-        # something-completely[different] ==0.1.1  # extras
-        # package-with-no-version                  # missing version or URL
+        # silently discarded                          # why?
+        "yet_another_pkg-0.1.2-py3-none-any.whl",     # missing name
+        "something-completely[different] ==0.1.1",    # extras
+        "package-with-no-version",                    # missing version or URL
     ]
 )
 ```
 
-`micropip.set_constraints` replaces any default constraints for all subsequent
-calls to `micropip.install` that don't specify constraints:
+Over-constrained requirements will fail to resolve, leaving the environment unmodified.
 
 ```python
-micropip.set_constraints = ["other-pkg ==0.1.1"]
-await micropip.install("pkg")                         # uses defaults
+await micropip.install("pkg ==1", constraints=["pkg ==2"])
+# ValueError: Can't find a pure Python 3 wheel for 'pkg==1,==2'.
+```
+
+### Setting default constraints
+
+`micropip.set_constraints` replaces any default constraints for all subsequent
+calls to `micropip.install` that don't specify `constraints`:
+
+```python
+micropip.set_constraints(["other-pkg ==0.1.1"])
+await micropip.install("pkg")                         # uses defaults, if needed
 await micropip.install("another-pkg", constraints=[]) # ignores defaults
 ```

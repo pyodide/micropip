@@ -4,7 +4,7 @@ from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_config_var, get_platform
 
-from packaging.requirements import Requirement
+from packaging.requirements import InvalidRequirement, Requirement
 from packaging.tags import Tag
 from packaging.tags import sys_tags as sys_tags_orig
 from packaging.utils import BuildTag, InvalidWheelFilename, canonicalize_name
@@ -268,3 +268,76 @@ def fix_package_dependencies(
     (get_dist_info(dist) / "PYODIDE_REQUIRES").write_text(
         json.dumps(sorted(x for x in depends))
     )
+
+
+def validate_constraints(
+    constraints: list[str] | None,
+) -> tuple[dict[str, Requirement], dict[str, str]]:
+    """Build a validated ``Requirement`` dictionary from raw constraint strings.
+
+    Parameters
+    ----------
+    constraints (list):
+        A list of PEP-508 dependency specs, expected to contain both a package
+        name and at least one speicifier.
+
+    Returns
+    -------
+        A 2-tuple of:
+        - a dictionary of ``Requirement`` objects, keyed by canonical name
+        - a dictionary of messages strings, keyed by constraint
+    """
+    constrained_reqs: dict[str, Requirement] = {}
+    ignore_messages: dict[str, str] = {}
+
+    for raw_constraint in constraints or []:
+        try:
+            req = Requirement(raw_constraint)
+            req.name = canonicalize_name(req.name)
+        except InvalidRequirement as err:
+            ignore_messages[raw_constraint] = f"failed to parse: {err}"
+            continue
+
+        if req.extras:
+            ignore_messages[raw_constraint] = "may not provide [extras]"
+            continue
+
+        if not (req.url or len(req.specifier)):
+            ignore_messages[raw_constraint] = "no version or URL"
+            continue
+
+        constrained_reqs[req.name] = req
+
+    return constrained_reqs, ignore_messages
+
+
+def constrain_requirement(
+    requirement: Requirement, constrained_requirements: dict[str, Requirement]
+) -> Requirement:
+    """Refine or replace a requirement from a set of constraints.
+
+    Parameters
+    ----------
+    requirement (list):
+        A list of PEP-508 dependency specs, expected to contain both a package
+        name and at least one speicifier.
+
+    Returns
+    -------
+        A 2-tuple of:
+        - a dictionary of ``Requirement`` objects, keyed by canonical name
+        - a dictionary of messages strings, keyed by constraint
+    """
+    # URLs cannot be merged
+    if requirement.url:
+        return requirement
+
+    as_constrained = constrained_requirements.get(canonicalize_name(requirement.name))
+
+    if as_constrained:
+        if as_constrained.url:
+            requirement = as_constrained
+        else:
+            requirement.specifier = requirement.specifier & as_constrained.specifier
+
+    return requirement

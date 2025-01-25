@@ -13,6 +13,7 @@ import pytest
 from packaging.utils import parse_wheel_filename
 from pytest_httpserver import HTTPServer
 from pytest_pyodide import spawn_web_server
+from pytest_pyodide.runner import JavascriptException
 
 
 def pytest_addoption(parser):
@@ -408,3 +409,45 @@ def mock_package_index_simple_html_api(httpserver):
         suffix="_simple.html",
         content_type="text/html",
     )
+
+
+@pytest.fixture(
+    params=[
+        None,
+        "pytest ==7.2.2",
+        "pytest >=7.2.1,<7.2.3",
+        "pytest @ {url}",
+        "pytest @ emfs:{wheel}",
+    ]
+)
+def valid_constraint(request, wheel_catalog):
+    wheel = wheel_catalog.get("pytest")
+    if not request.param:
+        return request.param
+    return request.param.format(url=wheel.url, wheel=wheel.url.split("/")[-1])
+
+
+INVALID_CONSTRAINT_MESSAGES = {
+    "": "parse",
+    "http://example.com": "name",
+    "a-package[with-extra]": "[extras]",
+    "a-package": "no version or URL",
+}
+
+
+@pytest.fixture(params=[*INVALID_CONSTRAINT_MESSAGES.keys()])
+def invalid_constraint(request):
+    return request.param
+
+
+@pytest.fixture
+def run_async_py_in_js(selenium_standalone_micropip):
+    def _run(*lines, error_match=None):
+        js = "\n".join(["await pyodide.runPythonAsync(`", *lines, "`);"])
+        if error_match:
+            with pytest.raises(JavascriptException, match=error_match):
+                selenium_standalone_micropip.run_js(js)
+        else:
+            selenium_standalone_micropip.run_js(js)
+
+    return _run

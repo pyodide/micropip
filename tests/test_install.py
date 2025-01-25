@@ -99,71 +99,44 @@ def test_install_mixed_case2(selenium_standalone_micropip, jinja2):
     )
 
 
-PYTZ_2020_5_WHEEL = "pytz-2020.5-py2.py3-none-any.whl"
-PYTZ_2020_5_URL = f"https://files.pythonhosted.org/packages/89/06/2c2d3034b4d6bf22f2a4ae546d16925898658a33b4400cfb7e2c1e2871a3/{PYTZ_2020_5_WHEEL}"
+@pytest.mark.parametrize("set_constraints", [False, True])
+def test_install_constraints(
+    set_constraints,
+    valid_constraint,
+    wheel_catalog,
+    run_async_py_in_js,
+):
+    constraints = [valid_constraint] if valid_constraint else []
+    run_async_py_in_js("import micropip")
 
-
-@pytest.mark.parametrize(
-    "pytz",
-    [
-        "pytz == 2020.5",
-        "pytz >=2020.4,<2020.6",
-        f"pytz @ {PYTZ_2020_5_URL}",
-        f"pytz @ emfs:{PYTZ_2020_5_WHEEL}",
-    ],
-)
-def test_install_constraints(pytz, selenium_standalone_micropip):
-    selenium = selenium_standalone_micropip
-    if PYTZ_2020_5_WHEEL in pytz and PYTZ_2020_5_URL not in pytz:
-        selenium.run_js(
-            f"""
-            await pyodide.runPythonAsync(`
-                from pyodide.http import pyfetch
-                resp = await pyfetch("{PYTZ_2020_5_URL}")
-                await resp._into_file(open("{PYTZ_2020_5_WHEEL}", "wb"))
-            `);
-            """
+    if valid_constraint and "emfs:" in valid_constraint:
+        url = wheel_catalog.get("pytest").url
+        wheel = url.split("/")[-1]
+        run_async_py_in_js(
+            "from pyodide.http import pyfetch",
+            f"resp = await pyfetch('{url}')",
+            f"await resp._into_file(open('{wheel}', 'wb'))",
         )
 
-    selenium.run_js(
-        f"""
-        await pyodide.runPythonAsync(`
-            import micropip
-            await micropip.install(
-                "pytz",
-                constraints=["{pytz}"]
-            );
-        `);
-        """
-    )
-    selenium.run_js(
-        """
-        await pyodide.runPythonAsync(`
-            import pytz
-            assert pytz.__version__ == "2020.5", pytz.__version__
-        `);
-        """
-    )
+    if set_constraints:
+        run_async_py_in_js(f"micropip.set_constraints({constraints})")
+        install_args = ""
+    else:
+        install_args = f"constraints={constraints}"
 
+    if constraints and "@" not in valid_constraint:
+        run_async_py_in_js(
+            f"await micropip.install('pytest ==7.2.3', {install_args})",
+            error_match="Can't find a pure Python 3 wheel",
+        )
 
-def test_install_constraints_defaults(selenium_standalone_micropip):
-    selenium = selenium_standalone_micropip
-    selenium.run_js(
-        """
-        await pyodide.runPythonAsync(`
-            import micropip
-            micropip.set_constraints(["pytz == 2020.5"])
-            await micropip.install("pytz");
-        `);
-        """
-    )
-    selenium.run_js(
-        """
-        await pyodide.runPythonAsync(`
-            import pytz
-            assert pytz.__version__ == "2020.5", pytz.__version__
-        `);
-        """
+    run_async_py_in_js(f"await micropip.install('pytest', {install_args})")
+
+    compare = "==" if constraints else "!="
+
+    run_async_py_in_js(
+        "import pytest",
+        f"assert pytest.__version__ {compare} '7.2.2', pytest.__version__",
     )
 
 

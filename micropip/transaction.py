@@ -11,7 +11,12 @@ from packaging.utils import canonicalize_name
 
 from . import package_index
 from ._compat import REPODATA_PACKAGES
-from ._utils import best_compatible_tag_index, check_compatible
+from ._utils import (
+    best_compatible_tag_index,
+    check_compatible,
+    constrain_requirement,
+    validate_constraints,
+)
 from .constants import FAQ_URLS
 from .package import PackageMetadata
 from .package_index import ProjectInfo
@@ -45,21 +50,13 @@ class Transaction:
             self.index_urls == package_index.DEFAULT_INDEX_URLS
         )
 
-        self.constrained_reqs: dict[str, Requirement] = {}
+        self.constrained_reqs, messages = validate_constraints(self.constraints)
 
-        for constraint in self.constraints or []:
-            con = Requirement(constraint)
-            if not con.name:
-                logger.debug("Transaction: discarding nameless constraint: %s", con)
-                continue
-            if con.extras:
-                logger.debug("Transaction: discarding [extras] constraint: %s", con)
-                continue
-            if not (con.url or len(con.specifier)):
-                logger.debug("Transaction: discarding versionless constraint: %s", con)
-                continue
-            con.name = canonicalize_name(con.name)
-            self.constrained_reqs[con.name] = con
+        if self.verbose and messages:
+            for constraint, message in messages.items():
+                logger.info(
+                    "Transaction: constraint %s discarded: %s", constraint, message
+                )
 
     async def gather_requirements(
         self,
@@ -76,7 +73,7 @@ class Transaction:
             return await self.add_requirement_inner(req)
 
         try:
-            req = self.constrain_requirement(Requirement(req))
+            req = constrain_requirement(Requirement(req), self.constrained_reqs)
             url = req.url
         except InvalidRequirement:
             url = f"{req}"
@@ -112,14 +109,6 @@ class Transaction:
             f"Requested '{req}', " f"but {req.name}=={ver} is already installed"
         )
 
-    def constrain_requirement(self, req: Requirement) -> Requirement:
-        """Provide a constrained requirement, if available, or the original."""
-        constrained_req = self.constrained_reqs.get(canonicalize_name(req.name))
-        if constrained_req:
-            logger.debug("Transaction: %s constrained to %s", req, constrained_req)
-            return constrained_req
-        return req
-
     async def add_requirement_inner(
         self,
         req: Requirement,
@@ -129,10 +118,11 @@ class Transaction:
         See PEP 508 for a description of the requirements.
         https://www.python.org/dev/peps/pep-0508
         """
+        # add [extras] first, as constraints will never add them
         for e in req.extras:
             self.ctx_extras.append({"extra": e})
 
-        req = self.constrain_requirement(req)
+        req = constrain_requirement(req, self.constrained_reqs)
 
         if self.pre:
             req.specifier.prereleases = True
