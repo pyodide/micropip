@@ -7,7 +7,7 @@ import urllib.parse
 import warnings
 from typing import Any, Dict, List, Optional, Union, Literal, TypeAlias, TypedDict
 
-import micropip._vendored.packaging.src.packaging.utils as packaging_utils
+import micropip._vendored.packaging.utils as packaging_utils
 
 
 ACCEPT_JSON_V1 = "application/vnd.pypi.simple.v1+json"

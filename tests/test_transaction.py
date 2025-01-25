@@ -1,7 +1,7 @@
 import pytest
 from conftest import SNOWBALL_WHEEL
 
-from micropip._vendored.packaging.src.packaging.tags import Tag
+from micropip._vendored.packaging.tags import Tag
 
 
 @pytest.mark.parametrize(
@@ -189,7 +189,7 @@ def _pypi_metadata(package, versions_to_tags):
 
 def test_last_version_from_pypi():
     pytest.importorskip("packaging")
-    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip._vendored.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement("dummy_module")
@@ -209,7 +209,7 @@ def test_find_wheel_invalid_version():
     it should be skipped instead of producing an error
     """
     pytest.importorskip("packaging")
-    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip._vendored.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement("dummy_module")
@@ -244,7 +244,7 @@ _best_tag_test_cases = (
 @pytest.mark.parametrize(*_best_tag_test_cases)
 def test_best_tag_from_pypi(package, version, incompatible_tags, compatible_tags):
     pytest.importorskip("packaging")
-    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip._vendored.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement(package)
@@ -278,7 +278,7 @@ def test_last_version_and_best_tag_from_pypi(
     package, old_version, new_version, old_tags, new_tags
 ):
     pytest.importorskip("packaging")
-    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip._vendored.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement(package)
