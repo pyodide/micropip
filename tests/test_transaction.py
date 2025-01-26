@@ -132,7 +132,7 @@ async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch
     pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
-    async def mock_add_wheel(self, wheel, extras, *, specifier=""):
+    async def mock_add_wheel(self, wheel, extras, *, specifier="", requested_by=None):
         self.mock_wheel = wheel
 
     monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
@@ -336,7 +336,7 @@ async def test_index_url_priority(
     # add_wheel is called only when the package is found in the index_urls
     add_wheel_called = None
 
-    async def mock_add_wheel(self, wheel, extras, *, specifier=""):
+    async def mock_add_wheel(self, wheel, extras, *, specifier="", requested_by=None):
         nonlocal add_wheel_called
         add_wheel_called = wheel
 
