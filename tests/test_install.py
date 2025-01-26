@@ -100,11 +100,13 @@ def test_install_mixed_case2(selenium_standalone_micropip, jinja2):
 
 
 @pytest.mark.parametrize("set_constraints", [False, True])
+@pytest.mark.parametrize("direct", [False, True])
 def test_install_constraints(
     set_constraints,
     valid_constraint,
     wheel_catalog,
     run_async_py_in_js,
+    direct,
 ):
     constraints = [valid_constraint] if valid_constraint else []
     run_async_py_in_js("import micropip")
@@ -118,11 +120,11 @@ def test_install_constraints(
             f"await resp._into_file(open('{wheel}', 'wb'))",
         )
 
+    install_args = "verbose=True"
     if set_constraints:
         run_async_py_in_js(f"micropip.set_constraints({constraints})")
-        install_args = ""
     else:
-        install_args = f"constraints={constraints}"
+        install_args += f", constraints={constraints}"
 
     if constraints and "@" not in valid_constraint:
         run_async_py_in_js(
@@ -130,11 +132,11 @@ def test_install_constraints(
             error_match="Can't find a pure Python 3 wheel",
         )
 
-    run_async_py_in_js(f"await micropip.install('pytest', {install_args})")
-
+    install_pkg = "pytest" if direct else "pytest-asyncio"
     compare = "==" if constraints else "!="
 
     run_async_py_in_js(
+        f"await micropip.install('{install_pkg}', {install_args})",
         "import pytest",
         f"assert pytest.__version__ {compare} '7.2.2', pytest.__version__",
     )

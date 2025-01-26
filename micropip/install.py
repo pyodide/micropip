@@ -1,15 +1,15 @@
 import asyncio
 import importlib
-from collections.abc import Coroutine
 from pathlib import Path
-from typing import Any
 
 from packaging.markers import default_environment
 
 from ._compat import loadPackage, to_js
 from .constants import FAQ_URLS
 from .logging import setup_logging
+from .package import PackageMetadata
 from .transaction import Transaction
+from .wheelinfo import WheelInfo
 
 
 async def install(
@@ -61,36 +61,32 @@ async def install(
                 f"See: {FAQ_URLS['cant_find_wheel']}\n"
             )
 
-        package_names = [pkg.name for pkg in transaction.pyodide_packages] + [
-            pkg.name for pkg in transaction.wheels
-        ]
+        packages_by_name: dict[str, PackageMetadata | WheelInfo] = {
+            **{pkg.name: pkg for pkg in transaction.pyodide_packages},
+            **{pkg.name: pkg for pkg in transaction.wheels},
+        }
 
         logger.debug(
             "Installing packages %r and wheels %r ",
             transaction.pyodide_packages,
             [w.filename for w in transaction.wheels],
         )
-        if package_names:
-            logger.info("Installing collected packages: %s", ", ".join(package_names))
-
-        wheel_promises: list[Coroutine[Any, Any, None] | asyncio.Task[Any]] = []
-        # Install built-in packages
-        pyodide_packages = transaction.pyodide_packages
-        if len(pyodide_packages):
-            # Note: branch never happens in out-of-browser testing because in
-            # that case REPODATA_PACKAGES is empty.
-            wheel_promises.append(
-                asyncio.ensure_future(
-                    loadPackage(to_js([name for [name, _, _] in pyodide_packages]))
-                )
+        if packages_by_name:
+            logger.info(
+                "Installing collected packages: %s", ", ".join(packages_by_name)
             )
 
-        # Now install PyPI packages
-        # detect whether the wheel metadata is from PyPI or from custom location
-        # wheel metadata from PyPI has SHA256 checksum digest.
-        wheel_promises.extend(wheel.install(wheel_base) for wheel in transaction.wheels)
+        wheel_tasks: dict[str, asyncio.Task[None]] = {}
+        for pkg_name in packages_by_name:
+            wheel_tasks[pkg_name] = _install_one(
+                pkg_name,
+                packages_by_name,
+                transaction.dependency_graph,
+                wheel_tasks,
+                wheel_base,
+            )
 
-        await asyncio.gather(*wheel_promises)
+        await asyncio.gather(*wheel_tasks.values())
 
         packages = [
             f"{pkg.name}-{pkg.version}" for pkg in transaction.pyodide_packages
@@ -100,3 +96,29 @@ async def install(
             logger.info("Successfully installed %s", ", ".join(packages))
 
         importlib.invalidate_caches()
+
+
+def _install_one(
+    pkg_name: str,
+    packages_by_name: dict[str, PackageMetadata | WheelInfo],
+    dependency_graph: dict[str, list[str]],
+    wheel_tasks: dict[str, asyncio.Task[None]],
+    wheel_base: Path,
+) -> asyncio.Task[None]:
+    """Build a task that waits for its dependencies to install first."""
+
+    async def _install_one_inner():
+        wheel = packages_by_name.get(pkg_name)
+        dependencies = [
+            wheel_tasks[dependency]
+            for dependency in dependency_graph.get(pkg_name, [])
+            if dependency in wheel_tasks
+        ]
+        if dependencies:
+            await asyncio.gather(*dependencies)
+        if isinstance(wheel, WheelInfo):
+            await wheel.install(wheel_base)
+        elif isinstance(wheel, PackageMetadata):
+            await asyncio.ensure_future(loadPackage(to_js(wheel.name)))
+
+    return asyncio.Task(_install_one_inner(), name=pkg_name)

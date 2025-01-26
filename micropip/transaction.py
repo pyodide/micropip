@@ -58,19 +58,30 @@ class Transaction:
             for constraint, msg in messages.items():
                 logger.info("Transaction: constraint %s discarded: %s", constraint, msg)
 
+        self.dependency_graph: dict[str, list[str]] = {}
+
+    def add_to_dependency_graph(self, requested_by: str | None, pkg_name: str) -> None:
+        if requested_by:
+            self.dependency_graph.setdefault(requested_by, []).append(pkg_name)
+
     async def gather_requirements(
         self,
         requirements: list[str] | list[Requirement],
+        *,
+        requested_by: str | None = None,
     ) -> None:
         requirement_promises = [
-            self.add_requirement(requirement) for requirement in requirements
+            self.add_requirement(requirement, requested_by=requested_by)
+            for requirement in requirements
         ]
 
         await asyncio.gather(*requirement_promises)
 
-    async def add_requirement(self, req: str | Requirement) -> None:
+    async def add_requirement(
+        self, req: str | Requirement, *, requested_by: str | None = None
+    ) -> None:
         if isinstance(req, Requirement):
-            return await self.add_requirement_inner(req)
+            return await self.add_requirement_inner(req, requested_by)
 
         try:
             req = constrain_requirement(Requirement(req), self.constrained_reqs)
@@ -80,14 +91,16 @@ class Transaction:
 
         if not (url and urlparse(url).path.endswith(".whl")):
             return await self.add_requirement_inner(
-                req if isinstance(req, Requirement) else Requirement(req)
+                req if isinstance(req, Requirement) else Requirement(req), requested_by
             )
 
         if url:
             # custom download location
             wheel = WheelInfo.from_url(url)
             check_compatible(wheel.filename)
-            return await self.add_wheel(wheel, extras=set(), specifier="")
+            return await self.add_wheel(
+                wheel, extras=set(), specifier="", requested_by=requested_by
+            )
 
     def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
         ver = None
@@ -112,6 +125,7 @@ class Transaction:
     async def add_requirement_inner(
         self,
         req: Requirement,
+        requested_by: str | None,
     ) -> None:
         """Add a requirement to the transaction.
 
@@ -171,14 +185,14 @@ class Transaction:
 
         try:
             if self.search_pyodide_lock_first:
-                if self._add_requirement_from_pyodide_lock(req):
+                if await self._add_requirement_from_pyodide_lock(req, requested_by):
                     logger.debug("Transaction: package found in lock file: %r", req)
                     return
 
-                await self._add_requirement_from_package_index(req)
+                await self._add_requirement_from_package_index(req, requested_by)
             else:
                 try:
-                    await self._add_requirement_from_package_index(req)
+                    await self._add_requirement_from_package_index(req, requested_by)
                 except ValueError:
                     logger.debug(
                         "Transaction: package %r not found in index, will search lock file",
@@ -187,7 +201,9 @@ class Transaction:
 
                     # If the requirement is not found in package index,
                     # we still have a chance to find it from pyodide lockfile.
-                    if not self._add_requirement_from_pyodide_lock(req):
+                    if not await self._add_requirement_from_pyodide_lock(
+                        req, requested_by
+                    ):
                         logger.debug(
                             "Transaction: package %r not found in lock file", req
                         )
@@ -198,23 +214,33 @@ class Transaction:
             if not self.keep_going:
                 raise
 
-    def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
+    async def _add_requirement_from_pyodide_lock(
+        self, req: Requirement, requested_by: str | None
+    ) -> bool:
         """
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        if req.name in REPODATA_PACKAGES and req.specifier.contains(
+        locked_package = REPODATA_PACKAGES.get(req.name)
+        if locked_package and req.specifier.contains(
             REPODATA_PACKAGES[req.name]["version"], prereleases=True
         ):
-            version = REPODATA_PACKAGES[req.name]["version"]
+            version = locked_package["version"]
             self.pyodide_packages.append(
                 PackageMetadata(name=req.name, version=str(version), source="pyodide")
             )
+            if locked_package["depends"]:
+                await self.gather_requirements(
+                    locked_package["depends"], requested_by=req.name
+                )
+            self.add_to_dependency_graph(requested_by, req.name)
             return True
 
         return False
 
-    async def _add_requirement_from_package_index(self, req: Requirement):
+    async def _add_requirement_from_package_index(
+        self, req: Requirement, requested_by: str | None
+    ):
         """
         Find requirement from package index. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
@@ -238,6 +264,7 @@ class Transaction:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
 
         await self.add_wheel(wheel, req.extras, specifier=str(req.specifier))
+        self.add_to_dependency_graph(requested_by, req.name)
 
     async def add_wheel(
         self,
@@ -245,6 +272,7 @@ class Transaction:
         extras: set[str],
         *,
         specifier: str = "",
+        requested_by: str | None = None,
     ) -> None:
         """
         Download a wheel, and add its dependencies to the transaction.
@@ -286,7 +314,9 @@ class Transaction:
                     await wheel_download_task
 
                 await asyncio.gather(
-                    self.gather_requirements(wheel.requires(extras)),
+                    self.gather_requirements(
+                        wheel.requires(extras), requested_by=normalized_name
+                    ),
                     wheel_download_task,
                 )
 
@@ -294,9 +324,12 @@ class Transaction:
             #         we have to wait for the wheel to be downloaded.
             else:
                 await wheel_download_task
-                await self.gather_requirements(wheel.requires(extras))
+                await self.gather_requirements(
+                    wheel.requires(extras), requested_by=normalized_name
+                )
 
         self.wheels.append(wheel)
+        self.add_to_dependency_graph(requested_by, normalized_name)
 
 
 def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
