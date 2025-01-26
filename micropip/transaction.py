@@ -50,13 +50,13 @@ class Transaction:
             self.index_urls == package_index.DEFAULT_INDEX_URLS
         )
 
-        self.constrained_reqs, messages = validate_constraints(self.constraints)
+        self.constrained_reqs, messages = validate_constraints(
+            self.constraints, self.ctx
+        )
 
         if self.verbose and messages:
-            for constraint, message in messages.items():
-                logger.info(
-                    "Transaction: constraint %s discarded: %s", constraint, message
-                )
+            for constraint, msg in messages.items():
+                logger.info("Transaction: constraint %s discarded: %s", constraint, msg)
 
     async def gather_requirements(
         self,

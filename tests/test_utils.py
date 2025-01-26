@@ -159,13 +159,29 @@ def test_validate_constraints_valid(valid_constraint):
     assert len(reqs) == len(constraints)
     assert not msgs
 
+    if not valid_constraint or "==" not in valid_constraint:
+        return
+
+    extra_constraint = valid_constraint.replace("==", ">=")
+    marker_valid_constraint = f"{extra_constraint} ; python_version>'2.7'"
+    marker_invalid_constraint = f"{extra_constraint} ; python_version<'3'"
+    constraints += [
+        extra_constraint,
+        marker_valid_constraint,
+        marker_invalid_constraint,
+    ]
+
+    reqs, msgs = _utils.validate_constraints(constraints)
+    assert "updated existing" in f"{msgs[extra_constraint]}"
+    assert "updated existing" in f"{msgs[marker_valid_constraint]}"
+    assert "not applicable" in f"{msgs[marker_invalid_constraint]}"
+
 
 def test_validate_constraints_invalid(invalid_constraint):
     reqs, msgs = _utils.validate_constraints([invalid_constraint])
     assert not reqs
     for constraint, msg in msgs.items():
-        msg = msgs[constraint]
-        assert INVALID_CONSTRAINT_MESSAGES[constraint] in msg
+        assert INVALID_CONSTRAINT_MESSAGES[constraint] in f"{msg}"
 
 
 def test_constrain_requirement(valid_constraint):

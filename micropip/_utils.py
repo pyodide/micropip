@@ -272,41 +272,57 @@ def fix_package_dependencies(
 
 def validate_constraints(
     constraints: list[str] | None,
-) -> tuple[dict[str, Requirement], dict[str, str]]:
+    environment: dict[str, str] | None = None,
+) -> tuple[dict[str, Requirement], dict[str, list[str]]]:
     """Build a validated ``Requirement`` dictionary from raw constraint strings.
 
     Parameters
     ----------
     constraints (list):
         A list of PEP-508 dependency specs, expected to contain both a package
-        name and at least one speicifier.
+        name and at least one specififier.
+
+    environment (optional dict):
+        The markers for the current environment, such as OS, Python implementation.
+        If ``None``, the current execution environment will be used.
 
     Returns
     -------
         A 2-tuple of:
         - a dictionary of ``Requirement`` objects, keyed by canonical name
-        - a dictionary of messages strings, keyed by constraint
+        - a dictionary of message strings, keyed by constraint
     """
     constrained_reqs: dict[str, Requirement] = {}
-    ignore_messages: dict[str, str] = {}
+    ignore_messages: dict[str, list[str]] = {}
 
     for raw_constraint in constraints or []:
+        constraint_messages: list[str] = []
+
         try:
             req = Requirement(raw_constraint)
             req.name = canonicalize_name(req.name)
         except InvalidRequirement as err:
-            ignore_messages[raw_constraint] = f"failed to parse: {err}"
+            ignore_messages[raw_constraint] = [f"failed to parse: {err}"]
             continue
 
         if req.extras:
-            ignore_messages[raw_constraint] = "may not provide [extras]"
-            continue
+            constraint_messages.append("may not provide [extras]")
 
         if not (req.url or len(req.specifier)):
-            ignore_messages[raw_constraint] = "no version or URL"
-            continue
+            constraint_messages.append("no version or URL")
 
-        constrained_reqs[req.name] = req
+        if req.marker and not req.marker.evaluate(environment):
+            constraint_messages.append(f"not applicable: {req.marker}")
+
+        if constraint_messages:
+            ignore_messages[raw_constraint] = constraint_messages
+        elif req.name in constrained_reqs:
+            ignore_messages[raw_constraint] = [
+                f"updated existing constraint for {req.name}"
+            ]
+            constrained_reqs[req.name] = constrain_requirement(req, constrained_reqs)
+        else:
+            constrained_reqs[req.name] = req
 
     return constrained_reqs, ignore_messages
 

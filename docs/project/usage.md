@@ -96,7 +96,7 @@ await micropip.install("pkg", deps=False)
 
 Dependency resolution can be further customized with optional `constraints`:
 these modify both _direct_ and _indirect_ dependency resolutions, while direct URLs
-in either a requirement or constraint will generally bypass any other specifiers.
+in either a requirement or constraint will bypass any other specifiers.
 
 As described in the [`pip` documentation][pip-constraints], each constraint:
 
@@ -108,6 +108,8 @@ As described in the [`pip` documentation][pip-constraints], each constraint:
     - a URL
   - _must not_  request any `[extras]`
 
+Multiple constraints of the same canonical name are merged.
+
 Invalid constraints will be silently discarded, or logged if `verbose` is provided.
 
 ```python
@@ -116,11 +118,14 @@ await micropip.install(
     constraints=[
         "other-pkg==0.1.1",
         "some-other-pkg<2",
+        "some-other-pkg<3",                           # merged with the above
         "yet-another-pkg@https://example.com/yet_another_pkg-0.1.2-py3-none-any.whl",
         # silently discarded                          # why?
+        "yet-another-pkg >=1",                        # previously defined by URL
         "yet_another_pkg-0.1.2-py3-none-any.whl",     # missing name
         "something-completely[different] ==0.1.1",    # extras
         "package-with-no-version",                    # missing version or URL
+        "other-pkg ==0.0.1 ; python_version < '3'",   # not applicable
     ]
 )
 ```
