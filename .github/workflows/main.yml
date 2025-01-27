@@ -119,11 +119,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.12
+
+      # IMPORTANT: always build sdist, and then the wheel from
+      # the sdist (like it is currently done here).
       - name: Install requirements and build wheel
         shell: bash -l {0}
         run: |
           python -m pip install build twine
           python -m build .
+
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
