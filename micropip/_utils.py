@@ -292,68 +292,67 @@ def validate_constraints(
         - a dictionary of ``Requirement`` objects, keyed by canonical name
         - a dictionary of message strings, keyed by constraint
     """
-    constrained_reqs: dict[str, Requirement] = {}
-    ignore_messages: dict[str, list[str]] = {}
+    reqs: dict[str, Requirement] = {}
+    all_messages: dict[str, list[str]] = {}
 
     for raw_constraint in constraints or []:
-        constraint_messages: list[str] = []
+        messages: list[str] = []
 
         try:
             req = Requirement(raw_constraint)
             req.name = canonicalize_name(req.name)
         except InvalidRequirement as err:
-            ignore_messages[raw_constraint] = [f"failed to parse: {err}"]
+            all_messages[raw_constraint] = [f"failed to parse: {err}"]
             continue
 
         if req.extras:
-            constraint_messages.append("may not provide [extras]")
+            messages.append("may not provide [extras]")
 
-        if not (req.url or len(req.specifier)):
-            constraint_messages.append("no version or URL")
+        if not (req.url or req.specifier):
+            messages.append("no version or URL")
 
         if req.marker and not req.marker.evaluate(environment):
-            constraint_messages.append(f"not applicable: {req.marker}")
+            messages.append(f"not applicable: {req.marker}")
 
-        if constraint_messages:
-            ignore_messages[raw_constraint] = constraint_messages
-        elif req.name in constrained_reqs:
-            ignore_messages[raw_constraint] = [
+        if messages:
+            all_messages[raw_constraint] = messages
+        elif req.name in reqs:
+            all_messages[raw_constraint] = [
                 f"updated existing constraint for {req.name}"
             ]
-            constrained_reqs[req.name] = constrain_requirement(req, constrained_reqs)
+            reqs[req.name] = constrain_requirement(req, reqs)
         else:
-            constrained_reqs[req.name] = req
+            reqs[req.name] = req
 
-    return constrained_reqs, ignore_messages
+    return reqs, all_messages
 
 
 def constrain_requirement(
     requirement: Requirement, constrained_requirements: dict[str, Requirement]
 ) -> Requirement:
-    """Refine or replace a requirement from a set of constraints.
+    """Modify or replace a requirement based on a set of constraints.
 
     Parameters
     ----------
-    requirement (list):
-        A list of PEP-508 dependency specs, expected to contain both a package
-        name and at least one speicifier.
+    requirement (Requirement):
+        A ``Requirement`` to constrain.
+
+    constrained_requirements (dict):
+        A dictionary of ``Requirement`` objects, keyed by canonical name.
 
     Returns
     -------
-        A 2-tuple of:
-        - a dictionary of ``Requirement`` objects, keyed by canonical name
-        - a dictionary of messages strings, keyed by constraint
+        A constrained ``Requirement``.
     """
     # URLs cannot be merged
     if requirement.url:
         return requirement
 
-    as_constrained = constrained_requirements.get(canonicalize_name(requirement.name))
+    constrained = constrained_requirements.get(canonicalize_name(requirement.name))
 
-    if as_constrained:
-        if as_constrained.url:
-            requirement = as_constrained
-        else:
-            requirement.specifier = requirement.specifier & as_constrained.specifier
+    if constrained:
+        if constrained.url:
+            return constrained
+        requirement.specifier = requirement.specifier & constrained.specifier
 
     return requirement
