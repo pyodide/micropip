@@ -280,7 +280,7 @@ def validate_constraints(
     ----------
     constraints (list):
         A list of PEP-508 dependency specs, expected to contain both a package
-        name and at least one specififier.
+        name and at least one specifier.
 
     environment (optional dict):
         The markers for the current environment, such as OS, Python implementation.
