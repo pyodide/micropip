@@ -70,32 +70,21 @@ sys.modules["packaging"] = packaging_direct
 ####################################################
 
 # 1. First, handle any packages: these are directories with __init__.py.
-# 2. Then, we load all the internal modules
-# 3. Finally, we'll load all the regular modules (whatever is in the
-# public API)
-#
-# While rudimentary, this order is important because the internal modules
-# may depend on subpackages, and regular modules may depend on internal ones.
-#
-# For example, the metadata.py module imports from licenses, requirements,
-# specifiers, and utils.
-#
-# Similarly, tags.py needs _manylinux and _musllinux to be available.
-
-
 for path in PACKAGING_PATH.glob("*/__init__.py"):
     package_name = path.parent.name
     module = _create_module(f"{package_name}/__init__", path)
     setattr(packaging_vendored, package_name, module)
     setattr(packaging_direct, package_name, module)
 
+# 2. Then, we load all the internal modules
 internal_modules = [path.stem for path in PACKAGING_PATH.glob("_*.py")]
 for name in internal_modules:
     module = _create_module(name)
     setattr(packaging_vendored, name, module)
     setattr(packaging_direct, name, module)
 
-
+# 3. Finally, we'll load all the regular modules (whatever is in the
+# public API)
 for path in PACKAGING_PATH.glob("*.py"):
     if path.stem == "__init__" or path.stem.startswith("_"):
         continue
