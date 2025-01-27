@@ -14,9 +14,9 @@ from ._compat import (
     loadedPackages,
 )
 from ._utils import parse_wheel_filename
-from ._vendored.packaging.requirements import Requirement
-from ._vendored.packaging.tags import Tag
-from ._vendored.packaging.version import Version
+from ._vendored.packaging.src.packaging.requirements import Requirement
+from ._vendored.packaging.src.packaging.tags import Tag
+from ._vendored.packaging.src.packaging.version import Version
 from .metadata import Metadata, safe_name, wheel_dist_info_dir
 from .types import DistributionMetadata
 
