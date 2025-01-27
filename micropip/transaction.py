@@ -171,7 +171,7 @@ class Transaction:
 
         try:
             if self.search_pyodide_lock_first:
-                if self._add_requirement_from_pyodide_lock(req):
+                if await self._add_requirement_from_pyodide_lock(req):
                     logger.debug("Transaction: package found in lock file: %r", req)
                     return
 
@@ -187,7 +187,7 @@ class Transaction:
 
                     # If the requirement is not found in package index,
                     # we still have a chance to find it from pyodide lockfile.
-                    if not self._add_requirement_from_pyodide_lock(req):
+                    if not await self._add_requirement_from_pyodide_lock(req):
                         logger.debug(
                             "Transaction: package %r not found in lock file", req
                         )
@@ -198,18 +198,21 @@ class Transaction:
             if not self.keep_going:
                 raise
 
-    def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
+    async def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
         """
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        if req.name in REPODATA_PACKAGES and req.specifier.contains(
+        locked_package = REPODATA_PACKAGES.get(req.name)
+        if locked_package and req.specifier.contains(
             REPODATA_PACKAGES[req.name]["version"], prereleases=True
         ):
-            version = REPODATA_PACKAGES[req.name]["version"]
+            version = locked_package["version"]
             self.pyodide_packages.append(
                 PackageMetadata(name=req.name, version=str(version), source="pyodide")
             )
+            if locked_package["depends"]:
+                await self.gather_requirements(locked_package["depends"])
             return True
 
         return False

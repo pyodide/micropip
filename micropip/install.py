@@ -1,8 +1,6 @@
 import asyncio
 import importlib
-from collections.abc import Coroutine
 from pathlib import Path
-from typing import Any
 
 from packaging.markers import default_environment
 
@@ -61,40 +59,33 @@ async def install(
                 f"See: {FAQ_URLS['cant_find_wheel']}\n"
             )
 
-        package_names = [pkg.name for pkg in transaction.pyodide_packages] + [
-            pkg.name for pkg in transaction.wheels
-        ]
+        pyodide_packages, wheels = transaction.pyodide_packages, transaction.wheels
+
+        package_names = [pkg.name for pkg in wheels + pyodide_packages]
 
         logger.debug(
             "Installing packages %r and wheels %r ",
             transaction.pyodide_packages,
             [w.filename for w in transaction.wheels],
         )
+
         if package_names:
             logger.info("Installing collected packages: %s", ", ".join(package_names))
 
-        wheel_promises: list[Coroutine[Any, Any, None] | asyncio.Task[Any]] = []
-        # Install built-in packages
-        pyodide_packages = transaction.pyodide_packages
-        if len(pyodide_packages):
-            # Note: branch never happens in out-of-browser testing because in
-            # that case REPODATA_PACKAGES is empty.
-            wheel_promises.append(
-                asyncio.ensure_future(
-                    loadPackage(to_js([name for [name, _, _] in pyodide_packages]))
-                )
-            )
-
-        # Now install PyPI packages
+        # Install PyPI packages
         # detect whether the wheel metadata is from PyPI or from custom location
         # wheel metadata from PyPI has SHA256 checksum digest.
-        wheel_promises.extend(wheel.install(wheel_base) for wheel in transaction.wheels)
+        await asyncio.gather(*(wheel.install(wheel_base) for wheel in wheels))
 
-        await asyncio.gather(*wheel_promises)
+        # Install built-in packages
+        if pyodide_packages:
+            # Note: branch never happens in out-of-browser testing because in
+            # that case REPODATA_PACKAGES is empty.
+            await asyncio.ensure_future(
+                loadPackage(to_js([name for [name, _, _] in pyodide_packages]))
+            )
 
-        packages = [
-            f"{pkg.name}-{pkg.version}" for pkg in transaction.pyodide_packages
-        ] + [f"{pkg.name}-{pkg.version}" for pkg in transaction.wheels]
+        packages = [f"{pkg.name}-{pkg.version}" for pkg in pyodide_packages + wheels]
 
         if packages:
             logger.info("Successfully installed %s", ", ".join(packages))

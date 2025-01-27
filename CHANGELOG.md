@@ -6,11 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `micropip.install` now installs wheels from PyPI or custom indexes before built-in
+  Pyodide packages, reversing the previous behavior.
+  [#xxx](https://github.com/pyodide/micropip/pull/xxx)
+
 ### Added
 
 - Added support for constraining resolved requirements via
   `micropip.install(..., constraints=[...])`. and `micropip.set_constraints([...])`
-  [#177](https://github.com/pyodide/micropip/pull/177)
+  [#xxx](https://github.com/pyodide/micropip/pull/xxx)
 
 ### Fixed
 
