@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
 from packaging.markers import default_environment
@@ -66,6 +67,15 @@ async def install(
             **{pkg.name: pkg for pkg in transaction.wheels},
         }
 
+        try:
+            wheel_tasks = _build_wheel_tasks(
+                transaction.dependency_graph, packages_by_name, wheel_base
+            )
+        except CycleError as err:
+            raise ValueError(
+                f"Requested transaction contains at least one cycle: {err}"
+            ) from err
+
         logger.debug(
             "Installing packages %r and wheels %r ",
             transaction.pyodide_packages,
@@ -74,16 +84,6 @@ async def install(
         if packages_by_name:
             logger.info(
                 "Installing collected packages: %s", ", ".join(packages_by_name)
-            )
-
-        wheel_tasks: dict[str, asyncio.Task[None]] = {}
-        for pkg_name in packages_by_name:
-            wheel_tasks[pkg_name] = _install_one(
-                pkg_name,
-                packages_by_name,
-                transaction.dependency_graph,
-                wheel_tasks,
-                wheel_base,
             )
 
         await asyncio.gather(*wheel_tasks.values())
@@ -98,6 +98,32 @@ async def install(
         importlib.invalidate_caches()
 
 
+def _build_wheel_tasks(
+    graph: dict[str, list[str]],
+    packages_by_name: dict[str, PackageMetadata | WheelInfo],
+    wheel_base: Path,
+) -> dict[str, asyncio.Task[None]]:
+    """Build a verified task graph.
+
+    Raises a ``CycleError`` if any cycles are found.
+    """
+    sorted_graph = TopologicalSorter(graph)
+    sorted_graph.prepare()
+
+    tasks: dict[str, asyncio.Task[None]] = {}
+
+    for pkg_name in packages_by_name:
+        tasks[pkg_name] = _install_one(
+            pkg_name,
+            packages_by_name,
+            graph,
+            tasks,
+            wheel_base,
+        )
+
+    return tasks
+
+
 def _install_one(
     pkg_name: str,
     packages_by_name: dict[str, PackageMetadata | WheelInfo],
@@ -105,7 +131,7 @@ def _install_one(
     wheel_tasks: dict[str, asyncio.Task[None]],
     wheel_base: Path,
 ) -> asyncio.Task[None]:
-    """Build a task that waits for its dependencies to install first."""
+    """Build a task that installs a wheel after any dependencies are installeds."""
 
     async def _install_one_inner():
         wheel = packages_by_name.get(pkg_name)

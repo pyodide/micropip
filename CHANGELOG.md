@@ -6,10 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `micropip.install` now installs packages in topological order: previously all packages
+  from `pyodide-lock.json` were installed before any wheels from indexes or custom URLs.
+  [#177](https://github.com/pyodide/micropip/pull/177)
+
 ### Added
 
 - Added support for constraining resolved requirements via
-  `micropip.install(..., constraints=[...])`. and `micropip.set_constraints([...])`
+  `micropip.install(..., constraints=[...])`. and `micropip.set_constraints([...])`.
   [#177](https://github.com/pyodide/micropip/pull/177)
 
 ### Fixed
