@@ -1,6 +1,7 @@
 import pytest
 from conftest import SNOWBALL_WHEEL
-from packaging.tags import Tag
+
+from micropip._vendored.packaging.src.packaging.tags import Tag
 
 
 @pytest.mark.parametrize(
@@ -18,7 +19,6 @@ from packaging.tags import Tag
     ["http:", "https:", "file:", "emfs:", ""],
 )
 def test_parse_wheel_url1(protocol, path):
-    pytest.importorskip("packaging")
     from micropip.transaction import WheelInfo
 
     url = protocol + path
@@ -73,7 +73,6 @@ def create_transaction(Transaction):
 
 @pytest.mark.asyncio
 async def test_add_requirement(wheel_catalog):
-    pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
     snowballstemmer_wheel = wheel_catalog.get("snowballstemmer")
@@ -93,7 +92,6 @@ async def test_add_requirement(wheel_catalog):
 
 @pytest.mark.asyncio
 async def test_add_requirement_marker(mock_importlib, wheel_base):
-    pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
     transaction = create_transaction(Transaction)
@@ -129,7 +127,6 @@ async def test_add_requirement_marker(mock_importlib, wheel_base):
 
 @pytest.mark.asyncio
 async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch):
-    pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
     async def mock_add_wheel(self, wheel, extras, *, specifier=""):
@@ -146,7 +143,6 @@ async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch
 
 @pytest.mark.asyncio
 async def test_install_non_pure_python_wheel():
-    pytest.importorskip("packaging")
     from micropip.transaction import Transaction
 
     msg = "Wheel platform 'macosx_10_9_intel' is not compatible with Pyodide's platform"
@@ -187,9 +183,7 @@ def _pypi_metadata(package, versions_to_tags):
 
 
 def test_last_version_from_pypi():
-    pytest.importorskip("packaging")
-    from packaging.requirements import Requirement
-
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement("dummy_module")
@@ -208,9 +202,7 @@ def test_find_wheel_invalid_version():
 
     it should be skipped instead of producing an error
     """
-    pytest.importorskip("packaging")
-    from packaging.requirements import Requirement
-
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement("dummy_module")
@@ -244,9 +236,7 @@ _best_tag_test_cases = (
 
 @pytest.mark.parametrize(*_best_tag_test_cases)
 def test_best_tag_from_pypi(package, version, incompatible_tags, compatible_tags):
-    pytest.importorskip("packaging")
-    from packaging.requirements import Requirement
-
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement(package)
@@ -279,9 +269,7 @@ def test_best_tag_from_pypi(package, version, incompatible_tags, compatible_tags
 def test_last_version_and_best_tag_from_pypi(
     package, old_version, new_version, old_tags, new_tags
 ):
-    pytest.importorskip("packaging")
-    from packaging.requirements import Requirement
-
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
     from micropip.transaction import find_wheel
 
     requirement = Requirement(package)

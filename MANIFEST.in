@@ -1,0 +1,16 @@
+exclude micropip/_vendored/packaging/.github/*
+exclude micropip/_vendored/packaging/docs/*
+exclude micropip/_vendored/packaging/tasks/*
+exclude micropip/_vendored/packaging/tests/*
+exclude micropip/_vendored/packaging/.pre-commit-config.yaml
+exclude micropip/_vendored/packaging/.readthedocs.yml
+exclude micropip/_vendored/packaging/CHANGELOG.rst
+exclude micropip/_vendored/packaging/CONTRIBUTING.rst
+exclude micropip/_vendored/packaging/noxfile.py
+exclude micropip/_vendored/packaging/pyproject.toml
+
+include micropip/_vendored/packaging/LICENSE
+include micropip/_vendored/packaging/LICENSE.APACHE
+include micropip/_vendored/packaging/LICENSE.BSD
+
+include micropip/_vendored/packaging/README.rst

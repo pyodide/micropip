@@ -1,9 +1,9 @@
 import pytest
 from conftest import mock_fetch_cls
-from packaging.utils import parse_wheel_filename
 from pytest_pyodide import run_in_pyodide
 
 import micropip
+from micropip._vendored.packaging.src.packaging.utils import parse_wheel_filename
 
 
 def test_install_custom_url(selenium_standalone_micropip, wheel_catalog):
@@ -265,7 +265,6 @@ async def test_install_pre(
 
 @pytest.mark.asyncio
 async def test_fetch_wheel_fail(monkeypatch, wheel_base):
-    pytest.importorskip("packaging")
     import micropip
     from micropip import wheelinfo
 

@@ -3,10 +3,10 @@ from importlib.metadata import distribution
 
 import pytest
 from conftest import CPVER, EMSCRIPTEN_VER, INVALID_CONSTRAINT_MESSAGES, PLATFORM
-from packaging.requirements import Requirement
 from pytest_pyodide import run_in_pyodide
 
 import micropip._utils as _utils
+from micropip._vendored.packaging.src.packaging.requirements import Requirement
 
 
 def test_get_root():

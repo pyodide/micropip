@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from dataclasses import astuple, dataclass
 from typing import Any
 
-from packaging.utils import canonicalize_name
+from ._vendored.packaging.src.packaging.utils import canonicalize_name
 
 __all__ = ["PackageDict"]
 
