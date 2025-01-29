@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        pyodide-version: ['0.27.0a2']
+        pyodide-version: ["0.27.0a2"]
         test-config: [
           # FIXME: recent version of chrome gets timeout
           {runner: selenium, runtime: chrome, runtime-version: "125" },
@@ -121,7 +121,11 @@ jobs:
           python-version: 3.12
 
       # IMPORTANT: always build sdist, and then the wheel from
-      # the sdist (like it is currently done here).
+      # the sdist (like it is currently done here). This is
+      # because we want to ensure that no extra files get
+      # copied, which can be the case with building in-tree.
+      # The MANIFEST.in file ensures that the sdist doesn't
+      # contain any unnecessary files.
       - name: Install requirements and build wheel
         shell: bash -l {0}
         run: |
