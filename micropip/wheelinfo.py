@@ -69,8 +69,15 @@ class WheelInfo:
         See https://www.python.org/dev/peps/pep-0427/#file-name-convention
         """
         parsed_url = urlparse(url)
-        if parsed_url.scheme == "":
-            url = "file:///" + url
+        if not parsed_url.scheme:
+            parsed_url = ParseResult(
+                scheme="file",
+                netloc=parsed_url.netloc,
+                path=parsed_url.path,
+                params=parsed_url.params,
+                query=parsed_url.query,
+                fragment=parsed_url.fragment,
+            )
         file_name = Path(parsed_url.path).name
         name, version, build, tags = parse_wheel_filename(file_name)
         return WheelInfo(
