@@ -19,12 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        pyodide-version: ["0.27.0a2"]
+        pyodide-version: ["0.27.2"]
         test-config: [
-          # FIXME: recent version of chrome gets timeout
-          {runner: selenium, runtime: chrome, runtime-version: "125" },
-          {runner: selenium, runtime: node, runtime-version: "22" },
-        ]
+            # FIXME: recent version of chrome gets timeout
+            { runner: selenium, runtime: chrome, runtime-version: "125" },
+            { runner: selenium, runtime: node, runtime-version: "22" },
+          ]
 
     steps:
       - uses: actions/checkout@v4
