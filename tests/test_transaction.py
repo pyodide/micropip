@@ -25,11 +25,12 @@ def test_parse_wheel_url1(protocol, path):
     url = protocol + path
     wheel = WheelInfo.from_url(url)
 
+    check_url = url if protocol else "file:///" + path
     assert wheel.name == "snowballstemmer"
     assert str(wheel.version) == "2.0.0"
     assert wheel.sha256 is None
     assert wheel.filename == SNOWBALL_WHEEL
-    assert wheel.url == url
+    assert wheel.url == check_url
     assert wheel.tags == frozenset(
         {Tag("py2", "none", "any"), Tag("py3", "none", "any")}
     )

@@ -70,6 +70,7 @@ class WheelInfo:
         """
         parsed_url = urlparse(url)
         if not parsed_url.scheme:
+            url = "file:///" + url
             parsed_url = ParseResult(
                 scheme="file",
                 netloc=parsed_url.netloc,
