@@ -281,7 +281,7 @@ async def test_load_binary_wheel1(
 
 @pytest.mark.skip_refcount_check
 @run_in_pyodide(packages=["micropip"])
-async def test_load_binary_wheel2(selenium):
+async def test_load_binary_wheel2(selenium_standalone_micropip):
     from pyodide_js._api import repodata_packages
 
     import micropip
