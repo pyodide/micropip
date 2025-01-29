@@ -6,18 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Changed
-
-- `micropip.install` now installs wheels from PyPI or custom indexes before built-in
-  Pyodide packages, reversing the previous behavior.
-  [#181](https://github.com/pyodide/micropip/pull/181)
-
-### Added
-
-- Added support for constraining resolved requirements via
-  `micropip.install(..., constraints=[...])`. and `micropip.set_constraints([...])`
-  [#181](https://github.com/pyodide/micropip/pull/181)
-
 ### Fixed
 
 - Fix a bug that prevented non-standard relative urls to be treated as such
@@ -28,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `micropip` now vendors `pypa/packaging` for better reliability.
   [#178](https://github.com/pyodide/micropip/pull/178)
+- `micropip.install` adds optional `constraints`, similar to `pip install -c`,
+  which refine the version or direct URLs of requested packages and their
+  dependencies. This includes built-in packages, which are now installed after
+  any requested or constrained external packages.
+  [#181](https://github.com/pyodide/micropip/pull/181)
+- `micropip.set_constraints` sets default constraints for later
+  calls to `micropip.install` that do not specify constraints.
+  [#181](https://github.com/pyodide/micropip/pull/181)
 
 ## [0.8.0] - 2024/12/15
 

@@ -213,7 +213,7 @@ class Transaction:
             self.pyodide_packages.append(
                 PackageMetadata(name=req.name, version=str(version), source="pyodide")
             )
-            if locked_package["depends"]:
+            if self.constraints and locked_package["depends"]:
                 await self.gather_requirements(locked_package["depends"])
             return True
 
