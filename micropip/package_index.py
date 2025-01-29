@@ -11,9 +11,9 @@ from urllib.parse import urljoin, urlparse, urlunparse
 
 from ._compat import HttpStatusError, fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
+from ._vendored.mousebender.simple import from_project_details_html
 from ._vendored.packaging.src.packaging.utils import InvalidWheelFilename
 from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
-from .externals.mousebender.simple import from_project_details_html
 from .types import DistributionMetadata
 from .wheelinfo import WheelInfo
 
