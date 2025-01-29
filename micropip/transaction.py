@@ -6,12 +6,11 @@ from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
-
 from . import package_index
 from ._compat import REPODATA_PACKAGES
 from ._utils import best_compatible_tag_index, check_compatible
+from ._vendored.packaging.src.packaging.requirements import Requirement
+from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .constants import FAQ_URLS
 from .package import PackageMetadata
 from .package_index import ProjectInfo

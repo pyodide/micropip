@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (the ones that starts with `../` or `./`)
   [#174](https://github.com/pyodide/micropip/pull/174)
 
+### Added
+
+- `micropip` now vendors `pypa/packaging` for better reliability.
+  [#178](https://github.com/pyodide/micropip/pull/178)
+
 ## [0.8.0] - 2024/12/15
 
 ### Added

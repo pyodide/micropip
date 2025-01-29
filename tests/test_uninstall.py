@@ -1,7 +1,7 @@
 # isort: skip_file
 
 from pytest_pyodide import run_in_pyodide
-from packaging.utils import parse_wheel_filename
+from micropip._vendored.packaging.src.packaging.utils import parse_wheel_filename
 
 TEST_PACKAGE_NAME = "test-wheel-uninstall"
 

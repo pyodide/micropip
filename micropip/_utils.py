@@ -4,14 +4,19 @@ from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_config_var, get_platform
 
-from packaging.requirements import Requirement
-from packaging.tags import Tag
-from packaging.tags import sys_tags as sys_tags_orig
-from packaging.utils import BuildTag, InvalidWheelFilename, canonicalize_name
-from packaging.utils import parse_wheel_filename as parse_wheel_filename_orig
-from packaging.version import InvalidVersion, Version
-
 from ._compat import REPODATA_PACKAGES
+from ._vendored.packaging.src.packaging.requirements import Requirement
+from ._vendored.packaging.src.packaging.tags import Tag
+from ._vendored.packaging.src.packaging.tags import sys_tags as sys_tags_orig
+from ._vendored.packaging.src.packaging.utils import (
+    BuildTag,
+    InvalidWheelFilename,
+    canonicalize_name,
+)
+from ._vendored.packaging.src.packaging.utils import (
+    parse_wheel_filename as parse_wheel_filename_orig,
+)
+from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
 
 
 def get_dist_info(dist: Distribution) -> Path:
