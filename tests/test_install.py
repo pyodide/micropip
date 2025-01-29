@@ -224,7 +224,6 @@ async def test_install_pre(
 
 @pytest.mark.asyncio
 async def test_fetch_wheel_fail(monkeypatch, wheel_base):
-    pytest.importorskip("packaging")
     import micropip
     from micropip import wheelinfo
 
