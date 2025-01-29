@@ -253,7 +253,9 @@ async def test_install_with_credentials(selenium):
 
     fetch_response_mock.string.side_effect = myfunc
 
-    @patch("micropip._compat_in_pyodide.pyfetch", return_value=fetch_response_mock)
+    @patch(
+        "micropip._compat._compat_in_pyodide.pyfetch", return_value=fetch_response_mock
+    )
     async def call_micropip_install(pyfetch_mock):
         try:
             await micropip.install("pyodide-micropip-test", credentials="include")
