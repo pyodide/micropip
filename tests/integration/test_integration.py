@@ -39,7 +39,8 @@ def test_integration_install_no_deps(selenium_standalone_micropip, pytestconfig)
     async def _run(selenium):
         import micropip
 
-        await micropip.install("pytest-asyncio", deps=False)
+        # a version that is not in Pyodide distribution
+        await micropip.install("pytest-asyncio==0.24.0a1", deps=False)
 
         import pytest_asyncio  # noqa: F401
 
