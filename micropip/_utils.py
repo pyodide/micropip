@@ -316,7 +316,7 @@ def validate_constraints(
         if req.extras:
             messages.append("may not provide [extras]")
 
-        if not (req.url or req.specifier):
+        if not (req.url or len(req.specifier)):
             messages.append("no version or URL")
 
         if req.marker and not req.marker.evaluate(environment):

@@ -75,21 +75,23 @@ class Transaction:
             return await self.add_requirement_inner(req)
 
         try:
-            req = constrain_requirement(Requirement(req), self.constrained_reqs)
-            url = req.url
+            as_req = constrain_requirement(Requirement(req), self.constrained_reqs)
         except InvalidRequirement:
-            url = f"{req}"
+            as_req = None
 
-        if not (url and urlparse(url).path.endswith(".whl")):
-            return await self.add_requirement_inner(
-                req if isinstance(req, Requirement) else Requirement(req)
-            )
+        if as_req:
+            if as_req.name and len(as_req.specifier):
+                return await self.add_requirement_inner(as_req)
+            if as_req.url:
+                req = as_req.url
 
-        if url:
+        if urlparse(req).path.endswith(".whl"):
             # custom download location
-            wheel = WheelInfo.from_url(url)
+            wheel = WheelInfo.from_url(req)
             check_compatible(wheel.filename)
             return await self.add_wheel(wheel, extras=set(), specifier="")
+
+        return await self.add_requirement_inner(Requirement(req))
 
     def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
         ver = None
