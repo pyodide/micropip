@@ -39,13 +39,11 @@ def test_integration_install_no_deps(selenium_standalone_micropip, pytestconfig)
     async def _run(selenium):
         import micropip
 
-        await micropip.install("pytest-asyncio==0.24.0a1", deps=False)
-
-        import pytest_asyncio  # noqa: F401
+        await micropip.install("pyodide-micropip-test", deps=False)
 
         try:
-            # pytest-asyncio depends on pytest
-            import pytest  # noqa: F401
+            # pyodide-micropip-test depends on snowballstemmer
+            import snowballstemmer  # noqa: F401
         except ModuleNotFoundError:
             pass
         else:
