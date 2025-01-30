@@ -41,18 +41,17 @@ def test_integration_install_no_deps(selenium_standalone_micropip, pytestconfig)
 
         await micropip.install("pytest-asyncio", deps=False)
 
-        import pytest_asyncio
+        import pytest_asyncio  # noqa: F401
 
         try:
             # pytest-asyncio depends on pytest
-            import pytest
+            import pytest  # noqa: F401
         except ImportError:
             pass
         else:
             raise Exception("Should raise!")
 
     _run(selenium_standalone_micropip)
-
 
 
 @integration_test_only
