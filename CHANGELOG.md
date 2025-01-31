@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (the ones that starts with `../` or `./`)
   [#174](https://github.com/pyodide/micropip/pull/174)
 
+- Fixed an error when calling `micropip.install` with `deps=False` is set.
+  [#187](https://github.com/pyodide/micropip/pull/187)
+
 ### Added
 
 - `micropip` now vendors `pypa/packaging` for better reliability.

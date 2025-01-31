@@ -268,6 +268,8 @@ class Transaction:
             else:
                 await wheel_download_task
                 await self.gather_requirements(wheel.requires(extras))
+        else:
+            await wheel_download_task
 
         self.wheels.append(wheel)
 
