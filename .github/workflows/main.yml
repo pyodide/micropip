@@ -30,20 +30,20 @@ jobs:
           ]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           submodules: recursive
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
           python-version: 3.12
 
-      - uses: pyodide/pyodide-actions/download-pyodide@v2
+      - uses: pyodide/pyodide-actions/download-pyodide@012fa537869d343726d01863a34b773fc4d96a14 # v2
         with:
           version: ${{ matrix.pyodide-version }}
           to: dist
 
-      - uses: pyodide/pyodide-actions/install-browser@v2
+      - uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
         with:
           runner: ${{ matrix.test-config.runner }}
           browser: ${{ matrix.test-config.runtime }}
@@ -78,7 +78,7 @@ jobs:
             --runner=${{ matrix.test-config.runner }} \
             --rt ${{ matrix.test-config.runtime }}
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@13ce06bfc6bbe3ecf90edbbf1bc32fe5978ca1d3 # v5.3.1
         if: ${{ github.event.repo.name == 'pyodide/micropip' || github.event_name == 'pull_request' }}
         with:
           fail_ci_if_error: false
@@ -90,7 +90,7 @@ jobs:
       run-integration-test: ${{ steps.check-integration-test-trigger.outputs.trigger }}
 
     steps:
-      - uses: actions/checkout@cbb722410c2e876e24abbe8de2cc27693e501dcb # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           submodules: recursive
