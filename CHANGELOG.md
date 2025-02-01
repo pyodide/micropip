@@ -6,6 +6,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fix a bug that prevented non-standard relative urls to be treated as such
+  (the ones that starts with `../` or `./`)
+  [#174](https://github.com/pyodide/micropip/pull/174)
+
+- Fixed an error when calling `micropip.install` with `deps=False` is set.
+  [#187](https://github.com/pyodide/micropip/pull/187)
+
+### Added
+
+- `micropip` now vendors `pypa/packaging` for better reliability.
+  [#178](https://github.com/pyodide/micropip/pull/178)
+- `micropip.install` adds optional `constraints`, similar to `pip install -c`,
+  which refine the version or direct URLs of requested packages and their
+  dependencies. This includes built-in packages, which are now installed after
+  any requested or constrained external packages.
+  [#181](https://github.com/pyodide/micropip/pull/181)
+- `micropip.set_constraints` sets default constraints for later
+  calls to `micropip.install` that do not specify constraints.
+  [#181](https://github.com/pyodide/micropip/pull/181)
+
+## [0.8.0] - 2024/12/15
+
+### Added
+
+- Added support for PEP-658.
+  [#139](https://github.com/pyodide/micropip/pull/139)
+
 ## [0.7.2] - 2024/11/26
 
 ### Fixed

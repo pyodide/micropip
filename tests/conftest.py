@@ -10,9 +10,11 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 import pytest
-from packaging.utils import parse_wheel_filename
 from pytest_httpserver import HTTPServer
 from pytest_pyodide import spawn_web_server
+from pytest_pyodide.runner import JavascriptException
+
+from micropip._vendored.packaging.src.packaging.utils import parse_wheel_filename
 
 
 def pytest_addoption(parser):
@@ -126,18 +128,24 @@ class WheelCatalog:
     def __exit__(self, *args: Any):
         self._httpserver.__exit__(*args)
 
-    def _register_handler(self, path: Path) -> str:
-        self._httpserver.expect_request(f"/{path.name}").respond_with_data(
-            path.read_bytes(),
+    def _register_handler(self, endpoint: str, data: bytes) -> str:
+        self._httpserver.expect_request(f"/{endpoint}").respond_with_data(
+            data,
             content_type="application/zip",
             headers={"Access-Control-Allow-Origin": "*"},
         )
 
-        return self._httpserver.url_for(f"/{path.name}")
+        return self._httpserver.url_for(f"/{endpoint}")
 
     def add_wheel(self, path: Path, replace: bool = True):
         name, version = parse_wheel_filename(path.name)[0:2]
-        url = self._register_handler(path)
+        url = self._register_handler(path.name, path.read_bytes())
+
+        metadata_file_endpoint = path.with_suffix(".whl.metadata")
+        if metadata_file_endpoint.exists():
+            self._register_handler(
+                metadata_file_endpoint.name, metadata_file_endpoint.read_bytes()
+            )
 
         if name in self._wheels and not replace:
             return
@@ -402,3 +410,45 @@ def mock_package_index_simple_html_api(httpserver):
         suffix="_simple.html",
         content_type="text/html",
     )
+
+
+@pytest.fixture(
+    params=[
+        None,
+        "pytest ==7.2.2",
+        "pytest >=7.2.1,<7.2.3",
+        "pytest @ {url}",
+        "pytest @ emfs:{wheel}",
+    ]
+)
+def valid_constraint(request, wheel_catalog):
+    wheel = wheel_catalog.get("pytest")
+    if not request.param:
+        return request.param
+    return request.param.format(url=wheel.url, wheel=wheel.url.split("/")[-1])
+
+
+INVALID_CONSTRAINT_MESSAGES = {
+    "": "parse",
+    "http://example.com": "name",
+    "a-package[with-extra]": "[extras]",
+    "a-package": "no version or URL",
+}
+
+
+@pytest.fixture(params=[*INVALID_CONSTRAINT_MESSAGES.keys()])
+def invalid_constraint(request):
+    return request.param
+
+
+@pytest.fixture
+def run_async_py_in_js(selenium_standalone_micropip):
+    def _run(*lines, error_match=None):
+        js = "\n".join(["await pyodide.runPythonAsync(`", *lines, "`);"])
+        if error_match:
+            with pytest.raises(JavascriptException, match=error_match):
+                selenium_standalone_micropip.run_js(js)
+        else:
+            selenium_standalone_micropip.run_js(js)
+
+    return _run

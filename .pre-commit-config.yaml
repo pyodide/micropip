@@ -1,7 +1,7 @@
 default_language_version:
   python: "3.12"
 
-exclude: (^micropip/externals|^tests/vendored|^tests/test_data)
+exclude: (^micropip/_vendored|^tests/vendored|^tests/test_data)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "v5.0.0"
@@ -18,24 +18,23 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.6.9"
+    rev: "v0.8.6"
     hooks:
       - id: ruff
         args: [--fix]
 
   - repo: https://github.com/psf/black
-    rev: "24.8.0"
+    rev: "24.10.0"
     hooks:
       - id: black
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.11.2"
+    rev: "v1.14.1"
     hooks:
       - id: mypy
         args: []
         additional_dependencies: &mypy-deps
           - pytest
-
 
   - repo: https://github.com/codespell-project/codespell
     rev: "v2.3.0"

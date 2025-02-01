@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from dataclasses import astuple, dataclass
 from typing import Any
 
-from packaging.utils import canonicalize_name
+from ._vendored.packaging.src.packaging.utils import canonicalize_name
 
 __all__ = ["PackageDict"]
 
@@ -30,8 +30,7 @@ def _format_table(headers: list[str], table: Iterable[Iterable[Any]]) -> str:
 
     rows.append(format_row(headers, col_width))
     rows.append(format_row([""] * len(col_width), col_width, filler="-"))
-    for line in table:
-        rows.append(format_row(line, col_width))
+    rows.extend(format_row(line, col_width) for line in table)
 
     return "\n".join(rows)
 

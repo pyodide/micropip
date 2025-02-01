@@ -1,9 +1,9 @@
 import pytest
 from conftest import mock_fetch_cls
-from packaging.utils import parse_wheel_filename
 from pytest_pyodide import run_in_pyodide
 
 import micropip
+from micropip._vendored.packaging.src.packaging.utils import parse_wheel_filename
 
 
 def test_install_custom_url(selenium_standalone_micropip, wheel_catalog):
@@ -96,6 +96,47 @@ def test_install_mixed_case2(selenium_standalone_micropip, jinja2):
             import jinja2
         `);
         """
+    )
+
+
+@pytest.mark.parametrize("set_constraints", [False, True])
+def test_install_constraints(
+    set_constraints,
+    valid_constraint,
+    wheel_catalog,
+    run_async_py_in_js,
+):
+    constraints = [valid_constraint] if valid_constraint else []
+    run_async_py_in_js("import micropip")
+
+    if valid_constraint and "emfs:" in valid_constraint:
+        url = wheel_catalog.get("pytest").url
+        wheel = url.split("/")[-1]
+        run_async_py_in_js(
+            "from pyodide.http import pyfetch",
+            f"resp = await pyfetch('{url}')",
+            f"await resp._into_file(open('{wheel}', 'wb'))",
+        )
+
+    if set_constraints:
+        run_async_py_in_js(f"micropip.set_constraints({constraints})")
+        install_args = ""
+    else:
+        install_args = f"constraints={constraints}"
+
+    if constraints and "@" not in valid_constraint:
+        run_async_py_in_js(
+            f"await micropip.install('pytest ==7.2.3', {install_args})",
+            error_match="Can't find a pure Python 3 wheel",
+        )
+
+    run_async_py_in_js(f"await micropip.install('pytest', {install_args})")
+
+    compare = "==" if constraints else "!="
+
+    run_async_py_in_js(
+        "import pytest",
+        f"assert pytest.__version__ {compare} '7.2.2', pytest.__version__",
     )
 
 
@@ -224,7 +265,6 @@ async def test_install_pre(
 
 @pytest.mark.asyncio
 async def test_fetch_wheel_fail(monkeypatch, wheel_base):
-    pytest.importorskip("packaging")
     import micropip
     from micropip import wheelinfo
 
@@ -249,11 +289,13 @@ async def test_install_with_credentials(selenium):
     fetch_response_mock = MagicMock()
 
     async def myfunc():
-        return json.dumps(dict())
+        return json.dumps({})
 
     fetch_response_mock.string.side_effect = myfunc
 
-    @patch("micropip._compat_in_pyodide.pyfetch", return_value=fetch_response_mock)
+    @patch(
+        "micropip._compat._compat_in_pyodide.pyfetch", return_value=fetch_response_mock
+    )
     async def call_micropip_install(pyfetch_mock):
         try:
             await micropip.install("pyodide-micropip-test", credentials="include")
@@ -279,7 +321,7 @@ async def test_load_binary_wheel1(
 
 @pytest.mark.skip_refcount_check
 @run_in_pyodide(packages=["micropip"])
-async def test_load_binary_wheel2(selenium):
+async def test_load_binary_wheel2(selenium_standalone_micropip):
     from pyodide_js._api import repodata_packages
 
     import micropip

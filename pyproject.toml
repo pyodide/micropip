@@ -6,14 +6,15 @@ authors = [
 description = "A lightweight Python package installer for the web"
 readme = "README.md"
 license = { file="LICENSE" }
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
     "Operating System :: OS Independent",
 ]
 dynamic = ["version"]
-dependencies = ["packaging>=23.0"]
+dependencies = []
+
 [project.optional-dependencies]
 test = [
   "pytest-httpserver",
@@ -24,11 +25,9 @@ test = [
   "pyodide-lock==v0.1.0a8",
 ]
 
-
 [project.urls]
 "Homepage" = "https://github.com/pyodide/micropip"
 "Bug Tracker" = "https://github.com/pyodide/micropip/issues"
-
 
 
 [build-system]
@@ -41,23 +40,24 @@ build-backend = "setuptools.build_meta"
 write_to = "micropip/_version.py"
 
 [tool.ruff]
+exclude = ["micropip/_vendored/"]
+line-length = 120
 lint.select = [
-  "E",     # pycodestyles
-  "W",     # pycodestyles
+  "B",     # bugbear
+  "C4",    # flake8-comprehensions
+  "C90",   # mccabe code complexity
+  "E",     # pycodestyle errors
   "F",     # pyflakes
-  "B0",    # bugbear (all B0* checks enabled by default)
-  "B904",  # bugbear (Within an except clause, raise exceptions with raise ... from err)
-  "B905",  # bugbear (zip() without an explicit strict= parameter set.)
-  "UP",    # pyupgrade
-  "I",     # isort
-  "PGH",   # pygrep-hooks
   "G",     # flake8-logging-format
+  "I",     # isort
+  "PERF",  # perflint
+  "PGH",   # pygrep-hooks
+  "UP",    # pyupgrade
+  "W",     # pycodestyle whitespace
 ]
-# Remove E999 once pattern matching is supported
-# https://github.com/charliermarsh/ruff/issues/282
-lint.ignore = ["E402", "E501", "E731", "E741", "E999"]
-target-version = "py311"
-
+lint.flake8-comprehensions.allow-dict-calls-with-keyword-arguments = true
+lint.mccabe.max-complexity = 13
+target-version = "py312"
 
 [tool.ruff.lint.isort]
 known-first-party = [
@@ -65,7 +65,12 @@ known-first-party = [
 ]
 
 [tool.mypy]
-python_version = "3.11"
+exclude = ["micropip/_vendored/"]
+python_version = "3.12"
 show_error_codes = true
 warn_unreachable = true
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "micropip._vendored.*"
+warn_unreachable = false

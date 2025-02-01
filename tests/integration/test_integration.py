@@ -34,6 +34,25 @@ def test_integration_install_basic(selenium_standalone_micropip, pytestconfig):
 
 
 @integration_test_only
+def test_integration_install_no_deps(selenium_standalone_micropip, pytestconfig):
+    @run_in_pyodide
+    async def _run(selenium):
+        import micropip
+
+        await micropip.install("pyodide-micropip-test", deps=False)
+
+        try:
+            # pyodide-micropip-test depends on snowballstemmer
+            import snowballstemmer  # noqa: F401
+        except ModuleNotFoundError:
+            pass
+        else:
+            raise Exception("Should raise!")
+
+    _run(selenium_standalone_micropip)
+
+
+@integration_test_only
 def test_integration_list_basic(selenium_standalone_micropip, pytestconfig):
     @run_in_pyodide
     async def _run(selenium):

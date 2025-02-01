@@ -7,14 +7,14 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
-from urllib.parse import urlparse, urlunparse
-
-from packaging.utils import InvalidWheelFilename
-from packaging.version import InvalidVersion, Version
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from ._compat import HttpStatusError, fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
-from .externals.mousebender.simple import from_project_details_html
+from ._vendored.mousebender.simple import from_project_details_html
+from ._vendored.packaging.src.packaging.utils import InvalidWheelFilename
+from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
+from .types import DistributionMetadata
 from .wheelinfo import WheelInfo
 
 PYPI = "PYPI"
@@ -129,8 +129,10 @@ class ProjectInfo:
                 version = parse_version(filename)
             except (InvalidVersion, InvalidWheelFilename):
                 continue
-            if file["url"].startswith("/"):
-                file["url"] = index_base_url + file["url"]
+
+            is_absolute_url = bool(urlparse(file["url"]).netloc)
+            if not is_absolute_url:
+                file["url"] = urljoin(index_base_url, file["url"])
 
             releases[version].append(file)
 
@@ -153,6 +155,11 @@ class ProjectInfo:
             hashes = file["digests"] if "digests" in file else file["hashes"]
             sha256 = hashes.get("sha256")
 
+            # Check if the metadata file is available (PEP 658 / PEP-714)
+            core_metadata: DistributionMetadata = file.get("core-metadata") or file.get(
+                "data-dist-info-metadata"
+            )
+
             # Size of the file in bytes, if available (PEP 700)
             # This key is not available in the Simple API HTML response, so this field may be None
             size = file.get("size")
@@ -163,6 +170,7 @@ class ProjectInfo:
                 version=version,
                 sha256=sha256,
                 size=size,
+                core_metadata=core_metadata,
             )
 
     @classmethod

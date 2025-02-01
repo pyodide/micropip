@@ -4,14 +4,22 @@ from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_config_var, get_platform
 
-from packaging.requirements import Requirement
-from packaging.tags import Tag
-from packaging.tags import sys_tags as sys_tags_orig
-from packaging.utils import BuildTag, InvalidWheelFilename, canonicalize_name
-from packaging.utils import parse_wheel_filename as parse_wheel_filename_orig
-from packaging.version import InvalidVersion, Version
-
 from ._compat import REPODATA_PACKAGES
+from ._vendored.packaging.src.packaging.requirements import (
+    InvalidRequirement,
+    Requirement,
+)
+from ._vendored.packaging.src.packaging.tags import Tag
+from ._vendored.packaging.src.packaging.tags import sys_tags as sys_tags_orig
+from ._vendored.packaging.src.packaging.utils import (
+    BuildTag,
+    InvalidWheelFilename,
+    canonicalize_name,
+)
+from ._vendored.packaging.src.packaging.utils import (
+    parse_wheel_filename as parse_wheel_filename_orig,
+)
+from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
 
 
 def get_dist_info(dist: Distribution) -> Path:
@@ -268,3 +276,91 @@ def fix_package_dependencies(
     (get_dist_info(dist) / "PYODIDE_REQUIRES").write_text(
         json.dumps(sorted(x for x in depends))
     )
+
+
+def validate_constraints(
+    constraints: list[str] | None,
+    environment: dict[str, str] | None = None,
+) -> tuple[dict[str, Requirement], dict[str, list[str]]]:
+    """Build a validated ``Requirement`` dictionary from raw constraint strings.
+
+    Parameters
+    ----------
+    constraints (list):
+        A list of PEP-508 dependency specs, expected to contain both a package
+        name and at least one specifier.
+
+    environment (optional dict):
+        The markers for the current environment, such as OS, Python implementation.
+        If ``None``, the current execution environment will be used.
+
+    Returns
+    -------
+        A 2-tuple of:
+        - a dictionary of ``Requirement`` objects, keyed by canonical name
+        - a dictionary of message strings, keyed by constraint
+    """
+    reqs: dict[str, Requirement] = {}
+    all_messages: dict[str, list[str]] = {}
+
+    for raw_constraint in constraints or []:
+        messages: list[str] = []
+
+        try:
+            req = Requirement(raw_constraint)
+            req.name = canonicalize_name(req.name)
+        except InvalidRequirement as err:
+            all_messages[raw_constraint] = [f"failed to parse: {err}"]
+            continue
+
+        if req.extras:
+            messages.append("may not provide [extras]")
+
+        if not (req.url or len(req.specifier)):
+            messages.append("no version or URL")
+
+        if req.marker and not req.marker.evaluate(environment):
+            messages.append(f"not applicable: {req.marker}")
+
+        if messages:
+            all_messages[raw_constraint] = messages
+        elif req.name in reqs:
+            all_messages[raw_constraint] = [
+                f"updated existing constraint for {req.name}"
+            ]
+            reqs[req.name] = constrain_requirement(req, reqs)
+        else:
+            reqs[req.name] = req
+
+    return reqs, all_messages
+
+
+def constrain_requirement(
+    requirement: Requirement, constrained_requirements: dict[str, Requirement]
+) -> Requirement:
+    """Modify or replace a requirement based on a set of constraints.
+
+    Parameters
+    ----------
+    requirement (Requirement):
+        A ``Requirement`` to constrain.
+
+    constrained_requirements (dict):
+        A dictionary of ``Requirement`` objects, keyed by canonical name.
+
+    Returns
+    -------
+        A constrained ``Requirement``.
+    """
+    # URLs cannot be merged
+    if requirement.url:
+        return requirement
+
+    constrained = constrained_requirements.get(canonicalize_name(requirement.name))
+
+    if constrained:
+        if constrained.url:
+            return constrained
+        requirement.specifier = requirement.specifier & constrained.specifier
+
+    return requirement

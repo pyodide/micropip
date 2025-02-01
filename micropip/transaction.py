@@ -6,12 +6,19 @@ from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
-
 from . import package_index
 from ._compat import REPODATA_PACKAGES
-from ._utils import best_compatible_tag_index, check_compatible
+from ._utils import (
+    best_compatible_tag_index,
+    check_compatible,
+    constrain_requirement,
+    validate_constraints,
+)
+from ._vendored.packaging.src.packaging.requirements import (
+    InvalidRequirement,
+    Requirement,
+)
+from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .constants import FAQ_URLS
 from .package import PackageMetadata
 from .package_index import ProjectInfo
@@ -36,21 +43,30 @@ class Transaction:
     failed: list[Requirement] = field(default_factory=list)
 
     verbose: bool | int | None = None
+    constraints: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # If index_urls is None, pyodide-lock.json have to be searched first.
         # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
         self.search_pyodide_lock_first = (
             self.index_urls == package_index.DEFAULT_INDEX_URLS
         )
 
+        self.constrained_reqs, messages = validate_constraints(
+            self.constraints, self.ctx
+        )
+
+        if self.verbose and messages:
+            for constraint, msg in messages.items():
+                logger.info("Transaction: constraint %s discarded: %s", constraint, msg)
+
     async def gather_requirements(
         self,
         requirements: list[str] | list[Requirement],
     ) -> None:
-        requirement_promises = []
-        for requirement in requirements:
-            requirement_promises.append(self.add_requirement(requirement))
+        requirement_promises = [
+            self.add_requirement(requirement) for requirement in requirements
+        ]
 
         await asyncio.gather(*requirement_promises)
 
@@ -58,14 +74,24 @@ class Transaction:
         if isinstance(req, Requirement):
             return await self.add_requirement_inner(req)
 
-        if not urlparse(req).path.endswith(".whl"):
-            return await self.add_requirement_inner(Requirement(req))
+        try:
+            as_req = constrain_requirement(Requirement(req), self.constrained_reqs)
+        except InvalidRequirement:
+            as_req = None
 
-        # custom download location
-        wheel = WheelInfo.from_url(req)
-        check_compatible(wheel.filename)
+        if as_req:
+            if as_req.name and len(as_req.specifier):
+                return await self.add_requirement_inner(as_req)
+            if as_req.url:
+                req = as_req.url
 
-        await self.add_wheel(wheel, extras=set(), specifier="")
+        if urlparse(req).path.endswith(".whl"):
+            # custom download location
+            wheel = WheelInfo.from_url(req)
+            check_compatible(wheel.filename)
+            return await self.add_wheel(wheel, extras=set(), specifier="")
+
+        return await self.add_requirement_inner(Requirement(req))
 
     def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
         ver = None
@@ -96,8 +122,11 @@ class Transaction:
         See PEP 508 for a description of the requirements.
         https://www.python.org/dev/peps/pep-0508
         """
+        # add [extras] first, as constraints will never add them
         for e in req.extras:
             self.ctx_extras.append({"extra": e})
+
+        req = constrain_requirement(req, self.constrained_reqs)
 
         if self.pre:
             req.specifier.prereleases = True
@@ -132,9 +161,10 @@ class Transaction:
             # self.ctx_extras is empty and hence the eval_marker() function
             # will not be called at all.
             if not req.marker.evaluate(self.ctx) and not any(
-                [eval_marker(e) for e in self.ctx_extras]
+                eval_marker(e) for e in self.ctx_extras
             ):
                 return
+
         # Is some version of this package is already installed?
         req.name = canonicalize_name(req.name)
 
@@ -145,7 +175,7 @@ class Transaction:
 
         try:
             if self.search_pyodide_lock_first:
-                if self._add_requirement_from_pyodide_lock(req):
+                if await self._add_requirement_from_pyodide_lock(req):
                     logger.debug("Transaction: package found in lock file: %r", req)
                     return
 
@@ -161,7 +191,7 @@ class Transaction:
 
                     # If the requirement is not found in package index,
                     # we still have a chance to find it from pyodide lockfile.
-                    if not self._add_requirement_from_pyodide_lock(req):
+                    if not await self._add_requirement_from_pyodide_lock(req):
                         logger.debug(
                             "Transaction: package %r not found in lock file", req
                         )
@@ -172,18 +202,21 @@ class Transaction:
             if not self.keep_going:
                 raise
 
-    def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
+    async def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
         """
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        if req.name in REPODATA_PACKAGES and req.specifier.contains(
+        locked_package = REPODATA_PACKAGES.get(req.name)
+        if locked_package and req.specifier.contains(
             REPODATA_PACKAGES[req.name]["version"], prereleases=True
         ):
-            version = REPODATA_PACKAGES[req.name]["version"]
+            version = locked_package["version"]
             self.pyodide_packages.append(
                 PackageMetadata(name=req.name, version=str(version), source="pyodide")
             )
+            if self.constraints and locked_package["depends"]:
+                await self.gather_requirements(locked_package["depends"])
             return True
 
         return False
@@ -247,9 +280,30 @@ class Transaction:
         logger.info("Collecting %s%s", wheel.name, specifier)
         logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
-        await wheel.download(self.fetch_kwargs)
+        wheel_download_task = asyncio.create_task(wheel.download(self.fetch_kwargs))
         if self.deps:
-            await self.gather_requirements(wheel.requires(extras))
+            # Case 1) If metadata file is available,
+            #         we can gather requirements without waiting for the wheel to be downloaded.
+            if wheel.pep658_metadata_available():
+                try:
+                    await wheel.download_pep658_metadata(self.fetch_kwargs)
+                except OSError:
+                    # If something goes wrong while downloading the metadata,
+                    # we have to wait for the wheel to be downloaded.
+                    await wheel_download_task
+
+                await asyncio.gather(
+                    self.gather_requirements(wheel.requires(extras)),
+                    wheel_download_task,
+                )
+
+            # Case 2) If metadata file is not available,
+            #         we have to wait for the wheel to be downloaded.
+            else:
+                await wheel_download_task
+                await self.gather_requirements(wheel.requires(extras))
+        else:
+            await wheel_download_task
 
         self.wheels.append(wheel)
 
