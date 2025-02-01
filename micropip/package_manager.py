@@ -2,11 +2,9 @@ import asyncio
 import builtins
 import importlib
 import importlib.metadata
-from collections.abc import Coroutine
 from importlib.metadata import Distribution
 from pathlib import Path
 from typing import (  # noqa: UP035 List import is necessary due to the `list` method
-    Any,
     List,
 )
 
@@ -186,7 +184,9 @@ class PackageManager:
             await transaction.gather_requirements(requirements)
 
             if transaction.failed:
-                failed_requirements = ", ".join([f"'{req}'" for req in transaction.failed])
+                failed_requirements = ", ".join(
+                    [f"'{req}'" for req in transaction.failed]
+                )
                 raise ValueError(
                     f"Can't find a pure Python 3 wheel for: {failed_requirements}\n"
                     f"See: {FAQ_URLS['cant_find_wheel']}\n"
@@ -203,7 +203,9 @@ class PackageManager:
             )
 
             if package_names:
-                logger.info("Installing collected packages: %s", ", ".join(package_names))
+                logger.info(
+                    "Installing collected packages: %s", ", ".join(package_names)
+                )
 
             # Install PyPI packages
             # detect whether the wheel metadata is from PyPI or from custom location
@@ -222,7 +224,9 @@ class PackageManager:
                     )
                 )
 
-            packages = [f"{pkg.name}-{pkg.version}" for pkg in pyodide_packages + wheels]
+            packages = [
+                f"{pkg.name}-{pkg.version}" for pkg in pyodide_packages + wheels
+            ]
 
             if packages:
                 logger.info("Successfully installed %s", ", ".join(packages))
