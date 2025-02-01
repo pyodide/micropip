@@ -280,7 +280,7 @@ async def test_fetch_wheel_fail(monkeypatch, wheel_base):
 
 @pytest.mark.skip_refcount_check
 @run_in_pyodide(packages=["micropip"])
-async def test_install_with_credentials(selenium):
+async def test_install_with_credentials(selenium_standlone_micropip):
     import json
     from unittest.mock import MagicMock, patch
 
