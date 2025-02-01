@@ -40,9 +40,11 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    needs: [build]
     if: github.event_name == 'release' && github.event.action == 'published'
     environment: PyPi-deploy
     permissions:
+      id-token: write
       attestations: write
     steps:
       - name: Download all the dists
