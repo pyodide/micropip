@@ -26,6 +26,7 @@ class PackageManager:
 
         self.repodata_packages: dict[str, dict[str, Any]] = REPODATA_PACKAGES
         self.repodata_info: dict[str, str] = REPODATA_INFO
+        self.constraints: list[str] = []
 
         pass
 
@@ -38,6 +39,7 @@ class PackageManager:
         pre: bool = False,
         index_urls: list[str] | str | None = None,
         *,
+        constraints: list[str] | None = None,
         verbose: bool | int | None = None,
     ):
         """Install the given package and all of its dependencies.
@@ -122,6 +124,14 @@ class PackageManager:
             - If a list of URLs is provided, micropip will try each URL in order until
             it finds a package. If no package is found, an error will be raised.
 
+        constraints :
+
+            A list of requirements with versions/URLs which will be used only if
+            needed by any ``requirements``.
+
+            Unlike ``requirements``, the package name _must_ be provided in the
+            PEP-508 format e.g. ``pkgname@https://...``.
+
         verbose :
             Print more information about the process. By default, micropip does not
             change logger level. Setting ``verbose=True`` will print similar
@@ -130,6 +140,9 @@ class PackageManager:
         if index_urls is None:
             index_urls = self.index_urls
 
+        if constraints is None:
+            constraints = self.constraints
+
         return await install(
             requirements,
             index_urls,
@@ -137,6 +150,7 @@ class PackageManager:
             deps,
             credentials,
             pre,
+            constraints=constraints,
             verbose=verbose,
         )
 
@@ -309,3 +323,16 @@ class PackageManager:
             urls = [urls]
 
         self.index_urls = urls[:]
+
+    def set_constraints(self, constraints: List[str]):  # noqa: UP006
+        """
+        Set the default constraints to use when looking up packages.
+
+        Parameters
+        ----------
+        constraints
+            A list of PEP-508 requirements, each of which must include a name and
+            version, but no ``[extras]``.
+        """
+
+        self.constraints = constraints[:]
