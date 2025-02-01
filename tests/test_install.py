@@ -434,3 +434,18 @@ def test_install_pkg_with_sharedlib_deps(selenium_standalone_micropip, wheel_cat
         Point(0, 0)
 
     run(selenium, numpy_wheel.url, shapely_wheel.url)
+
+
+def test_freeze_after_install_without_deps(selenium_standalone_micropip, wheel_catalog):
+    selenium = selenium_standalone_micropip
+    shapely = wheel_catalog.get("shapely")
+
+    selenium.run_js(
+        f"""
+        await pyodide.runPythonAsync(`
+            import micropip
+            await micropip.install("{shapely.url}", deps=False)
+            micropip.freeze()
+        `);
+        """
+    )
