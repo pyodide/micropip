@@ -344,7 +344,6 @@ class mock_fetch_cls:
 
 @pytest.fixture
 def mock_fetch(monkeypatch, mock_importlib):
-    pytest.importorskip("packaging")
     from micropip import package_index, wheelinfo
 
     result = mock_fetch_cls()
