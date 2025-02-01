@@ -1,0 +1,63 @@
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+env:
+  FORCE_COLOR: 3
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: 3.12
+
+      # IMPORTANT: always build sdist, and then the wheel from
+      # the sdist (like it is currently done here). This is
+      # because we want to ensure that no extra files get
+      # copied, which can be the case with building in-tree.
+      # The MANIFEST.in file ensures that the sdist doesn't
+      # contain any unnecessary files.
+      - name: Build package distributions
+        run: pipx run build
+
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment: PyPi-deploy
+    permissions:
+      attestations: write
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate artifact attestations
+        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
+        with:
+          subject-path: "dist/*"
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
