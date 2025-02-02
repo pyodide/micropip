@@ -52,9 +52,12 @@ def _build(build_dir, dist_dir):
     from build.env import DefaultIsolatedEnv
 
     with DefaultIsolatedEnv() as env:
-        builder = build.ProjectBuilder(build_dir)
-        builder.python_executable = env.executable
-        builder.scripts_dir = env.scripts_dir
+        # https://build.pypa.io/en/stable/api.html#build.ProjectBuilder
+        builder = build.ProjectBuilder(
+            source_dir=build_dir,
+            python_executable=env.python_executable,
+        )
+
         env.install(builder.build_system_requires)
         builder.build("wheel", output_directory=dist_dir)
 
