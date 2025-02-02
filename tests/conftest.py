@@ -49,9 +49,9 @@ def _read_gzipped_testfile(file: Path) -> bytes:
 
 def _build(build_dir, dist_dir):
     import build
-    from build.env import IsolatedEnvBuilder
+    from build.env import DefaultIsolatedEnv
 
-    with IsolatedEnvBuilder() as env:
+    with DefaultIsolatedEnv() as env:
         builder = build.ProjectBuilder(build_dir)
         builder.python_executable = env.executable
         builder.scripts_dir = env.scripts_dir

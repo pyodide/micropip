@@ -21,7 +21,7 @@ test = [
   "pytest-pyodide",
   "pytest-cov",
   "pytest<8.0.0",
-  "build==0.7.0",
+  "build",
   "pyodide-lock==v0.1.0a8",
 ]
 
