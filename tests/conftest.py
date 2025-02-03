@@ -49,12 +49,15 @@ def _read_gzipped_testfile(file: Path) -> bytes:
 
 def _build(build_dir, dist_dir):
     import build
-    from build.env import IsolatedEnvBuilder
+    from build.env import DefaultIsolatedEnv
 
-    with IsolatedEnvBuilder() as env:
-        builder = build.ProjectBuilder(build_dir)
-        builder.python_executable = env.executable
-        builder.scripts_dir = env.scripts_dir
+    with DefaultIsolatedEnv() as env:
+        # https://build.pypa.io/en/stable/api.html#build.ProjectBuilder
+        builder = build.ProjectBuilder(
+            source_dir=build_dir,
+            python_executable=env.python_executable,
+        )
+
         env.install(builder.build_system_requires)
         builder.build("wheel", output_directory=dist_dir)
 
