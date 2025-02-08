@@ -54,49 +54,49 @@ class PackageManager:
 
         Parameters
         ----------
-        requirements :
+        requirements:
 
             A requirement or list of requirements to install. Each requirement is a
             string, which should be either a package name or a wheel URI:
 
-            - If the requirement does not end in ``.whl``, it will be interpreted as
-            a package name. A package with this name must either be present
+            - If the requirement does not end in ``.whl``, it will be interpreted as \
+            a package name. A package with this name must either be present \
             in the Pyodide lock file or on PyPI.
 
-            - If the requirement ends in ``.whl``, it is a wheel URI. The part of
-            the requirement after the last ``/``  must be a valid wheel name in
-            compliance with the `PEP 427 naming convention
+            - If the requirement ends in ``.whl``, it is a wheel URI. The part of \
+            the requirement after the last ``/``  must be a valid wheel name in \
+            compliance with the `PEP 427 naming convention \
             <https://www.python.org/dev/peps/pep-0427/#file-format>`_.
 
-            - If a wheel URI starts with ``emfs:``, it will be interpreted as a path
-            in the Emscripten file system (Pyodide's file system). E.g.,
-            ``emfs:../relative/path/wheel.whl`` or ``emfs:/absolute/path/wheel.whl``.
+            - If a wheel URI starts with ``emfs:``, it will be interpreted as a path \
+            in the Emscripten file system (Pyodide's file system). E.g., \
+            ``emfs:../relative/path/wheel.whl`` or ``emfs:/absolute/path/wheel.whl``. \
             In this case, only .whl files are supported.
 
-            - If a wheel URI requirement starts with ``http:`` or ``https:`` it will
+            - If a wheel URI requirement starts with ``http:`` or ``https:`` it will \
             be interpreted as a URL.
 
-            - In node, you can access the native file system using a URI that starts
+            - In node, you can access the native file system using a URI that starts \
             with ``file:``. In the browser this will not work.
 
-        keep_going :
+        keep_going:
 
             This parameter decides the behavior of the micropip when it encounters a
             Python package without a pure Python wheel while doing dependency
             resolution:
 
-            - If ``False``, an error will be raised on first package with a missing
+            - If ``False``, an error will be raised on first package with a missing \
             wheel.
 
-            - If ``True``, the micropip will keep going after the first error, and
+            - If ``True``, the micropip will keep going after the first error, and \
             report a list of errors at the end.
 
-        deps :
+        deps:
 
             If ``True``, install dependencies specified in METADATA file for each
             package. Otherwise do not install dependencies.
 
-        credentials :
+        credentials:
 
             This parameter specifies the value of ``credentials`` when calling the
             `fetch() <https://developer.mozilla.org/en-US/docs/Web/API/fetch>`__
@@ -104,27 +104,27 @@ class PackageManager:
 
             When not specified, ``fetch()`` is called without ``credentials``.
 
-        pre :
+        pre:
 
             If ``True``, include pre-release and development versions. By default,
             micropip only finds stable versions.
 
-        index_urls :
+        index_urls:
 
             A list of URLs or a single URL to use as the package index when looking
             up packages. If None, *https://pypi.org/pypi/{package_name}/json* is used.
 
-            - The index URL should support the
+            - The index URL should support the \
             `JSON API <https://warehouse.pypa.io/api-reference/json/>`__ .
 
-            - The index URL may contain the placeholder {package_name} which will be
-            replaced with the package name when looking up a package. If it does not
+            - The index URL may contain the placeholder {package_name} which will be \
+            replaced with the package name when looking up a package. If it does not \
             contain the placeholder, the package name will be appended to the URL.
 
-            - If a list of URLs is provided, micropip will try each URL in order until
+            - If a list of URLs is provided, micropip will try each URL in order until \
             it finds a package. If no package is found, an error will be raised.
 
-        constraints :
+        constraints:
 
             A list of requirements with versions/URLs which will be used only if
             needed by any ``requirements``.
@@ -132,7 +132,7 @@ class PackageManager:
             Unlike ``requirements``, the package name _must_ be provided in the
             PEP-508 format e.g. ``pkgname@https://...``.
 
-        verbose :
+        verbose:
             Print more information about the process. By default, micropip does not
             change logger level. Setting ``verbose=True`` will print similar
             information as pip.
