@@ -4,7 +4,7 @@ from importlib import metadata as importlib_metadata
 from pathlib import Path
 
 project = "micropip"
-copyright = "2019-2022, Pyodide contributors and Mozilla"
+copyright = "2019-2025, Pyodide contributors and Mozilla"
 # author = "Pyodide Authors"
 
 # -- General configuration ---------------------------------------------------
@@ -19,7 +19,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.10", None),
+    "python": ("https://docs.python.org/3.12", None),
     "pyodide": ("https://pyodide.org/en/stable/", None),
 }
 
