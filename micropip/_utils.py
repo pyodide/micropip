@@ -101,7 +101,7 @@ def best_compatible_tag_index(tags: frozenset[Tag]) -> int | None:
     """Get the index of the first tag in ``packaging.tags.sys_tags()`` that a wheel has.
 
     Since ``packaging.tags.sys_tags()`` is sorted from most specific ("best") to most
-    general ("worst") compatibility, this index douples as a priority rank: given two
+    general ("worst") compatibility, this index doubles as a priority rank: given two
     compatible wheels, the one whose best index is closer to zero should be installed.
 
     Parameters

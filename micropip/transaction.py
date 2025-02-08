@@ -222,9 +222,9 @@ class Transaction:
         return False
 
     async def _add_requirement_from_package_index(self, req: Requirement):
-        """
-        Find requirement from package index. If the requirement is found,
-        add it to the package list and return True. Otherwise, return False.
+        """Find requirement from package index.
+
+        If the requirement is found, add it to the package list.
         """
         metadata = await package_index.query_package(
             req.name,
