@@ -67,7 +67,7 @@ async def install(
         distributions = search_installed_packages(packages_all)
 
         with indent_log():
-            uninstall_distributions(distributions)
+            uninstall_distributions(distributions, logger)
 
         logger.debug(
             "Installing packages %r and wheels %r ",
