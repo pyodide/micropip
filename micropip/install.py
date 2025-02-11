@@ -2,10 +2,11 @@ import asyncio
 import importlib
 from pathlib import Path
 
+from .uninstall import uninstall_distributions
 from ._compat import loadPackage, to_js
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
-from .logging import setup_logging
+from .logging import indent_log, setup_logging
 from .transaction import Transaction
 
 
@@ -18,6 +19,7 @@ async def install(
     pre: bool = False,
     *,
     constraints: list[str] | None = None,
+    reinstall: bool = False,
     verbose: bool | int | None = None,
 ) -> None:
     with setup_logging().ctx_level(verbose) as logger:
@@ -48,6 +50,7 @@ async def install(
             verbose=verbose,
             index_urls=index_urls,
             constraints=constraints,
+            reinstall=reinstall,
         )
         await transaction.gather_requirements(requirements)
 
@@ -60,7 +63,11 @@ async def install(
 
         pyodide_packages, wheels = transaction.pyodide_packages, transaction.wheels
 
-        package_names = [pkg.name for pkg in wheels + pyodide_packages]
+        packages_all = [pkg.name for pkg in wheels + pyodide_packages]
+        distributions = search_installed_packages(packages_all)
+
+        with indent_log():
+            uninstall_distributions(distributions)
 
         logger.debug(
             "Installing packages %r and wheels %r ",
@@ -68,8 +75,8 @@ async def install(
             [w.filename for w in transaction.wheels],
         )
 
-        if package_names:
-            logger.info("Installing collected packages: %s", ", ".join(package_names))
+        if packages_all:
+            logger.info("Installing collected packages: %s", ", ".join(packages_all))
 
         # Install PyPI packages
         # detect whether the wheel metadata is from PyPI or from custom location
@@ -90,3 +97,27 @@ async def install(
             logger.info("Successfully installed %s", ", ".join(packages))
 
         importlib.invalidate_caches()
+
+
+def search_installed_packages(names: list[str]) -> list[importlib.metadata.Distribution]:
+    """
+    Get installed packages by name.
+
+    Parameters
+    ----------
+    names
+        List of distribution names to search for.
+
+    Returns
+    -------
+    List of distributions that were found.
+    If a distribution is not found, it is not included in the list.
+    """
+    distributions = []
+    for name in names:
+        try:
+            distributions.append(importlib.metadata.distribution(name))
+        except importlib.metadata.PackageNotFoundError:
+            pass
+
+    return distributions

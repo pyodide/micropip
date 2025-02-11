@@ -40,6 +40,7 @@ class PackageManager:
         index_urls: list[str] | str | None = None,
         *,
         constraints: list[str] | None = None,
+        reinstall: bool = False,
         verbose: bool | int | None = None,
     ):
         """Install the given package and all of its dependencies.
@@ -132,6 +133,16 @@ class PackageManager:
             Unlike ``requirements``, the package name _must_ be provided in the
             PEP-508 format e.g. ``pkgname@https://...``.
 
+        reinstall:
+
+            If ``False`` (default), micropip will show an error if the requested package
+            is already installed, but with a incompatible version. If ``True``,
+            micropip will uninstall the existing packages that are not compatible with
+            the requested version and install the packages again.
+
+            Note that packages that are already imported will not be reloaded, so make
+            sure to reload the module after reinstalling by e.g. running importlib.reload(module).
+
         verbose:
             Print more information about the process. By default, micropip does not
             change logger level. Setting ``verbose=True`` will print similar
@@ -151,6 +162,7 @@ class PackageManager:
             credentials,
             pre,
             constraints=constraints,
+            reinstall=reinstall,
             verbose=verbose,
         )
 

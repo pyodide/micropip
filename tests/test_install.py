@@ -434,3 +434,82 @@ def test_install_pkg_with_sharedlib_deps(selenium_standalone_micropip, wheel_cat
         Point(0, 0)
 
     run(selenium, numpy_wheel.url, shapely_wheel.url)
+
+
+@pytest.mark.asyncio
+async def test_reinstall_different_version(
+    mock_fetch: mock_fetch_cls,
+    mock_importlib,
+) -> None:
+    import importlib.metadata
+
+    import pytest
+
+    dummy = "dummy"
+    version_old = "1.0.0"
+    version_new = "2.0.0"
+
+    mock_fetch.add_pkg_version(dummy, version_old)
+    mock_fetch.add_pkg_version(dummy, version_new)
+
+    await micropip.install(f"{dummy}=={version_new}")
+    assert micropip.list()[dummy].version == version_new
+    assert importlib.metadata.version(dummy) == version_new
+
+    with pytest.raises(ValueError, match="already installed"):
+        await micropip.install(f"{dummy}=={version_old}", reinstall=False)
+
+    await micropip.install(f"{dummy}=={version_old}", reinstall=True)
+    assert micropip.list()[dummy].version == version_old
+    assert importlib.metadata.version(dummy) == version_old
+
+
+def test_reinstall_different_version2(selenium_standalone_micropip, wheel_catalog):
+    selenium = selenium_standalone_micropip
+    blue_wheel1 = wheel_catalog.get(("blue", "0.9.0"))
+    blue_wheel2 = wheel_catalog.get(("blue", "0.9.1"))
+
+    @run_in_pyodide
+    async def run(selenium, v1, v2):
+        import pytest
+
+        import micropip
+
+        micropip.install(v1)
+        with pytest.raises(ValueError, match="already installed"):
+            micropip.install(v2, reinstall=False)
+
+        micropip.install(v2, reinstall=True)
+
+    run(selenium, blue_wheel1.url, blue_wheel2.url)
+
+
+def test_reinstall_reload(selenium_standalone_micropip, wheel_catalog):
+    selenium = selenium_standalone_micropip
+    blue_wheel1 = wheel_catalog.get(("blue", "0.9.0"))
+    blue_wheel2 = wheel_catalog.get(("blue", "0.9.1"))
+
+    @run_in_pyodide
+    async def run(selenium, v1, v2):
+        import micropip
+
+        micropip.install(v1)
+
+        import blue
+
+        assert blue.__version__ == "0.9.0"
+
+        micropip.install(v2, reinstall=True)
+
+        import blue
+
+        # still the old version
+        assert blue.__version__ == "0.9.0"
+
+        from importlib import reload
+
+        reload(blue)
+
+        assert blue.__version__ == "0.9.1"
+
+    run(selenium, blue_wheel1.url, blue_wheel2.url)

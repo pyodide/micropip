@@ -44,6 +44,7 @@ class Transaction:
 
     verbose: bool | int | None = None
     constraints: list[str] | None = None
+    reinstall: bool = False
 
     def __post_init__(self) -> None:
         # If index_urls is None, pyodide-lock.json have to be searched first.
@@ -93,7 +94,20 @@ class Transaction:
 
         return await self.add_requirement_inner(Requirement(req))
 
-    def check_version_satisfied(self, req: Requirement) -> tuple[bool, str]:
+    def check_version_satisfied(self, req: Requirement, *, allow_reinstall: bool = False) -> tuple[bool, str]:
+        """
+        Check if the installed version of a package satisfies the requirement.
+        Returns True if the requirement is satisfied, False otherwise.
+
+        Parameters
+        ----------
+        req
+            The requirement to check.
+
+        allow_reinstall
+            If False, this function will raise exception if the package is already installed
+            and the installed version does not satisfy the requirement.
+        """
         ver = None
         try:
             ver = importlib.metadata.version(req.name)
@@ -109,9 +123,16 @@ class Transaction:
             # installed version matches, nothing to do
             return True, ver
 
-        raise ValueError(
-            f"Requested '{req}', " f"but {req.name}=={ver} is already installed"
-        )
+        if allow_reinstall:
+            return False, ""
+        else:
+            raise ValueError(
+                f"Requested '{req}', "
+                f"but {req.name}=={ver} is already installed. "
+                "If you want to reinstall the package with a different version, "
+                "use micropip.install(..., reinstall=True) to force reinstall, "
+                "or micropip.uninstall(...) to uninstall the package first."
+            )
 
     async def add_requirement_inner(
         self,
@@ -168,7 +189,10 @@ class Transaction:
         # Is some version of this package is already installed?
         req.name = canonicalize_name(req.name)
 
-        satisfied, ver = self.check_version_satisfied(req)
+        satisfied, ver = self.check_version_satisfied(
+            req, allow_reinstall=self.reinstall
+        )
+
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
             return
@@ -240,7 +264,9 @@ class Transaction:
 
         # Maybe while we were downloading pypi_json some other branch
         # installed the wheel?
-        satisfied, ver = self.check_version_satisfied(req)
+        satisfied, ver = self.check_version_satisfied(
+            req, allow_reinstall=self.reinstall
+        )
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
 
