@@ -53,6 +53,34 @@ def test_integration_install_no_deps(selenium_standalone_micropip, pytestconfig)
 
 
 @integration_test_only
+def test_integration_install_reinstall(selenium_standalone_micropip, pytestconfig):
+    @run_in_pyodide
+    async def _run(selenium):
+        import micropip
+
+        await micropip.install("mccabe==0.6.1")
+
+        import mccabe
+
+        assert mccabe.__version__ == "0.6.1"
+
+        try:
+            await micropip.install("mccabe==0.7.0", reinstall=False)
+        except ValueError as e:
+            assert "already installed" in str(e)
+        else:
+            raise Exception("Should raise!")
+
+        await micropip.install("mccabe==0.7.0", reinstall=True)
+
+        import mccabe
+
+        assert mccabe.__version__ == "0.7.0"
+
+    _run(selenium_standalone_micropip)
+
+
+@integration_test_only
 def test_integration_list_basic(selenium_standalone_micropip, pytestconfig):
     @run_in_pyodide
     async def _run(selenium):

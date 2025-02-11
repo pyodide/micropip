@@ -153,17 +153,11 @@ class WheelCatalog:
         if name in self._wheels and not replace:
             return
 
-        # Access the wheel by name or by (name, version)
-        version_str = str(version)
         self._wheels[name] = self.Wheel(
-            path, name, version_str, path.name, name.replace("-", "_"), url
+            path, name, str(version), path.name, name.replace("-", "_"), url
         )
-        self._wheels[(name, version_str)] = self._wheels[name]
 
-    def get(self, name: str, version: str | None = None) -> Wheel:
-        if version is not None:
-            return self._wheels[(name, version)]
-
+    def get(self, name: str) -> Wheel:
         return self._wheels[name]
 
 
@@ -226,19 +220,9 @@ def mock_importlib(monkeypatch, wheel_base):
     def _mock_importlib_distributions():
         return (Distribution.at(p) for p in wheel_base.glob("*.dist-info"))  # type: ignore[union-attr]
 
-    def _mock_importlib_distribution(name: str) -> Distribution:
-        for dist in _mock_importlib_distributions():
-            if dist.name == name:
-                return dist
-
-        raise PackageNotFoundError(name)
-
     monkeypatch.setattr(importlib.metadata, "version", _mock_importlib_version)
     monkeypatch.setattr(
         importlib.metadata, "distributions", _mock_importlib_distributions
-    )
-    monkeypatch.setattr(
-        importlib.metadata, "distribution", _mock_importlib_distribution
     )
     monkeypatch.setattr(
         importlib.metadata.Distribution, "from_name", _mock_importlib_from_name
