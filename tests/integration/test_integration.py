@@ -75,6 +75,13 @@ def test_integration_install_reinstall(selenium_standalone_micropip, pytestconfi
 
         import mccabe
 
+        # still 0.6.1
+        assert mccabe.__version__ == "0.6.1"
+
+        import importlib
+
+        importlib.reload(mccabe)
+
         assert mccabe.__version__ == "0.7.0"
 
     _run(selenium_standalone_micropip)
