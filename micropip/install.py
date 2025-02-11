@@ -2,12 +2,12 @@ import asyncio
 import importlib
 from pathlib import Path
 
-from .uninstall import uninstall_distributions
 from ._compat import loadPackage, to_js
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
 from .logging import indent_log, setup_logging
 from .transaction import Transaction
+from .uninstall import uninstall_distributions
 
 
 async def install(
@@ -99,7 +99,9 @@ async def install(
         importlib.invalidate_caches()
 
 
-def search_installed_packages(names: list[str]) -> list[importlib.metadata.Distribution]:
+def search_installed_packages(
+    names: list[str],
+) -> list[importlib.metadata.Distribution]:
     """
     Get installed packages by name.
 

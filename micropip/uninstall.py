@@ -1,8 +1,8 @@
 import importlib
 import importlib.metadata
 import logging
-from importlib.metadata import Distribution
 from collections.abc import Iterable
+from importlib.metadata import Distribution
 
 from ._compat import loadedPackages
 from ._utils import get_files_in_distribution, get_root
@@ -88,9 +88,7 @@ def uninstall_distributions(
                 directories.add(file.parent)
 
         # Remove directories in reverse hierarchical order
-        for directory in sorted(
-            directories, key=lambda x: len(x.parts), reverse=True
-        ):
+        for directory in sorted(directories, key=lambda x: len(x.parts), reverse=True):
             try:
                 directory.rmdir()
             except OSError:

@@ -94,7 +94,9 @@ class Transaction:
 
         return await self.add_requirement_inner(Requirement(req))
 
-    def check_version_satisfied(self, req: Requirement, *, allow_reinstall: bool = False) -> tuple[bool, str]:
+    def check_version_satisfied(
+        self, req: Requirement, *, allow_reinstall: bool = False
+    ) -> tuple[bool, str]:
         """
         Check if the installed version of a package satisfies the requirement.
         Returns True if the requirement is satisfied, False otherwise.
