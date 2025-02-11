@@ -466,8 +466,8 @@ async def test_reinstall_different_version(
 
 def test_reinstall_different_version2(selenium_standalone_micropip, wheel_catalog):
     selenium = selenium_standalone_micropip
-    blue_wheel1 = wheel_catalog.get(("blue", "0.9.0"))
-    blue_wheel2 = wheel_catalog.get(("blue", "0.9.1"))
+    mccabe_wheel1 = wheel_catalog.get(("mccabe", "0.6.1"))
+    mccabe_wheel2 = wheel_catalog.get(("mccabe", "0.7.0"))
 
     @run_in_pyodide
     async def run(selenium, v1, v2):
@@ -481,13 +481,13 @@ def test_reinstall_different_version2(selenium_standalone_micropip, wheel_catalo
 
         micropip.install(v2, reinstall=True)
 
-    run(selenium, blue_wheel1.url, blue_wheel2.url)
+    run(selenium, mccabe_wheel1.url, mccabe_wheel2.url)
 
 
 def test_reinstall_reload(selenium_standalone_micropip, wheel_catalog):
     selenium = selenium_standalone_micropip
-    blue_wheel1 = wheel_catalog.get(("blue", "0.9.0"))
-    blue_wheel2 = wheel_catalog.get(("blue", "0.9.1"))
+    mccabe_wheel1 = wheel_catalog.get(("mccabe", "0.6.1"))
+    mccabe_wheel2 = wheel_catalog.get(("mccabe", "0.7.0"))
 
     @run_in_pyodide
     async def run(selenium, v1, v2):
@@ -495,21 +495,21 @@ def test_reinstall_reload(selenium_standalone_micropip, wheel_catalog):
 
         micropip.install(v1)
 
-        import blue
+        import mccabe
 
-        assert blue.__version__ == "0.9.0"
+        assert mccabe.__version__ == "0.6.1"
 
         micropip.install(v2, reinstall=True)
 
-        import blue
+        import mccabe
 
         # still the old version
-        assert blue.__version__ == "0.9.0"
+        assert mccabe.__version__ == "0.6.1"
 
         from importlib import reload
 
-        reload(blue)
+        reload(mccabe)
 
-        assert blue.__version__ == "0.9.1"
+        assert mccabe.__version__ == "0.7.0"
 
-    run(selenium, blue_wheel1.url, blue_wheel2.url)
+    run(selenium, mccabe_wheel1.url, mccabe_wheel2.url)
