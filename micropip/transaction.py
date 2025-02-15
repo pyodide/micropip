@@ -2,6 +2,7 @@ import asyncio
 import importlib.metadata
 import logging
 import warnings
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
@@ -327,6 +328,8 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         reverse=True,
     )
 
+    yanked_versions = []
+
     for ver in candidate_versions:
         if ver not in releases:
             warnings.warn(
@@ -335,18 +338,27 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
             )
             continue
 
-        best_wheel = None
-        best_tag_index = float("infinity")
-
         wheels = releases[ver]
-        for wheel in wheels:
-            tag_index = best_compatible_tag_index(wheel.tags)
-            if tag_index is not None and tag_index < best_tag_index:
-                best_wheel = wheel
-                best_tag_index = tag_index
+
+        # If the version is yanked, put it in the end of the candidate list.
+        # If we can't find a wheel that satisfies the requirement,
+        # install the yanked version as a last resort.
+        yanked = any(wheel.yanked for wheel in wheels)
+        if yanked:
+            yanked_versions.append(ver)
+            continue
+
+        best_wheel = _find_best_wheel(wheels)
 
         if best_wheel is not None:
-            return wheel
+            return best_wheel
+
+    for ver in yanked_versions:
+        wheels = releases[ver]
+        best_wheel = _find_best_wheel(wheels)
+
+        if best_wheel is not None:
+            return best_wheel
 
     raise ValueError(
         f"Can't find a pure Python 3 wheel for '{req}'.\n"
@@ -354,3 +366,15 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         "You can use `await micropip.install(..., keep_going=True)` "
         "to get a list of all packages with missing wheels."
     )
+
+
+def _find_best_wheel(wheels: Iterator[WheelInfo]) -> WheelInfo | None:
+    best_wheel = None
+    best_tag_index = float("infinity")
+    for wheel in wheels:
+        tag_index = best_compatible_tag_index(wheel.tags)
+        if tag_index is not None and tag_index < best_tag_index:
+            best_wheel = wheel
+            best_tag_index = tag_index
+
+    return best_wheel
