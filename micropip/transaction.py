@@ -2,7 +2,7 @@ import asyncio
 import importlib.metadata
 import logging
 import warnings
-from collections.abc import Iterator
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
@@ -328,7 +328,7 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         reverse=True,
     )
 
-    yanked_versions = []
+    yanked_versions: list[list[WheelInfo]] = []
 
     for ver in candidate_versions:
         if ver not in releases:
@@ -338,14 +338,14 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
             )
             continue
 
-        wheels = releases[ver]
+        wheels = list(releases[ver])
 
         # If the version is yanked, put it in the end of the candidate list.
         # If we can't find a wheel that satisfies the requirement,
         # install the yanked version as a last resort.
         yanked = any(wheel.yanked for wheel in wheels)
         if yanked:
-            yanked_versions.append(ver)
+            yanked_versions.append(wheels)
             continue
 
         best_wheel = _find_best_wheel(wheels)
@@ -353,8 +353,7 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         if best_wheel is not None:
             return best_wheel
 
-    for ver in yanked_versions:
-        wheels = releases[ver]
+    for wheels in yanked_versions:
         best_wheel = _find_best_wheel(wheels)
 
         if best_wheel is not None:
@@ -368,7 +367,7 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
     )
 
 
-def _find_best_wheel(wheels: Iterator[WheelInfo]) -> WheelInfo | None:
+def _find_best_wheel(wheels: Iterable[WheelInfo]) -> WheelInfo | None:
     best_wheel = None
     best_tag_index = float("infinity")
     for wheel in wheels:
