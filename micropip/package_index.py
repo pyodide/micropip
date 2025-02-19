@@ -163,6 +163,12 @@ class ProjectInfo:
             # Size of the file in bytes, if available (PEP 700)
             # This key is not available in the Simple API HTML response, so this field may be None
             size = file.get("size")
+
+            # PEP-592:
+            # yanked can be an arbitrary string (reason) or bool.
+            # any string is considered as True, so we convert it to bool.
+            yanked = bool(file.get("yanked", False))
+
             yield WheelInfo.from_package_index(
                 name=name,
                 filename=filename,
@@ -171,6 +177,7 @@ class ProjectInfo:
                 sha256=sha256,
                 size=size,
                 core_metadata=core_metadata,
+                yanked=yanked,
             )
 
     @classmethod
