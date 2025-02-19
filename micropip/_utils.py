@@ -4,7 +4,7 @@ from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_config_var, get_platform
 
-from ._compat import REPODATA_PACKAGES
+from ._compat import LOCKFILE_PACKAGES
 from ._vendored.packaging.src.packaging.requirements import (
     InvalidRequirement,
     Requirement,
@@ -222,7 +222,7 @@ def fix_package_dependencies(
         List of extras for this package.
 
     """
-    if package_name in REPODATA_PACKAGES:
+    if package_name in LOCKFILE_PACKAGES:
         # don't check things that are in original repository
         return
 

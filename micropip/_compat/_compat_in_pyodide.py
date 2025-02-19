@@ -19,8 +19,8 @@ try:
         loadDynlibsFromPackage,
     )
 
-    REPODATA_PACKAGES = pyodide_js._api.repodata_packages.to_py()
-    REPODATA_INFO = pyodide_js._api.repodata_info.to_py()
+    LOCKFILE_PACKAGES = pyodide_js._api.lockfile_packages.to_py()
+    LOCKFILE_INFO = pyodide_js._api.lockfile_info.to_py()
 except ImportError:
     if IN_BROWSER:
         raise
@@ -72,6 +72,6 @@ class CompatibilityInPyodide(CompatibilityLayer):
 
     to_js = to_js
 
-    repodata_info = REPODATA_INFO
+    lockfile_info = LOCKFILE_INFO
 
-    repodata_packages = REPODATA_PACKAGES
+    lockfile_packages = LOCKFILE_PACKAGES
