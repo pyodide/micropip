@@ -1,5 +1,3 @@
-import json
-
 import pytest
 from conftest import mock_fetch_cls
 
@@ -35,35 +33,8 @@ def test_set_index_urls():
         assert manager.index_urls == default_index_urls
 
 
-def test_freeze():
-    manager = get_test_package_manager()
-
-    test_repodata_info = {
-        "test-dep-1": "0.1.0",
-        "test-dep-2": "0.2.0",
-    }
-    test_repodata_packages = {
-        "test-dep-1": {
-            "version": "0.1.0",
-            "depends": ["test-dep-2"],
-        },
-        "test-dep-2": {
-            "version": "0.2.0",
-        },
-    }
-
-    manager.repodata_info = test_repodata_info.copy()
-    manager.repodata_packages = test_repodata_packages.copy()
-
-    lockfile = manager.freeze()
-    assert json.loads(lockfile) == {
-        "info": test_repodata_info,
-        "packages": test_repodata_packages,
-    }
-
-
 @pytest.mark.asyncio
-async def test_list(mock_fetch: mock_fetch_cls):
+async def test_list_packages(mock_fetch: mock_fetch_cls):
     manager = get_test_package_manager()
 
     dummy = "dummy"
@@ -72,7 +43,7 @@ async def test_list(mock_fetch: mock_fetch_cls):
 
     await manager.install(dummy_url)
 
-    pkg_list = manager.list()
+    pkg_list = manager.list_packages()
 
     assert dummy in pkg_list
     assert pkg_list[dummy].source.lower() == dummy_url

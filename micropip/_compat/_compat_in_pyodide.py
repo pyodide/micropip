@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
@@ -38,14 +38,6 @@ class CompatibilityInPyodide(CompatibilityLayer):
             super().__init__(message)
 
     @staticmethod
-    def repodata_info() -> dict[str, str]:
-        return REPODATA_INFO
-
-    @staticmethod
-    def repodata_packages() -> dict[str, dict[str, Any]]:
-        return REPODATA_PACKAGES
-
-    @staticmethod
     async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
         parsed_url = urlparse(url)
         if parsed_url.scheme == "emfs":
@@ -79,3 +71,7 @@ class CompatibilityInPyodide(CompatibilityLayer):
     loadPackage = loadPackage
 
     to_js = to_js
+
+    repodata_info = REPODATA_INFO
+
+    repodata_packages = REPODATA_PACKAGES
