@@ -209,11 +209,14 @@ class PackageManager:
 
             packages_all = [pkg.name for pkg in wheels + pyodide_packages]
 
-            # This will return non-empty list only when reinstall is True,
-            # When reinstall is False, the transaction will fail if there is an installed package
+
             distributions = search_installed_packages(packages_all)
-            with indent_log():
-                self._uninstall_distributions(distributions, logger)
+            # This check is redundant because the distributions will always be an emtpy list when reinstall==False
+            # (no installed packages will be returned from transaction)
+            # But just in case.
+            if reinstall:
+                with indent_log():
+                    self._uninstall_distributions(distributions, logger)
 
             logger.debug(
                 "Installing packages %r and wheels %r ",
