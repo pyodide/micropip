@@ -27,15 +27,9 @@ class CompatibilityLayer(ABC):
         def to_py():
             pass
 
-    @staticmethod
-    @abstractmethod
-    def repodata_info() -> dict[str, str]:
-        pass
+    lockfile_info: dict[str, str]
 
-    @staticmethod
-    @abstractmethod
-    def repodata_packages() -> dict[str, dict[str, Any]]:
-        pass
+    lockfile_packages: dict[str, dict[str, Any]]
 
     @staticmethod
     @abstractmethod
@@ -73,9 +67,9 @@ class CompatibilityLayer(ABC):
         /,
         *,
         depth: int = -1,
-        pyproxies: Any,
+        pyproxies: Any = None,
         create_pyproxies: bool = True,
-        dict_converter: Any,
-        default_converter: Any,
+        dict_converter: Any = None,
+        default_converter: Any = None,
     ) -> Any:
         pass

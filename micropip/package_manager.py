@@ -1,16 +1,23 @@
+import asyncio
 import builtins
+import importlib
+import importlib.metadata
+from importlib.metadata import Distribution
+from pathlib import Path
 from typing import (  # noqa: UP035 List import is necessary due to the `list` method
-    Any,
     List,
 )
 
+from packaging.markers import default_environment
+
 from . import _mock_package, package_index
-from ._compat import REPODATA_INFO, REPODATA_PACKAGES
+from ._compat import CompatibilityLayer, compatibility_layer
+from ._utils import get_files_in_distribution, get_root
+from .constants import FAQ_URLS
 from .freeze import freeze_lockfile
-from .install import install
-from .list import list_installed_packages
-from .package import PackageDict
-from .uninstall import uninstall
+from .logging import setup_logging
+from .package import PackageDict, PackageMetadata
+from .transaction import Transaction
 
 
 class PackageManager:
@@ -21,11 +28,13 @@ class PackageManager:
     independent of other instances.
     """
 
-    def __init__(self) -> None:
-        self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
+    def __init__(self, compat: type[CompatibilityLayer] | None = None) -> None:
 
-        self.repodata_packages: dict[str, dict[str, Any]] = REPODATA_PACKAGES
-        self.repodata_info: dict[str, str] = REPODATA_INFO
+        if compat is None:
+            compat = compatibility_layer
+
+        self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
+        self.compat_layer: type[CompatibilityLayer] = compat
         self.constraints: list[str] = []
 
         pass
@@ -41,7 +50,7 @@ class PackageManager:
         *,
         constraints: list[str] | None = None,
         verbose: bool | int | None = None,
-    ):
+    ) -> None:
         """Install the given package and all of its dependencies.
 
         If a package is not found in the Pyodide repository it will be loaded from
@@ -137,24 +146,94 @@ class PackageManager:
             change logger level. Setting ``verbose=True`` will print similar
             information as pip.
         """
-        if index_urls is None:
-            index_urls = self.index_urls
 
-        if constraints is None:
-            constraints = self.constraints
+        with setup_logging().ctx_level(verbose) as logger:
+            if index_urls is None:
+                index_urls = self.index_urls
 
-        return await install(
-            requirements,
-            index_urls,
-            keep_going,
-            deps,
-            credentials,
-            pre,
-            constraints=constraints,
-            verbose=verbose,
-        )
+            if constraints is None:
+                constraints = self.constraints
 
-    def list(self) -> PackageDict:
+            ctx = default_environment()
+            if isinstance(requirements, str):
+                requirements = [requirements]
+
+            fetch_kwargs = {}
+
+            if credentials:
+                fetch_kwargs["credentials"] = credentials
+
+            # Note: getsitepackages is not available in a virtual environment...
+            # See https://github.com/pypa/virtualenv/issues/228 (issue is closed but
+            # problem is not fixed)
+            from site import getsitepackages
+
+            wheel_base = Path(getsitepackages()[0])
+
+            transaction = Transaction(
+                ctx=ctx,  # type: ignore[arg-type]
+                ctx_extras=[],
+                keep_going=keep_going,
+                deps=deps,
+                pre=pre,
+                fetch_kwargs=fetch_kwargs,
+                verbose=verbose,
+                index_urls=index_urls,
+                constraints=constraints,
+            )
+            await transaction.gather_requirements(requirements)
+
+            if transaction.failed:
+                failed_requirements = ", ".join(
+                    [f"'{req}'" for req in transaction.failed]
+                )
+                raise ValueError(
+                    f"Can't find a pure Python 3 wheel for: {failed_requirements}\n"
+                    f"See: {FAQ_URLS['cant_find_wheel']}\n"
+                )
+
+            pyodide_packages, wheels = transaction.pyodide_packages, transaction.wheels
+
+            package_names = [pkg.name for pkg in wheels + pyodide_packages]
+
+            logger.debug(
+                "Installing packages %r and wheels %r ",
+                transaction.pyodide_packages,
+                [w.filename for w in transaction.wheels],
+            )
+
+            if package_names:
+                logger.info(
+                    "Installing collected packages: %s", ", ".join(package_names)
+                )
+
+            # Install PyPI packages
+            # detect whether the wheel metadata is from PyPI or from custom location
+            # wheel metadata from PyPI has SHA256 checksum digest.
+            await asyncio.gather(*(wheel.install(wheel_base) for wheel in wheels))
+
+            # Install built-in packages
+            if pyodide_packages:
+                # Note: branch never happens in out-of-browser testing because in
+                # that case LOCKFILE_PACKAGES is empty.
+                await asyncio.ensure_future(
+                    self.compat_layer.loadPackage(
+                        self.compat_layer.to_js(
+                            [name for [name, _, _] in pyodide_packages]
+                        )
+                    )
+                )
+
+            packages = [
+                f"{pkg.name}-{pkg.version}" for pkg in pyodide_packages + wheels
+            ]
+
+            if packages:
+                logger.info("Successfully installed %s", ", ".join(packages))
+
+            importlib.invalidate_caches()
+
+    def list_packages(self) -> PackageDict:
         """Get the dictionary of installed packages.
 
         Returns
@@ -172,7 +251,39 @@ class PackageManager:
             >>> "regex" in package_list # doctest: +SKIP
             True
         """
-        return list_installed_packages(self.repodata_packages)
+        # Add packages that are loaded through pyodide.loadPackage
+        packages = PackageDict()
+        for dist in importlib.metadata.distributions():
+            name = dist.name
+            version = dist.version
+            source = dist.read_text("PYODIDE_SOURCE")
+            if source is None:
+                # source is None if PYODIDE_SOURCE does not exist. In this case the
+                # wheel was installed manually, not via `pyodide.loadPackage` or
+                # `micropip`.
+                continue
+            packages[name] = PackageMetadata(
+                name=name,
+                version=version,
+                source=source,
+            )
+
+        for name, pkg_source in self.compat_layer.loadedPackages.to_py().items():
+            if name in packages:
+                continue
+
+            if name in self.compat_layer.lockfile_packages:
+                version = self.compat_layer.lockfile_packages[name]["version"]
+                source_ = "pyodide"
+                if pkg_source != "default channel":
+                    # Pyodide package loaded from a custom URL
+                    source_ = pkg_source
+            else:
+                # TODO: calculate version from wheel metadata
+                version = "unknown"
+                source_ = pkg_source
+            packages[name] = PackageMetadata(name=name, version=version, source=source_)
+        return packages
 
     def freeze(self) -> str:
         """Produce a json string which can be used as the contents of the
@@ -186,7 +297,9 @@ class PackageManager:
         You can use your custom lock file by passing an appropriate url to the
         ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
         """
-        return freeze_lockfile(self.repodata_packages, self.repodata_info)
+        return freeze_lockfile(
+            self.compat_layer.lockfile_packages, self.compat_layer.lockfile_info
+        )
 
     def add_mock_package(
         self,
@@ -297,7 +410,83 @@ class PackageManager:
             By default, micropip is silent. Setting ``verbose=True`` will print
             similar information as pip.
         """
-        return uninstall(packages, verbose=verbose)
+        with setup_logging().ctx_level(verbose) as logger:
+
+            if isinstance(packages, str):
+                packages = [packages]
+
+            distributions: list[Distribution] = []
+            for package in packages:
+                try:
+                    dist = importlib.metadata.distribution(package)
+                    distributions.append(dist)
+                except importlib.metadata.PackageNotFoundError:
+                    logger.warning("Skipping '%s' as it is not installed.", package)
+
+            for dist in distributions:
+                # Note: this value needs to be retrieved before removing files, as
+                #       dist.name uses metadata file to get the name
+                name = dist.name
+                version = dist.version
+
+                logger.info("Found existing installation: %s %s", name, version)
+
+                root = get_root(dist)
+                files = get_files_in_distribution(dist)
+                directories = set()
+
+                for file in files:
+                    if not file.is_file():
+                        if not file.is_relative_to(root):
+                            # This file is not in the site-packages directory. Probably one of:
+                            # - data_files
+                            # - scripts
+                            # - entry_points
+                            # Since we don't support these, we can ignore them (except for data_files (TODO))
+                            logger.warning(
+                                "skipping file '%s' that is relative to root",
+                            )
+                            continue
+                        # see PR 130, it is likely that this is never triggered since Python 3.12
+                        # as non existing files are not listed by get_files_in_distribution anymore.
+                        logger.warning(
+                            "A file '%s' listed in the metadata of '%s' does not exist.",
+                            file,
+                            name,
+                        )
+
+                        continue
+
+                    file.unlink()
+
+                    if file.parent != root:
+                        directories.add(file.parent)
+
+                # Remove directories in reverse hierarchical order
+                for directory in sorted(
+                    directories, key=lambda x: len(x.parts), reverse=True
+                ):
+                    try:
+                        directory.rmdir()
+                    except OSError:
+                        logger.warning(
+                            "A directory '%s' is not empty after uninstallation of '%s'. "
+                            "This might cause problems when installing a new version of the package. ",
+                            directory,
+                            name,
+                        )
+
+                if hasattr(self.compat_layer.loadedPackages, name):
+                    delattr(self.compat_layer.loadedPackages, name)
+                else:
+                    # This should not happen, but just in case
+                    logger.warning(
+                        "a package '%s' was not found in loadedPackages.", name
+                    )
+
+                logger.info("Successfully uninstalled %s-%s", name, version)
+
+            importlib.invalidate_caches()
 
     def set_index_urls(self, urls: List[str] | str):  # noqa: UP006
         """

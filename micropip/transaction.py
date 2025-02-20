@@ -8,7 +8,7 @@ from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
 from . import package_index
-from ._compat import REPODATA_PACKAGES
+from ._compat import LOCKFILE_PACKAGES
 from ._utils import (
     best_compatible_tag_index,
     check_compatible,
@@ -208,9 +208,9 @@ class Transaction:
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        locked_package = REPODATA_PACKAGES.get(req.name)
+        locked_package = LOCKFILE_PACKAGES.get(req.name)
         if locked_package and req.specifier.contains(
-            REPODATA_PACKAGES[req.name]["version"], prereleases=True
+            LOCKFILE_PACKAGES[req.name]["version"], prereleases=True
         ):
             version = locked_package["version"]
             self.pyodide_packages.append(
