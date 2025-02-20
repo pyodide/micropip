@@ -20,7 +20,7 @@ from ._vendored.packaging.src.packaging.requirements import (
     Requirement,
 )
 from ._vendored.packaging.src.packaging.utils import canonicalize_name
-from .constants import FAQ_URLS
+from .constants import FAQ_URLS, YANKED_WARNING_MESSAGE
 from .package import PackageMetadata
 from .package_index import ProjectInfo
 from .wheelinfo import WheelInfo
@@ -239,6 +239,16 @@ class Transaction:
 
         logger.debug("Transaction: Selected wheel: %r", wheel)
 
+        if wheel.yanked:
+            yanked_reason = wheel.yanked_reason if wheel.yanked_reason else "None"
+            logger.info(
+                YANKED_WARNING_MESSAGE,
+                wheel.name,
+                str(wheel.version),
+                wheel.url,
+                yanked_reason,
+            )
+
         # Maybe while we were downloading pypi_json some other branch
         # installed the wheel?
         satisfied, ver = self.check_version_satisfied(req)
@@ -343,7 +353,8 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         # If the version is yanked, put it in the end of the candidate list.
         # If we can't find a wheel that satisfies the requirement,
         # install the yanked version as a last resort.
-        yanked = any(wheel.yanked for wheel in wheels)
+        # when the version is yanked, all wheels are yanked, so we can check only the first wheel.
+        yanked = wheels and wheels[0].yanked
         if yanked:
             yanked_versions.append(wheels)
             continue

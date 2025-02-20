@@ -232,17 +232,22 @@ def test_yanked_version():
 
         metadata.releases[version] = wheels
 
-    # yanked version should be skipped and the next best version should be selected
+    # case 1: yanked version should be skipped and the next best version should be selected
+
     requirement1 = Requirement("dummy_module")
     wheel = find_wheel(metadata, requirement1)
 
     assert str(wheel.version) == "0.9.1"
 
+    # case 2: yanked version is explicitly requested, so it should be selected
+
     requirement2 = Requirement("dummy_module==0.15.5")
     wheel = find_wheel(metadata, requirement2)
 
-    # no other compatible version available, so the yanked version should be selected
     assert str(wheel.version) == "0.15.5"
+
+    # case 3: yanked version is not explicitly requested, but it is the only version available
+    # so it should be selected
 
     requirement3 = Requirement("dummy_module>0.10.0")
 

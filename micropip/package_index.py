@@ -166,8 +166,7 @@ class ProjectInfo:
 
             # PEP-592:
             # yanked can be an arbitrary string (reason) or bool.
-            # any string is considered as True, so we convert it to bool.
-            yanked = bool(file.get("yanked", False))
+            yanked_reason = file.get("yanked", False)
 
             yield WheelInfo.from_package_index(
                 name=name,
@@ -177,7 +176,7 @@ class ProjectInfo:
                 sha256=sha256,
                 size=size,
                 core_metadata=core_metadata,
-                yanked=yanked,
+                yanked_reason=yanked_reason,
             )
 
     @classmethod
