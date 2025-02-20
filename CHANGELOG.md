@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- micropip now respects the `yanked` flag in the PyPI simple API.
+- micropip now respects the `yanked` flag in the PyPI Simple API.
   [#208](https://github.com/pyodide/micropip/pull/208)
 
 ## [0.9.0] - 2024/02/01
