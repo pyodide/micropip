@@ -133,7 +133,7 @@ def test_contain_placeholder():
         ("numpy", "black"),
     ],
 )
-async def test_query_package(mock_fixture, pkg1, pkg2, request):
+async def test_query_package(mock_fixture, pkg1, pkg2, request, host_compat_layer):
     gen_mock_server = request.getfixturevalue(mock_fixture)
     pkg1_index_url = gen_mock_server(pkgs=[pkg1], pkgs_not_found=[pkg2])
     pkg2_index_url = gen_mock_server(pkgs=[pkg2], pkgs_not_found=[pkg1])
@@ -143,10 +143,14 @@ async def test_query_package(mock_fixture, pkg1, pkg2, request):
         [pkg1_index_url],
         [pkg2_index_url, pkg1_index_url],
     ):
-        project_info = await package_index.query_package(pkg1, index_urls=_index_urls)
+        project_info = await package_index.query_package(
+            pkg1, index_urls=_index_urls, compat_layer=host_compat_layer
+        )
 
         assert project_info.name == pkg1
         assert project_info.releases
 
     with pytest.raises(ValueError, match="Can't fetch metadata"):
-        await package_index.query_package(pkg1, index_urls=[pkg2_index_url])
+        await package_index.query_package(
+            pkg1, index_urls=[pkg2_index_url], compat_layer=host_compat_layer
+        )

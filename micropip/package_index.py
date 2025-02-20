@@ -9,7 +9,7 @@ from functools import partial
 from typing import Any
 from urllib.parse import urljoin, urlparse, urlunparse
 
-from ._compat import HttpStatusError, fetch_string_and_headers
+from ._compat import CompatibilityLayer
 from ._utils import is_package_compatible, parse_version
 from ._vendored.mousebender.simple import from_project_details_html
 from ._vendored.packaging.src.packaging.utils import InvalidWheelFilename
@@ -265,6 +265,9 @@ def _select_parser(
 async def query_package(
     name: str,
     index_urls: list[str] | str,
+    *,
+    # TODO: instead of passing this as a parameter, it should be a class attribute
+    compat_layer: type[CompatibilityLayer],
     fetch_kwargs: dict[str, Any] | None = None,
 ) -> ProjectInfo:
     """
@@ -306,8 +309,10 @@ async def query_package(
             url = f"{url}/{name}/"
             logger.debug("Url has no placeholder, appending package name : %r", url)
         try:
-            metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
-        except HttpStatusError as e:
+            metadata, headers = await compat_layer.fetch_string_and_headers(
+                url, _fetch_kwargs
+            )
+        except compat_layer.HttpStatusError as e:
             if e.status_code == 404:
                 logger.debug("NotFound (404) for %r, trying next index.", url)
                 continue
