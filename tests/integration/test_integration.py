@@ -53,6 +53,26 @@ def test_integration_install_no_deps(selenium_standalone_micropip, pytestconfig)
 
 
 @integration_test_only
+def test_integration_install_yanked(selenium_standalone_micropip, pytestconfig):
+    @run_in_pyodide
+    async def _run(selenium):
+        import contextlib
+        import io
+
+        import micropip
+
+        with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+            # install yanked version
+            await micropip.install("black==21.11b0", verbose=True)
+
+            captured = buf.getvalue()
+            assert "The candidate selected for download or install is a" in captured
+            assert "'black' candidate (version 21.11b0" in captured
+
+    _run(selenium_standalone_micropip)
+
+
+@integration_test_only
 def test_integration_list_basic(selenium_standalone_micropip, pytestconfig):
     @run_in_pyodide
     async def _run(selenium):
