@@ -52,10 +52,11 @@ def test_parse_wheel_url3():
     assert wheel.tags == frozenset({Tag("cp35", "cp35m", "macosx_10_9_intel")})
 
 
-def create_transaction(Transaction):
+def create_transaction(Transaction, compat_layer):
     from micropip.package_index import DEFAULT_INDEX_URLS
 
     return Transaction(
+        _compat_layer=compat_layer,
         wheels=[],
         locked={},
         keep_going=True,
@@ -71,12 +72,12 @@ def create_transaction(Transaction):
 
 
 @pytest.mark.asyncio
-async def test_add_requirement(wheel_catalog):
+async def test_add_requirement(wheel_catalog, host_compat_layer):
     from micropip.transaction import Transaction
 
     snowballstemmer_wheel = wheel_catalog.get("snowballstemmer")
 
-    transaction = create_transaction(Transaction)
+    transaction = create_transaction(Transaction, host_compat_layer)
     await transaction.add_requirement(snowballstemmer_wheel.url)
 
     wheel = transaction.wheels[0]
@@ -90,10 +91,10 @@ async def test_add_requirement(wheel_catalog):
 
 
 @pytest.mark.asyncio
-async def test_add_requirement_marker(mock_importlib, wheel_base):
+async def test_add_requirement_marker(mock_importlib, wheel_base, host_compat_layer):
     from micropip.transaction import Transaction
 
-    transaction = create_transaction(Transaction)
+    transaction = create_transaction(Transaction, host_compat_layer)
 
     await transaction.gather_requirements(
         [
@@ -125,7 +126,9 @@ async def test_add_requirement_marker(mock_importlib, wheel_base):
 
 
 @pytest.mark.asyncio
-async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch):
+async def test_add_requirement_query_url(
+    mock_importlib, wheel_base, monkeypatch, host_compat_layer
+):
     from micropip.transaction import Transaction
 
     async def mock_add_wheel(self, wheel, extras, *, specifier=""):
@@ -133,7 +136,7 @@ async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch
 
     monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
 
-    transaction = create_transaction(Transaction)
+    transaction = create_transaction(Transaction, host_compat_layer)
     await transaction.add_requirement(f"{SNOWBALL_WHEEL}?b=1")
     wheel = transaction.mock_wheel
     assert wheel.name == "snowballstemmer"
@@ -141,13 +144,13 @@ async def test_add_requirement_query_url(mock_importlib, wheel_base, monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_install_non_pure_python_wheel():
+async def test_install_non_pure_python_wheel(host_compat_layer):
     from micropip.transaction import Transaction
 
     msg = "Wheel platform 'macosx_10_9_intel' is not compatible with Pyodide's platform"
     with pytest.raises(ValueError, match=msg):
         url = "http://a/scikit_learn-0.22.2.post1-cp35-cp35m-macosx_10_9_intel.whl"
-        transaction = create_transaction(Transaction)
+        transaction = create_transaction(Transaction, host_compat_layer)
         await transaction.add_requirement(url)
 
 
@@ -283,11 +286,12 @@ def test_last_version_and_best_tag_from_pypi(
     assert str(wheel.version) == new_version
 
 
-def test_search_pyodide_lock_first():
+def test_search_pyodide_lock_first(host_compat_layer):
     from micropip import package_index
     from micropip.transaction import Transaction
 
     t = Transaction(
+        _compat_layer=host_compat_layer,
         ctx={},
         ctx_extras=[],
         keep_going=True,
@@ -300,6 +304,7 @@ def test_search_pyodide_lock_first():
     assert t.search_pyodide_lock_first is True
 
     t = Transaction(
+        _compat_layer=host_compat_layer,
         ctx={},
         ctx_extras=[],
         keep_going=True,
@@ -314,7 +319,11 @@ def test_search_pyodide_lock_first():
 
 @pytest.mark.asyncio
 async def test_index_url_priority(
-    mock_importlib, wheel_base, monkeypatch, mock_package_index_simple_json_api
+    mock_importlib,
+    wheel_base,
+    monkeypatch,
+    mock_package_index_simple_json_api,
+    host_compat_layer,
 ):
     # Test that if the index_urls are provided, package should be searched in
     # the index_urls first before searching in Pyodide lock file.
@@ -332,6 +341,7 @@ async def test_index_url_priority(
     mock_index_url = mock_package_index_simple_json_api(pkgs=["black"])
 
     t = Transaction(
+        _compat_layer=host_compat_layer,
         keep_going=True,
         deps=False,
         pre=False,
