@@ -78,6 +78,6 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
     ) -> Any:
         return obj
 
-    repodata_info = {}
+    lockfile_info = {}
 
-    repodata_packages = {}
+    lockfile_packages = {}

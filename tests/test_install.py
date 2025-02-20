@@ -322,11 +322,11 @@ async def test_load_binary_wheel1(
 @pytest.mark.skip_refcount_check
 @run_in_pyodide(packages=["micropip"])
 async def test_load_binary_wheel2(selenium_standalone_micropip):
-    from pyodide_js._api import repodata_packages
+    from pyodide_js._api import lockfile_packages
 
     import micropip
 
-    await micropip.install(repodata_packages.regex.file_name)
+    await micropip.install(lockfile_packages.regex.file_name)
     import regex  # noqa: F401
 
 

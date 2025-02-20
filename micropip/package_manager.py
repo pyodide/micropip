@@ -215,7 +215,7 @@ class PackageManager:
             # Install built-in packages
             if pyodide_packages:
                 # Note: branch never happens in out-of-browser testing because in
-                # that case REPODATA_PACKAGES is empty.
+                # that case LOCKFILE_PACKAGES is empty.
                 await asyncio.ensure_future(
                     self.compat_layer.loadPackage(
                         self.compat_layer.to_js(
@@ -272,8 +272,8 @@ class PackageManager:
             if name in packages:
                 continue
 
-            if name in self.compat_layer.repodata_packages:
-                version = self.compat_layer.repodata_packages[name]["version"]
+            if name in self.compat_layer.lockfile_packages:
+                version = self.compat_layer.lockfile_packages[name]["version"]
                 source_ = "pyodide"
                 if pkg_source != "default channel":
                     # Pyodide package loaded from a custom URL
@@ -298,7 +298,7 @@ class PackageManager:
         ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
         """
         return freeze_lockfile(
-            self.compat_layer.repodata_packages, self.compat_layer.repodata_info
+            self.compat_layer.lockfile_packages, self.compat_layer.lockfile_info
         )
 
     def add_mock_package(

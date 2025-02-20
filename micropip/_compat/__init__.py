@@ -16,9 +16,9 @@ else:
     compatibility_layer = CompatibilityNotInPyodide
 
 
-REPODATA_INFO = compatibility_layer.repodata_info
+LOCKFILE_INFO = compatibility_layer.lockfile_info
 
-REPODATA_PACKAGES = compatibility_layer.repodata_packages
+LOCKFILE_PACKAGES = compatibility_layer.lockfile_packages
 
 fetch_bytes = compatibility_layer.fetch_bytes
 
@@ -38,8 +38,8 @@ HttpStatusError = compatibility_layer.HttpStatusError
 
 
 __all__ = [
-    "REPODATA_INFO",
-    "REPODATA_PACKAGES",
+    "LOCKFILE_INFO",
+    "LOCKFILE_PACKAGES",
     "fetch_bytes",
     "fetch_string_and_headers",
     "loadedPackages",
