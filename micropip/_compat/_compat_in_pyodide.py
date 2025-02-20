@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
@@ -19,8 +19,8 @@ try:
         loadDynlibsFromPackage,
     )
 
-    REPODATA_PACKAGES = pyodide_js._api.repodata_packages.to_py()
-    REPODATA_INFO = pyodide_js._api.repodata_info.to_py()
+    LOCKFILE_PACKAGES = pyodide_js._api.lockfile_packages.to_py()
+    LOCKFILE_INFO = pyodide_js._api.lockfile_info.to_py()
 except ImportError:
     if IN_BROWSER:
         raise
@@ -36,14 +36,6 @@ class CompatibilityInPyodide(CompatibilityLayer):
             self.status_code = status_code
             self.message = message
             super().__init__(message)
-
-    @staticmethod
-    def repodata_info() -> dict[str, str]:
-        return REPODATA_INFO
-
-    @staticmethod
-    def repodata_packages() -> dict[str, dict[str, Any]]:
-        return REPODATA_PACKAGES
 
     @staticmethod
     async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
@@ -79,3 +71,7 @@ class CompatibilityInPyodide(CompatibilityLayer):
     loadPackage = loadPackage
 
     to_js = to_js
+
+    lockfile_info = LOCKFILE_INFO
+
+    lockfile_packages = LOCKFILE_PACKAGES

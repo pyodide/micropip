@@ -91,7 +91,6 @@ def selenium_standalone_micropip(selenium_standalone, wheel_path):
         selenium_standalone.run_js(
             f"""
             await pyodide.loadPackage("{base_url + wheel_file.name}");
-            await pyodide.loadPackage(["packaging"]);
             pyodide.runPython("import micropip");
             """
         )

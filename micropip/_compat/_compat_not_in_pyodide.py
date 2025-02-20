@@ -32,14 +32,6 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
             return {}
 
     @staticmethod
-    def repodata_info() -> dict[str, str]:
-        return {}
-
-    @staticmethod
-    def repodata_packages() -> dict[str, dict[str, Any]]:
-        return {}
-
-    @staticmethod
     def _fetch(url: str, kwargs: dict[str, Any]) -> addinfourl:
         return urlopen(Request(url, **kwargs))
 
@@ -85,3 +77,7 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         default_converter=None,
     ) -> Any:
         return obj
+
+    lockfile_info = {}
+
+    lockfile_packages = {}
