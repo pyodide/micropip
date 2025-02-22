@@ -355,6 +355,16 @@ def test_emfs(selenium_standalone_micropip, wheel_catalog):
     run_test(selenium_standalone_micropip, snowball_wheel.url, snowball_wheel.filename)
 
 
+def test_emfs_error(selenium_standalone_micropip):
+    @run_in_pyodide()
+    async def run_test(selenium):
+        import micropip
+
+        await micropip.install("emfs:a-2.0.2-cp312-cp312-pyodide_2024_0_wasm32.whl")
+
+    run_test(selenium_standalone_micropip)
+
+
 def test_logging(selenium_standalone_micropip, wheel_catalog):
     @run_in_pyodide(packages=["micropip"])
     async def run_test(selenium, url, name, version):

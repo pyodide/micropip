@@ -207,13 +207,14 @@ class WheelInfo:
                 "cdn.jsdelivr.net",
             ]:
                 raise e
-            else:
+            if self.parsed_url.scheme in ("https", "http"):
                 raise ValueError(
                     f"Can't fetch wheel from {url!r}. "
                     "One common reason for this is when the server blocks "
                     "Cross-Origin Resource Sharing (CORS). "
                     "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
                 ) from e
+            raise e
 
     def _extract(self, target: Path) -> None:
         assert self._data
