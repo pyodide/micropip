@@ -4,13 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unrelased
+## Unreleased
 
 ### Added
 
 - Added `reinstall` parameter to micropip.install to allow reinstalling
   a package that is already installed
   [#64](https://github.com/pyodide/micropip/pull/64)
+
+### Fixed
+
+- micropip now respects the `yanked` flag in the PyPI Simple API.
+  [#208](https://github.com/pyodide/micropip/pull/208)
 
 ## [0.9.0] - 2024/02/01
 
