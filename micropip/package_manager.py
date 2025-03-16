@@ -210,7 +210,7 @@ class PackageManager:
             packages_all = [pkg.name for pkg in wheels + pyodide_packages]
 
             distributions = search_installed_packages(packages_all)
-            # This check is redundant because the distributions will always be an emtpy list when reinstall==False
+            # This check is redundant because the distributions will always be an empty list when reinstall==False
             # (no installed packages will be returned from transaction)
             # But just in case.
             if reinstall:
