@@ -224,3 +224,88 @@ async def test_combined_index_urls(mock_package_index_json_api, monkeypatch):
         await manager.install(["package-main", "package-extra"])
     except Exception:
         pass
+
+
+@pytest.mark.asyncio
+async def test_dependency_resolution_with_multiple_indexes(
+    mock_fetch: mock_fetch_cls, monkeypatch
+):
+    """Test that dependencies are properly resolved from multiple indexes."""
+    manager = get_test_package_manager()
+
+    # Create a package with dependencies
+    main_pkg = "scikit-learn"
+    dep1 = "numpy"
+    dep2 = "scipy"
+
+    mock_fetch.add_pkg_version(main_pkg, requirements=[dep1, dep2])
+    mock_fetch.add_pkg_version(dep1)
+    mock_fetch.add_pkg_version(dep2)
+
+    await manager.install(main_pkg)
+
+    pkg_list = manager.list_packages()
+    assert main_pkg in pkg_list
+    assert dep1 in pkg_list
+    assert dep2 in pkg_list
+
+    for pkg in [main_pkg, dep1, dep2]:
+        if pkg in pkg_list:
+            manager.uninstall(pkg)
+
+    requested_urls = []
+
+    # Create a modified version of add_pkg_version that tracks URL usage
+    original_add_pkg_version = mock_fetch.add_pkg_version
+
+    def tracked_add_pkg_version(*args, **kwargs):
+        requested_urls.append(args[0])
+        return original_add_pkg_version(*args, **kwargs)
+
+    with monkeypatch.context() as m:
+        m.setattr(mock_fetch, "add_pkg_version", tracked_add_pkg_version)
+
+        # Install with a main index that only has scikit-learn, and
+        # with extra_index_urls that has the dependencies.
+        await manager.install(
+            main_pkg, extra_index_urls="https://extra-index.org/simple"
+        )
+
+        pkg_list = manager.list_packages()
+        assert main_pkg in pkg_list
+        assert dep1 in pkg_list
+        assert dep2 in pkg_list
+
+
+@pytest.mark.asyncio
+async def test_different_version_resolution_strategies(mock_fetch: mock_fetch_cls):
+    """Test different version resolution strategies with multiple indexes."""
+    manager = get_test_package_manager()
+
+    # Add a package with two versions
+    pkg_name = "test-package"
+    old_version = "1.0.0"
+    new_version = "2.0.0"
+
+    mock_fetch.add_pkg_version(pkg_name, version=old_version)
+    mock_fetch.add_pkg_version(pkg_name, version=new_version)
+
+    # With first-index, it should use the latest version available in the
+    # first index i.e., 1.0.0 as it was indexed first.
+    manager.set_index_strategy("first-index")
+    await manager.install(pkg_name)
+
+    pkg_list = manager.list_packages()
+    assert pkg_name in pkg_list
+    assert pkg_list[pkg_name].version == new_version
+
+    manager.uninstall(pkg_name)
+
+    # With unsafe-best-match, it should use the highest version
+    # across all indexes, i.e., 2.0.0.
+    manager.set_index_strategy("unsafe-best-match")
+    await manager.install(pkg_name)
+
+    pkg_list = manager.list_packages()
+    assert pkg_name in pkg_list
+    assert pkg_list[pkg_name].version == new_version
