@@ -387,3 +387,70 @@ async def test_index_url_priority(
     assert add_wheel_called.name == "black"
     # 23.7.0 is the latest version of black in the mock index
     assert str(add_wheel_called.version) == "23.7.0"
+
+
+@pytest.mark.parametrize(
+    "strategy", ["first-index", "unsafe-first-match", "unsafe-best-match"]
+)
+def test_find_wheel_with_strategy(strategy):
+    """Test that find_wheel respects different index strategies."""
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip.transaction import find_wheel
+
+    requirement = Requirement("dummy_module")
+
+    metadata = _pypi_metadata(
+        "dummy_module",
+        {"0.9.0": ["py3"], "1.0.0": ["py3"]},
+    )
+
+    # In all strategies, the highest compatible version should be selected
+    # when only one index is involved
+    wheel = find_wheel(metadata, requirement, strategy=strategy)
+    assert str(wheel.version) == "1.0.0"
+
+
+def test_transaction_with_strategy():
+    """Test that Transaction uses the provided index strategy."""
+    from micropip.transaction import Transaction
+
+    strategies = ["first-index", "unsafe-first-match", "unsafe-best-match"]
+
+    for strategy in strategies:
+        transaction = create_transaction(Transaction)
+        transaction.index_strategy = strategy
+
+        assert transaction.index_strategy == strategy
+
+
+@pytest.mark.asyncio
+async def test_add_requirement_from_package_index_with_strategy(monkeypatch):
+    """Test that _add_requirement_from_package_index is passing the strategy to find_wheel."""
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip.transaction import Transaction, find_wheel
+
+    async def mock_query_package(name, index_urls, fetch_kwargs, strategy=None):
+        # just return a simple metadata object
+        return _pypi_metadata(name, {"1.0.0": ["py3"]})
+
+    original_find_wheel = find_wheel
+    captured_strategy = []
+
+    def mock_find_wheel(metadata, req, strategy=None):
+        captured_strategy.append(strategy)
+        return original_find_wheel(metadata, req)
+
+    monkeypatch.setattr("micropip.package_index.query_package", mock_query_package)
+    monkeypatch.setattr("micropip.transaction.find_wheel", mock_find_wheel)
+
+    transaction = create_transaction(Transaction)
+    transaction.index_strategy = "unsafe-best-match"
+
+    async def mock_add_wheel(self, wheel, extras, **kwargs):
+        pass
+
+    monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
+
+    req = Requirement("some-package")
+    await transaction._add_requirement_from_package_index(req)
+    assert captured_strategy[0] == "unsafe-best-match"
