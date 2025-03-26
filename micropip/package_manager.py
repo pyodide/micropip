@@ -33,6 +33,8 @@ class PackageManager:
             compat = compatibility_layer
 
         self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
+        self.extra_index_urls: list[str] = []
+        self.index_strategy = "first-index"  # default strategy
         self.compat_layer: type[CompatibilityLayer] = compat
         self.constraints: list[str] = []
 
@@ -47,6 +49,8 @@ class PackageManager:
         pre: bool = False,
         index_urls: list[str] | str | None = None,
         *,
+        extra_index_urls: list[str] | str | None = None,
+        index_strategy: str | None = None,
         constraints: list[str] | None = None,
         verbose: bool | int | None = None,
     ) -> None:
@@ -132,6 +136,29 @@ class PackageManager:
             - If a list of URLs is provided, micropip will try each URL in order until \
             it finds a package. If no package is found, an error will be raised.
 
+        extra_index_urls:
+
+            A list of URLs or a single URL to use as additional package indexes when looking
+            up packages. Unlike `index_urls`, these are used in addition to the default
+            indexes, not instead of them. This is useful for finding packages that may not
+            be available in the main package index that is queried by `index_urls`.
+
+            - The format and behaviour of each URL is the same as for `index_urls`.
+
+        index_strategy:
+
+            Determines how package versions are selected when they appear in multiple indexes:
+
+            - ``first-index`` (default): Search for each package across all indexes, limiting \
+            the candidate versions to those present in the first index that contains the package.
+
+            - ``unsafe-first-match``: Search for each package across all indexes, but prefer \
+            the first index with a compatible version, even if newer versions are available \
+            on other indexes.
+
+            - ``unsafe-best-match``: Search for each package across all indexes, and select \
+            the best version from the combined set of candidate versions (pip's default).
+
         constraints:
 
             A list of requirements with versions/URLs which will be used only if
@@ -149,6 +176,26 @@ class PackageManager:
         with setup_logging().ctx_level(verbose) as logger:
             if index_urls is None:
                 index_urls = self.index_urls
+                base_index_urls = self.index_urls
+            else:
+                base_index_urls = (
+                    index_urls if isinstance(index_urls, list) else [index_urls]
+                )
+
+            if extra_index_urls is None:
+                extra_urls = self.extra_index_urls
+            else:
+                extra_urls = (
+                    extra_index_urls
+                    if isinstance(extra_index_urls, list)
+                    else [extra_index_urls]
+                )
+
+            combined_index_urls = base_index_urls + extra_urls
+
+            strategy = (
+                index_strategy if index_strategy is not None else self.index_strategy
+            )
 
             if constraints is None:
                 constraints = self.constraints
@@ -177,8 +224,9 @@ class PackageManager:
                 pre=pre,
                 fetch_kwargs=fetch_kwargs,
                 verbose=verbose,
-                index_urls=index_urls,
+                index_urls=combined_index_urls,
                 constraints=constraints,
+                index_strategy=strategy,
             )
             await transaction.gather_requirements(requirements)
 
@@ -231,6 +279,60 @@ class PackageManager:
                 logger.info("Successfully installed %s", ", ".join(packages))
 
             importlib.invalidate_caches()
+
+    def set_extra_index_urls(self, urls: List[str] | str):  # noqa: UP006
+        """
+        Set the extra index URLs to use when looking up packages.
+
+        These URLs are used in addition to the default index URLs, not instead of them.
+        This is useful for finding packages that may not be available in the main
+        package index.
+
+        - The index URL should support the \
+            `JSON API <https://warehouse.pypa.io/api-reference/json/>`__ .
+
+        - The index URL may contain the placeholder {package_name} which will be \
+            replaced with the package name when looking up a package. If it does not \
+            contain the placeholder, the package name will be appended to the URL.
+
+        Parameters
+        ----------
+        urls
+            A list of URLs or a single URL to use as extra package indexes.
+        """
+
+        if isinstance(urls, str):
+            urls = [urls]
+
+        self.extra_index_urls = urls[:]
+
+    def set_index_strategy(self, strategy: str):
+        """
+        Set the index strategy to use when resolving packages from multiple indexes.
+
+        Parameters
+        ----------
+        strategy
+            The index strategy to use. Valid values are:
+
+            - ``first-index``: Search for each package across all indexes, limiting \
+            the candidate versions to those present in the first index that contains the package.
+
+            - ``unsafe-first-match``: Search for each package across all indexes, but prefer \
+            the first index with a compatible version, even if newer versions are available \
+            on other indexes.
+
+            - ``unsafe-best-match``: Search for each package across all indexes, and select \
+            the best version from the combined set of candidate versions (pip's default).
+        """
+        valid_strategies = ["first-index", "unsafe-first-match", "unsafe-best-match"]
+        if strategy not in valid_strategies:
+            raise ValueError(
+                f"Invalid index strategy: {strategy}. "
+                f"Valid strategies are: {', '.join(valid_strategies)}"
+            )
+
+        self.index_strategy = strategy
 
     def list_packages(self) -> PackageDict:
         """Get the dictionary of installed packages.

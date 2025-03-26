@@ -268,10 +268,12 @@ def _select_parser(
             raise ValueError(f"Unsupported content type: {content_type}")
 
 
-async def query_package(
+# TODO: reduce mccabe complexity
+async def query_package(  # noqa: C901
     name: str,
     index_urls: list[str] | str,
     fetch_kwargs: dict[str, Any] | None = None,
+    strategy: str = "first-index",
 ) -> ProjectInfo:
     """
     Query for a package from package indexes.
@@ -286,6 +288,9 @@ async def query_package(
         it finds a package. If no package is found, an error will be raised.
     fetch_kwargs
         Keyword arguments to pass to the fetch function.
+    strategy
+        Index strategy to use when querying multiple indexes. The default is "first-index".
+        Valid values are: "first-index", "unsafe-first-match", and "unsafe-best-match".
     """
 
     _fetch_kwargs = fetch_kwargs.copy() if fetch_kwargs else {}
@@ -303,36 +308,101 @@ async def query_package(
 
     index_urls = [PYPI_URL if url == PYPI else url for url in index_urls]
 
-    for url in index_urls:
-        logger.debug("Looping through index urls: %r", url)
-        if _contain_placeholder(url):
-            url = url.format(package_name=name)
-            logger.debug("Formatting url with package name : %r", url)
-        else:
-            url = f"{url}/{name}/"
-            logger.debug("Url has no placeholder, appending package name : %r", url)
-        try:
-            metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
-        except HttpStatusError as e:
-            if e.status_code == 404:
-                logger.debug("NotFound (404) for %r, trying next index.", url)
-                continue
-            logger.debug(
-                "Error fetching %r (%s), trying next index.", url, e.status_code
-            )
-            raise
+    projects_info = []
 
-        content_type = headers.get("content-type", "").lower()
-        try:
-            base_url = urlunparse(urlparse(url)._replace(path=""))
+    # With "first-index" strategy, we'll return the first match we find
+    # without checking the other indexes at all.
+    if strategy == "first-index":
+        for url in index_urls:
+            logger.debug("Looping through index urls: %r", url)
+            if _contain_placeholder(url):
+                url = url.format(package_name=name)
+                logger.debug("Formatting url with package name : %r", url)
+            else:
+                url = f"{url}/{name}/"
+                logger.debug("Url has no placeholder, appending package name : %r", url)
+            try:
+                metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
+            except HttpStatusError as e:
+                if e.status_code == 404:
+                    logger.debug("NotFound (404) for %r, trying next index.", url)
+                    continue
+                logger.debug(
+                    "Error fetching %r (%s), trying next index.", url, e.status_code
+                )
+                raise
 
-            parser = _select_parser(content_type, name, index_base_url=base_url)
-        except ValueError as e:
-            raise ValueError(f"Error trying to decode url: {url}") from e
-        return parser(metadata)
+            content_type = headers.get("content-type", "").lower()
+            try:
+                base_url = urlunparse(urlparse(url)._replace(path=""))
+                parser = _select_parser(content_type, name, index_base_url=base_url)
+            except ValueError as e:
+                raise ValueError(f"Error trying to decode url: {url}") from e
+            return parser(metadata)
+    # With "unsafe-first-match" or "unsafe-best-match", we need to check all indexes
     else:
-        raise ValueError(
-            f"Can't fetch metadata for '{name}'. "
-            "Please make sure you have entered a correct package name "
-            "and correctly specified index_urls (if you changed them)."
-        )
+        for url in index_urls:
+            logger.debug("Looping through index urls: %r", url)
+            if _contain_placeholder(url):
+                url = url.format(package_name=name)
+                logger.debug("Formatting url with package name : %r", url)
+            else:
+                url = f"{url}/{name}/"
+                logger.debug("Url has no placeholder, appending package name : %r", url)
+            try:
+                metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
+            except HttpStatusError as e:
+                if e.status_code == 404:
+                    logger.debug("NotFound (404) for %r, trying next index.", url)
+                    continue
+                logger.debug(
+                    "Error fetching %r (%s), trying next index.", url, e.status_code
+                )
+                continue  # try the next index instead of raising
+
+            content_type = headers.get("content-type", "").lower()
+            try:
+                base_url = urlunparse(urlparse(url)._replace(path=""))
+                parser = _select_parser(content_type, name, index_base_url=base_url)
+                projects_info.append(parser(metadata))
+            except ValueError:
+                # Just log and continue with the next index
+                msg = f"Error trying to decode url: {url}"
+                logger.debug(msg)
+                continue
+
+        if not projects_info:
+            raise ValueError(
+                f"Can't fetch metadata for '{name}'. "
+                "Please make sure you have entered a correct package name "
+                "and correctly specified index_urls (if you changed them)."
+            )
+
+        # For "unsafe-first-match", return the first project that has matching versions
+        if strategy == "unsafe-first-match":
+            return projects_info[0]
+
+        # For "unsafe-best-match", we merge information from all indexes.
+        merged_project = projects_info[0]
+        for project in projects_info[1:]:
+            for version, wheels in project.releases.items():
+                if version not in merged_project.releases:
+                    merged_project.releases[version] = wheels
+                else:
+                    # Extend the existing wheels generator with new wheels
+                    # This is a bit tricky with generators, so we'll convert
+                    # to lists temporarily
+                    existing_wheels = list(merged_project.releases[version])
+                    new_wheels = list(wheels)
+                    merged_project.releases[version] = (
+                        wheel for wheel in existing_wheels + new_wheels
+                    )
+
+        return merged_project
+
+    # If we get here, we weren't find the package in any index
+    raise ValueError(
+        f"Can't fetch metadata for '{name}'. "
+        "Please make sure you have entered a correct package name "
+        "and correctly specified index_urls (if you changed them)."
+    )
