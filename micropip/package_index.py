@@ -314,7 +314,7 @@ async def query_package(
         try:
             metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
         except Exception as e:
-            logger.debug("Error fetching metadata for %r: %r", url, e)
+            logger.debug("Error fetching metadata for the package %r from (%r): %r, trying next index.", name, url, e)
             continue
 
         content_type = headers.get("content-type", "").lower()
