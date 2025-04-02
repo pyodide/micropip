@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added the `extra_index_urls` and `index_strategy` parameters to `micropip.install()`
+  to support lookup and installation from multiple package indexes.
+  [#224](https://github.com/pyodide/micropip/pull/224)
+
 ### Fixed
 
 - micropip now respects the `yanked` flag in the PyPI Simple API.
