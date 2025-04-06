@@ -7,7 +7,7 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import urljoin, urlparse
 
 from ._compat import HttpStatusError, fetch_string_and_headers
 from ._utils import is_package_compatible, parse_version
