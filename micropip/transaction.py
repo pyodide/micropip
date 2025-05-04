@@ -45,6 +45,7 @@ class Transaction:
 
     verbose: bool | int | None = None
     constraints: list[str] | None = None
+    index_strategy: str = "first-index"
 
     def __post_init__(self) -> None:
         # If index_urls is None, pyodide-lock.json have to be searched first.
@@ -231,11 +232,12 @@ class Transaction:
             req.name,
             self.index_urls,
             self.fetch_kwargs,
+            strategy=self.index_strategy,
         )
 
         logger.debug("Transaction: got metadata %r for requirement %r", metadata, req)
 
-        wheel = find_wheel(metadata, req)
+        wheel = find_wheel(metadata, req, self.index_strategy)
 
         logger.debug("Transaction: Selected wheel: %r", wheel)
 
@@ -319,12 +321,17 @@ class Transaction:
         self.wheels.append(wheel)
 
 
-def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
+def find_wheel(
+    metadata: ProjectInfo, req: Requirement, strategy: str = "first-index"
+) -> WheelInfo:
     """Parse metadata to find the latest version of pure python wheel.
     Parameters
     ----------
     metadata : ProjectInfo
     req : Requirement
+    strategy : str, optional
+        The strategy to find the wheel when selecting package versions.
+        The default is "first-index".
 
     Returns
     -------
