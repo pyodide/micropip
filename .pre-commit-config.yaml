@@ -1,5 +1,5 @@
 default_language_version:
-  python: "3.12"
+  python: "3.13"
 
 exclude: (^micropip/_vendored|^tests/vendored|^tests/test_data)
 repos:
