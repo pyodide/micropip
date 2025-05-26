@@ -1,10 +1,12 @@
+import importlib
 import io
 import re
+import zipfile
+from importlib.metadata import distribution
 from typing import IO, Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from urllib.response import addinfourl
-import zipfile
 
 from .compatibility_layer import CompatibilityLayer
 
@@ -58,9 +60,17 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
     ) -> None:
         """
         Install a package from a buffer to the specified directory.
+        TODO: Remove host tests that depends on internal behavior of install (https://github.com/pyodide/micropip/issues/210)
         """
         with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
             zf.extractall(install_dir)
+
+        importlib.invalidate_caches()
+        pkgname = filename.split("-")[0]
+        dist_dir = distribution(pkgname)._path
+        if metadata:
+            for k, v in metadata.items():
+                (dist_dir / k).write_text(v)
 
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
