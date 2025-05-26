@@ -74,6 +74,8 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
             for k, v in metadata.items():
                 (dist_path / k).write_text(v)
 
+        importlib.invalidate_caches()
+
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
         pass
