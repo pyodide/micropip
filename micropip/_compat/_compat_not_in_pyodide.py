@@ -1,14 +1,10 @@
 import re
-from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO, Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from urllib.response import addinfourl
 
 from .compatibility_layer import CompatibilityLayer
-
-if TYPE_CHECKING:
-    from ..wheelinfo import PackageData
 
 
 class CompatibilityNotInPyodide(CompatibilityLayer):
@@ -52,13 +48,15 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         return response.read().decode(), headers
 
     @staticmethod
-    def get_dynlibs(archive: IO[bytes], suffix: str, target_dir: Path) -> list[str]:
-        return []
-
-    @staticmethod
-    async def loadDynlibsFromPackage(
-        pkg_metadata: "PackageData", dynlibs: list[str]
+    async def install(
+        buffer: IO[bytes],
+        filename: str,
+        install_dir: str,
+        metadata: dict[str, str] | None = None,
     ) -> None:
+        """
+        Install a package from a buffer to the specified directory.
+        """
         pass
 
     @staticmethod

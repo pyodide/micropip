@@ -1,11 +1,6 @@
 from pathlib import Path
-from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-if TYPE_CHECKING:
-    pass
-
-from pyodide._package_loader import get_dynlibs
 from pyodide.ffi import IN_BROWSER, to_js
 from pyodide.http import HttpStatusError, pyfetch
 
@@ -15,8 +10,8 @@ try:
     import pyodide_js
     from pyodide_js import loadedPackages, loadPackage
     from pyodide_js._api import (  # type: ignore[import]
+        install,
         loadBinaryFile,
-        loadDynlibsFromPackage,
     )
 
     LOCKFILE_PACKAGES = pyodide_js._api.lockfile_packages.to_py()
@@ -64,9 +59,7 @@ class CompatibilityInPyodide(CompatibilityLayer):
 
     loadedPackages = loadedPackages
 
-    get_dynlibs = get_dynlibs
-
-    loadDynlibsFromPackage = loadDynlibsFromPackage
+    install = install
 
     loadPackage = loadPackage
 
