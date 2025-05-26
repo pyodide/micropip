@@ -42,7 +42,7 @@ class CompatibilityLayer(ABC):
     @staticmethod
     @abstractmethod
     async def install(
-        buffer: IO[bytes],
+        buffer: Any,  # JsBuffer
         filename: str,
         install_dir: str,
         metadata: dict[str, str] | None = None,

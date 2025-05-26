@@ -11,6 +11,7 @@ from ._compat import (
     fetch_bytes,
     install,
     loadedPackages,
+    to_js,
 )
 from ._utils import parse_wheel_filename
 from ._vendored.packaging.src.packaging.requirements import Requirement
@@ -235,7 +236,7 @@ class WheelInfo:
             )
 
         await install(
-            self._data,
+            to_js(self._data),
             self.filename,
             str(target),
             metadata=metadata,
