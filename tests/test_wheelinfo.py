@@ -55,7 +55,7 @@ async def test_requires(wheel_catalog, tmp_path):
     wheel = WheelInfo.from_url(pytest_wheel.url)
     await wheel.download({})
 
-    wheel._extract(tmp_path)
+    wheel._install(tmp_path)
 
     requirements_default = [str(r.name) for r in wheel.requires(set())]
     assert "pluggy" in requirements_default

@@ -60,7 +60,7 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         Install a package from a buffer to the specified directory.
         """
         with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
-            zf.extractall(filename)
+            zf.extractall(install_dir)
 
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
