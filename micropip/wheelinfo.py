@@ -236,10 +236,11 @@ class WheelInfo:
             )
 
         await install(
+            # TODO: Probably update install API to accept bytes directly, instead of converting it to JS.
             to_js(self._data),
             self.filename,
             str(target),
-            metadata=metadata,
+            metadata,
         )
 
         setattr(loadedPackages, self._project_name, wheel_source)
