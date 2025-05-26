@@ -53,10 +53,6 @@ class WheelInfo:
     _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
 
-    # Path to the .dist-info directory.
-    # This is only available after extracting the wheel, i.e. after calling `extract()`.
-    _dist_info: Path | None = None
-
     def __post_init__(self):
         assert (
             self.url.startwith(p) for p in ("http:", "https:", "emfs:", "file:")
@@ -218,10 +214,6 @@ class WheelInfo:
                     "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
                 ) from e
             raise e
-
-    def _write_dist_info(self, file: str, content: str) -> None:
-        assert self._dist_info
-        (self._dist_info / file).write_text(content)
 
     async def _install(self, target: Path) -> None:
         """

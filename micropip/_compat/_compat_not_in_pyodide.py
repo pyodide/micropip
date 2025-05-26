@@ -1,8 +1,10 @@
+import io
 import re
 from typing import IO, Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from urllib.response import addinfourl
+import zipfile
 
 from .compatibility_layer import CompatibilityLayer
 
@@ -57,7 +59,8 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         """
         Install a package from a buffer to the specified directory.
         """
-        pass
+        with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
+            zf.extractall(filename)
 
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
