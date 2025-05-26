@@ -1,5 +1,6 @@
 import importlib
 import io
+from pathlib import Path
 import re
 import zipfile
 from importlib.metadata import distributions
@@ -66,19 +67,12 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
             zf.extractall(install_dir)
 
-        importlib.invalidate_caches()
-        if not metadata:
-            return
+        dist_dir = f"{'-'.join(filename.split('-')[2])}.dist-info"
+        dist_path = Path(install_dir) / dist_dir
 
-        pkgname = filename.split("-")[0].lower()
-        for dist in distributions():
-            if dist.name.lower() != pkgname:
-                continue
-
+        if metadata:
             for k, v in metadata.items():
-                (dist._path / k).write_text(v)  # type: ignore[attr-defined]
-
-            break
+                (dist_path / k).write_text(v)
 
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
