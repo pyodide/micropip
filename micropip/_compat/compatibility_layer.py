@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import IO, Any
+from typing import Any
 
 
 class CompatibilityLayer(ABC):

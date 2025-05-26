@@ -53,7 +53,7 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
 
     @staticmethod
     async def install(
-        buffer: IO[bytes],
+        buffer: Any,
         filename: str,
         install_dir: str,
         metadata: dict[str, str] | None = None,
@@ -70,13 +70,15 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         if not metadata:
             return
 
-        pkgname = filename.split("-")[0]
+        pkgname = filename.split("-")[0].lower()
         for dist in distributions():
             if dist.name.lower() != pkgname:
                 continue
 
             for k, v in metadata.items():
-                (dist._path / k).write_text(v)
+                (dist._path / k).write_text(v)  # type: ignore[attr-defined]
+
+            break
 
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
