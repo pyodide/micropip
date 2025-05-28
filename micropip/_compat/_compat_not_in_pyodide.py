@@ -58,13 +58,13 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         install_dir: str,
         metadata: dict[str, str] | None = None,
     ) -> None:
-        from micropip.metadata import wheel_dist_info_dir
-
         """
         Install a package from a buffer to the specified directory.
         TODO: Remove host tests that depends on internal behavior of install (https://github.com/pyodide/micropip/issues/210)
               to make the compat code simpler
         """
+        from micropip.metadata import wheel_dist_info_dir
+
         with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
             zf.extractall(install_dir)
             normalized_name = filename.split("-")[0]
