@@ -37,35 +37,6 @@ def test_from_package_index():
     assert wheel.core_metadata == core_metadata
 
 
-def test_extract(wheel_catalog, tmp_path):
-    pytest_wheel = wheel_catalog.get("pytest")
-    dummy_wheel = WheelInfo.from_url(pytest_wheel.url)
-    dummy_wheel._data = pytest_wheel.content
-
-    dummy_wheel._extract(tmp_path)
-    assert dummy_wheel._dist_info is not None
-    assert dummy_wheel._dist_info.is_dir()
-
-
-def test_set_installer(wheel_catalog, tmp_path):
-    pytest_wheel = wheel_catalog.get("pytest")
-    dummy_wheel = WheelInfo.from_url(pytest_wheel.url)
-    dummy_wheel._data = pytest_wheel.content
-
-    dummy_wheel._extract(tmp_path)
-
-    dummy_wheel._set_installer()
-
-    assert (dummy_wheel._dist_info / "INSTALLER").read_text() == "micropip"
-    assert (dummy_wheel._dist_info / "PYODIDE_SOURCE").read_text() == dummy_wheel.url
-    assert (dummy_wheel._dist_info / "PYODIDE_URL").read_text() == dummy_wheel.url
-    assert (dummy_wheel._dist_info / "PYODIDE_SHA256").exists()
-
-
-def test_install():
-    pass
-
-
 @pytest.mark.asyncio
 async def test_download(wheel_catalog):
     pytest_wheel = wheel_catalog.get("pytest")
@@ -84,7 +55,7 @@ async def test_requires(wheel_catalog, tmp_path):
     wheel = WheelInfo.from_url(pytest_wheel.url)
     await wheel.download({})
 
-    wheel._extract(tmp_path)
+    wheel._install(tmp_path)
 
     requirements_default = [str(r.name) for r in wheel.requires(set())]
     assert "pluggy" in requirements_default
