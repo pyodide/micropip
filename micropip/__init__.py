@@ -11,6 +11,7 @@ _package_manager_singleton = PackageManager(compatibility_layer)
 
 install = _package_manager_singleton.install
 set_index_urls = _package_manager_singleton.set_index_urls
+set_extra_index_urls = _package_manager_singleton.set_extra_index_urls
 list = _package_manager_singleton.list_packages
 set_constraints = _package_manager_singleton.set_constraints
 freeze = _package_manager_singleton.freeze
