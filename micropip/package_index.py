@@ -315,7 +315,9 @@ async def query_package(
             url = f"{url}/{name}/"
             logger.debug("Url has no placeholder, appending package name : %r", url)
         try:
-            metadata, headers = await compat_layer.fetch_string_and_headers(url, _fetch_kwargs)
+            metadata, headers = await compat_layer.fetch_string_and_headers(
+                url, _fetch_kwargs
+            )
         except Exception as e:
             logger.debug(
                 "Error fetching metadata for the package %r from (%r): %r, trying next index.",
