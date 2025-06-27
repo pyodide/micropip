@@ -53,8 +53,8 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
 
         with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
             zf.extractall(install_dir)
-            normalized_name = filename.split("-")[0]
-            dist_dir = Path(install_dir) / wheel_dist_info_dir(zf, normalized_name)
+            pkgname_for_distdir = filename.split("-")[0]
+            dist_dir = Path(install_dir) / wheel_dist_info_dir(zf, pkgname_for_distdir)
 
         if metadata:
             for k, v in metadata.items():
