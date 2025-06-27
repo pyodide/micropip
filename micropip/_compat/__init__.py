@@ -15,6 +15,7 @@ else:
 
     compatibility_layer = CompatibilityNotInPyodide
 
+install = compatibility_layer.install
 
 LOCKFILE_INFO = compatibility_layer.lockfile_info
 
@@ -26,22 +27,17 @@ fetch_string_and_headers = compatibility_layer.fetch_string_and_headers
 
 loadedPackages = compatibility_layer.loadedPackages
 
-loadDynlibsFromPackage = compatibility_layer.loadDynlibsFromPackage
-
 loadPackage = compatibility_layer.loadPackage
-
-get_dynlibs = compatibility_layer.get_dynlibs
 
 to_js = compatibility_layer.to_js
 
 __all__ = [
     "LOCKFILE_INFO",
     "LOCKFILE_PACKAGES",
+    "install",
     "fetch_bytes",
     "fetch_string_and_headers",
     "loadedPackages",
-    "loadDynlibsFromPackage",
     "loadPackage",
-    "get_dynlibs",
     "to_js",
 ]
