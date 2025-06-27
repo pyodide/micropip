@@ -2,7 +2,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from pyodide.ffi import IN_BROWSER, to_js
-from pyodide.http import HttpStatusError, pyfetch
+from pyodide.http import pyfetch
 
 from .compatibility_layer import CompatibilityLayer
 
@@ -23,14 +23,6 @@ except ImportError:
 
 
 class CompatibilityInPyodide(CompatibilityLayer):
-    class HttpStatusError(Exception):
-        status_code: int
-        message: str
-
-        def __init__(self, status_code: int, message: str):
-            self.status_code = status_code
-            self.message = message
-            super().__init__(message)
 
     @staticmethod
     async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
@@ -46,11 +38,9 @@ class CompatibilityInPyodide(CompatibilityLayer):
     async def fetch_string_and_headers(
         url: str, kwargs: dict[str, str]
     ) -> tuple[str, dict[str, str]]:
-        try:
-            response = await pyfetch(url, **kwargs)
-            response.raise_for_status()
-        except HttpStatusError as e:
-            raise CompatibilityInPyodide.HttpStatusError(e.status, str(e)) from e
+
+        response = await pyfetch(url, **kwargs)
+        response.raise_for_status()
 
         content = await response.string()
         headers: dict[str, str] = response.headers

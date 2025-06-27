@@ -31,9 +31,6 @@ loadPackage = compatibility_layer.loadPackage
 
 to_js = compatibility_layer.to_js
 
-HttpStatusError = compatibility_layer.HttpStatusError
-
-
 __all__ = [
     "LOCKFILE_INFO",
     "LOCKFILE_PACKAGES",
@@ -43,5 +40,4 @@ __all__ = [
     "loadedPackages",
     "loadPackage",
     "to_js",
-    "HttpStatusError",
 ]
