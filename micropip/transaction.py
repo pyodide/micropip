@@ -2,6 +2,7 @@ import asyncio
 import importlib.metadata
 import logging
 import warnings
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
@@ -19,7 +20,7 @@ from ._vendored.packaging.src.packaging.requirements import (
     Requirement,
 )
 from ._vendored.packaging.src.packaging.utils import canonicalize_name
-from .constants import FAQ_URLS
+from .constants import FAQ_URLS, YANKED_WARNING_MESSAGE
 from .package import PackageMetadata
 from .package_index import ProjectInfo
 from .wheelinfo import WheelInfo
@@ -241,6 +242,16 @@ class Transaction:
 
         logger.debug("Transaction: Selected wheel: %r", wheel)
 
+        if wheel.yanked:
+            yanked_reason = wheel.yanked_reason if wheel.yanked_reason else "None"
+            logger.info(
+                YANKED_WARNING_MESSAGE,
+                wheel.name,
+                str(wheel.version),
+                wheel.url,
+                yanked_reason,
+            )
+
         # Maybe while we were downloading pypi_json some other branch
         # installed the wheel?
         satisfied, ver = self.check_version_satisfied(req)
@@ -330,6 +341,8 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         reverse=True,
     )
 
+    yanked_versions: list[list[WheelInfo]] = []
+
     for ver in candidate_versions:
         if ver not in releases:
             warnings.warn(
@@ -338,18 +351,27 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
             )
             continue
 
-        best_wheel = None
-        best_tag_index = float("infinity")
+        wheels = list(releases[ver])
 
-        wheels = releases[ver]
-        for wheel in wheels:
-            tag_index = best_compatible_tag_index(wheel.tags)
-            if tag_index is not None and tag_index < best_tag_index:
-                best_wheel = wheel
-                best_tag_index = tag_index
+        # If the version is yanked, put it in the end of the candidate list.
+        # If we can't find a wheel that satisfies the requirement,
+        # install the yanked version as a last resort.
+        # when the version is yanked, all wheels are yanked, so we can check only the first wheel.
+        yanked = wheels and wheels[0].yanked
+        if yanked:
+            yanked_versions.append(wheels)
+            continue
+
+        best_wheel = _find_best_wheel(wheels)
 
         if best_wheel is not None:
-            return wheel
+            return best_wheel
+
+    for wheels in yanked_versions:
+        best_wheel = _find_best_wheel(wheels)
+
+        if best_wheel is not None:
+            return best_wheel
 
     raise ValueError(
         f"Can't find a pure Python 3 wheel for '{req}'.\n"
@@ -357,3 +379,15 @@ def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         "You can use `await micropip.install(..., keep_going=True)` "
         "to get a list of all packages with missing wheels."
     )
+
+
+def _find_best_wheel(wheels: Iterable[WheelInfo]) -> WheelInfo | None:
+    best_wheel = None
+    best_tag_index = float("infinity")
+    for wheel in wheels:
+        tag_index = best_compatible_tag_index(wheel.tags)
+        if tag_index is not None and tag_index < best_tag_index:
+            best_wheel = wheel
+            best_tag_index = tag_index
+
+    return best_wheel

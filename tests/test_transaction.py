@@ -218,6 +218,47 @@ def test_find_wheel_invalid_version():
     assert str(wheel.version) == "0.15.5"
 
 
+def test_yanked_version():
+    from micropip._vendored.packaging.src.packaging.requirements import Requirement
+    from micropip.transaction import find_wheel
+
+    versions = ["0.0.1", "0.15.5", "0.9.1"]
+
+    # Mark 0.15.5 as yanked
+    # convert generator --> list and monkeypatch the yanked value
+    metadata = _pypi_metadata("dummy_module", {v: ["py3"] for v in versions})
+    for version in list(metadata.releases):
+        wheels = list(metadata.releases[version])
+        for wheel in wheels:
+            if str(wheel.version) == "0.15.5":
+                wheel.yanked = True
+
+        metadata.releases[version] = wheels
+
+    # case 1: yanked version should be skipped and the next best version should be selected
+
+    requirement1 = Requirement("dummy_module")
+    wheel = find_wheel(metadata, requirement1)
+
+    assert str(wheel.version) == "0.9.1"
+
+    # case 2: yanked version is explicitly requested, so it should be selected
+
+    requirement2 = Requirement("dummy_module==0.15.5")
+    wheel = find_wheel(metadata, requirement2)
+
+    assert str(wheel.version) == "0.15.5"
+
+    # case 3: yanked version is not explicitly requested, but it is the only version available
+    # so it should be selected
+
+    requirement3 = Requirement("dummy_module>0.10.0")
+
+    wheel = find_wheel(metadata, requirement3)
+
+    assert str(wheel.version) == "0.15.5"
+
+
 _best_tag_test_cases = (
     "package, version, incompatible_tags, compatible_tags",
     # Tests assume that `compatible_tags` is sorted from least to most compatible:

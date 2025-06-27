@@ -163,6 +163,11 @@ class ProjectInfo:
             # Size of the file in bytes, if available (PEP 700)
             # This key is not available in the Simple API HTML response, so this field may be None
             size = file.get("size")
+
+            # PEP-592:
+            # yanked can be an arbitrary string (reason) or bool.
+            yanked_reason = file.get("yanked", False)
+
             yield WheelInfo.from_package_index(
                 name=name,
                 filename=filename,
@@ -171,6 +176,7 @@ class ProjectInfo:
                 sha256=sha256,
                 size=size,
                 core_metadata=core_metadata,
+                yanked_reason=yanked_reason,
             )
 
     @classmethod
@@ -309,17 +315,15 @@ async def query_package(
             url = f"{url}/{name}/"
             logger.debug("Url has no placeholder, appending package name : %r", url)
         try:
-            metadata, headers = await compat_layer.fetch_string_and_headers(
-                url, _fetch_kwargs
-            )
-        except compat_layer.HttpStatusError as e:
-            if e.status_code == 404:
-                logger.debug("NotFound (404) for %r, trying next index.", url)
-                continue
+            metadata, headers = await compat_layer.fetch_string_and_headers(url, _fetch_kwargs)
+        except Exception as e:
             logger.debug(
-                "Error fetching %r (%s), trying next index.", url, e.status_code
+                "Error fetching metadata for the package %r from (%r): %r, trying next index.",
+                name,
+                url,
+                e,
             )
-            raise
+            continue
 
         content_type = headers.get("content-type", "").lower()
         try:
