@@ -31,7 +31,7 @@ def freeze_data(
 
 
 def load_pip_packages(
-    lockfile_packages: dict[str, dict[str, Any]]
+    lockfile_packages: dict[str, dict[str, Any]],
 ) -> Iterator[tuple[str, dict[str, Any]]]:
     distributions = importlib.metadata.distributions()
     pip_packages = [load_pip_package(dist, lockfile_packages) for dist in distributions]
