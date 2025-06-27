@@ -53,7 +53,9 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
 
         with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
             zf.extractall(install_dir)
-            pkgname = filename.split("-")[0]  # the name will be canonicalized inside wheel_dist_info_dir, so don't care about case
+            pkgname = filename.split("-")[
+                0
+            ]  # the name will be canonicalized inside wheel_dist_info_dir, so don't care about case
             dist_dir = Path(install_dir) / wheel_dist_info_dir(zf, pkgname)
 
         if metadata:
