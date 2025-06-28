@@ -2,6 +2,8 @@ import asyncio
 import builtins
 import importlib
 import importlib.metadata
+import logging
+from collections.abc import Iterable
 from importlib.metadata import Distribution
 from pathlib import Path
 from typing import (  # noqa: UP035 List import is necessary due to the `list` method
@@ -14,7 +16,7 @@ from ._utils import get_files_in_distribution, get_root
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
 from .freeze import freeze_lockfile
-from .logging import setup_logging
+from .logging import indent_log, setup_logging
 from .package import PackageDict, PackageMetadata
 from .transaction import Transaction
 
@@ -48,6 +50,7 @@ class PackageManager:
         index_urls: list[str] | str | None = None,
         *,
         constraints: list[str] | None = None,
+        reinstall: bool = False,
         verbose: bool | int | None = None,
     ) -> None:
         """Install the given package and all of its dependencies.
@@ -140,6 +143,16 @@ class PackageManager:
             Unlike ``requirements``, the package name _must_ be provided in the
             PEP-508 format e.g. ``pkgname@https://...``.
 
+        reinstall:
+
+            If ``False`` (default), micropip will show an error if the requested package
+            is already installed, but with a incompatible version. If ``True``,
+            micropip will uninstall the existing packages that are not compatible with
+            the requested version and install the packages again.
+
+            Note that packages that are already imported will not be reloaded, so make
+            sure to reload the module after reinstalling by e.g. running importlib.reload(module).
+
         verbose:
             Print more information about the process. By default, micropip does not
             change logger level. Setting ``verbose=True`` will print similar
@@ -180,6 +193,7 @@ class PackageManager:
                 verbose=verbose,
                 index_urls=index_urls,
                 constraints=constraints,
+                reinstall=reinstall,
             )
             await transaction.gather_requirements(requirements)
 
@@ -194,7 +208,15 @@ class PackageManager:
 
             pyodide_packages, wheels = transaction.pyodide_packages, transaction.wheels
 
-            package_names = [pkg.name for pkg in wheels + pyodide_packages]
+            packages_all = [pkg.name for pkg in wheels + pyodide_packages]
+
+            distributions = search_installed_packages(packages_all)
+            # This check is redundant because the distributions will always be an empty list when reinstall==False
+            # (no installed packages will be returned from transaction)
+            # But just in case.
+            if reinstall:
+                with indent_log():
+                    self._uninstall_distributions(distributions, logger)
 
             logger.debug(
                 "Installing packages %r and wheels %r ",
@@ -202,9 +224,9 @@ class PackageManager:
                 [w.filename for w in transaction.wheels],
             )
 
-            if package_names:
+            if packages_all:
                 logger.info(
-                    "Installing collected packages: %s", ", ".join(package_names)
+                    "Installing collected packages: %s", ", ".join(packages_all)
                 )
 
             # Install PyPI packages
@@ -423,68 +445,7 @@ class PackageManager:
                 except importlib.metadata.PackageNotFoundError:
                     logger.warning("Skipping '%s' as it is not installed.", package)
 
-            for dist in distributions:
-                # Note: this value needs to be retrieved before removing files, as
-                #       dist.name uses metadata file to get the name
-                name = dist.name
-                version = dist.version
-
-                logger.info("Found existing installation: %s %s", name, version)
-
-                root = get_root(dist)
-                files = get_files_in_distribution(dist)
-                directories = set()
-
-                for file in files:
-                    if not file.is_file():
-                        if not file.is_relative_to(root):
-                            # This file is not in the site-packages directory. Probably one of:
-                            # - data_files
-                            # - scripts
-                            # - entry_points
-                            # Since we don't support these, we can ignore them (except for data_files (TODO))
-                            logger.warning(
-                                "skipping file '%s' that is relative to root",
-                            )
-                            continue
-                        # see PR 130, it is likely that this is never triggered since Python 3.12
-                        # as non existing files are not listed by get_files_in_distribution anymore.
-                        logger.warning(
-                            "A file '%s' listed in the metadata of '%s' does not exist.",
-                            file,
-                            name,
-                        )
-
-                        continue
-
-                    file.unlink()
-
-                    if file.parent != root:
-                        directories.add(file.parent)
-
-                # Remove directories in reverse hierarchical order
-                for directory in sorted(
-                    directories, key=lambda x: len(x.parts), reverse=True
-                ):
-                    try:
-                        directory.rmdir()
-                    except OSError:
-                        logger.warning(
-                            "A directory '%s' is not empty after uninstallation of '%s'. "
-                            "This might cause problems when installing a new version of the package. ",
-                            directory,
-                            name,
-                        )
-
-                if hasattr(self.compat_layer.loadedPackages, name):
-                    delattr(self.compat_layer.loadedPackages, name)
-                else:
-                    # This should not happen, but just in case
-                    logger.warning(
-                        "a package '%s' was not found in loadedPackages.", name
-                    )
-
-                logger.info("Successfully uninstalled %s-%s", name, version)
+            self._uninstall_distributions(distributions, logger)
 
             importlib.invalidate_caches()
 
@@ -525,3 +486,109 @@ class PackageManager:
         """
 
         self.constraints = constraints[:]
+
+    def _uninstall_distributions(
+        self,
+        distributions: Iterable[Distribution],
+        logger: logging.Logger,  # TODO: move this to an attribute of the PackageManager
+    ) -> None:
+        """
+        Uninstall the given package distributions.
+
+        This function does not do any checks, so make sure that the distributions
+        are installed and that they are installed using a wheel file, i.e. packages
+        that have distribution metadata.
+
+        This function also does not invalidate the import cache, so make sure to
+        call `importlib.invalidate_caches()` after calling this function.
+
+        Parameters
+        ----------
+        distributions
+            Package distributions to uninstall.
+
+        """
+        for dist in distributions:
+            # Note: this value needs to be retrieved before removing files, as
+            #       dist.name uses metadata file to get the name
+            name = dist.name
+            version = dist.version
+
+            logger.info("Found existing installation: %s %s", name, version)
+
+            root = get_root(dist)
+            files = get_files_in_distribution(dist)
+            directories = set()
+
+            for file in files:
+                if not file.is_file():
+                    if not file.is_relative_to(root):
+                        # This file is not in the site-packages directory. Probably one of:
+                        # - data_files
+                        # - scripts
+                        # - entry_points
+                        # Since we don't support these, we can ignore them (except for data_files (TODO))
+                        logger.warning(
+                            "skipping file '%s' that is relative to root",
+                        )
+                        continue
+                    # see PR 130, it is likely that this is never triggered since Python 3.12
+                    # as non existing files are not listed by get_files_in_distribution anymore.
+                    logger.warning(
+                        "A file '%s' listed in the metadata of '%s' does not exist.",
+                        file,
+                        name,
+                    )
+
+                    continue
+
+                file.unlink()
+
+                if file.parent != root:
+                    directories.add(file.parent)
+
+            # Remove directories in reverse hierarchical order
+            for directory in sorted(
+                directories, key=lambda x: len(x.parts), reverse=True
+            ):
+                try:
+                    directory.rmdir()
+                except OSError:
+                    logger.warning(
+                        "A directory '%s' is not empty after uninstallation of '%s'. "
+                        "This might cause problems when installing a new version of the package. ",
+                        directory,
+                        name,
+                    )
+
+            if hasattr(self.compat_layer.loadedPackages, name):
+                delattr(self.compat_layer.loadedPackages, name)
+            else:
+                # This should not happen, but just in case
+                logger.warning("a package '%s' was not found in loadedPackages.", name)
+
+            logger.info("Successfully uninstalled %s-%s", name, version)
+
+
+def search_installed_packages(
+    names: list[str],
+) -> list[importlib.metadata.Distribution]:
+    """
+    Get installed packages by name.
+    Parameters
+    ----------
+    names
+        List of distribution names to search for.
+    Returns
+    -------
+    List of distributions that were found.
+    If a distribution is not found, it is not included in the list.
+    """
+    distributions = []
+    for name in names:
+        try:
+            distributions.append(importlib.metadata.distribution(name))
+        except importlib.metadata.PackageNotFoundError:
+            pass
+
+    return distributions
