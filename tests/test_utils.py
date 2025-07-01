@@ -27,7 +27,7 @@ def test_get_dist_info():
 
 
 def test_get_files_in_distribution():
-    dist = distribution("pytest")
+    dist = distribution("pytest-pyodide")
     files = _utils.get_files_in_distribution(dist)
 
     assert files
