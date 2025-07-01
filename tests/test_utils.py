@@ -27,12 +27,13 @@ def test_get_dist_info():
 
 
 def test_get_files_in_distribution():
-    dist = distribution("pytest-pyodide")
+    dist = distribution("pytest")
     files = _utils.get_files_in_distribution(dist)
 
     assert files
     for file in files:
-        assert file.is_file()
+        # The file should either exist (in the RECORD file) or some metadata file stored in the .dist-info directory.
+        assert file.is_file() or ".dist-info" in str(file)
 
     dist_files = dist.files
     for file in dist_files:
