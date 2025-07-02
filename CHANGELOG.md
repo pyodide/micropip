@@ -6,10 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.10.0] - 2024/07/02
+
 ### Fixed
 
 - micropip now respects the `yanked` flag in the PyPI Simple API.
   [#208](https://github.com/pyodide/micropip/pull/208)
+
+- Fixed a bug that relative URLs in some custom package indexes were not
+  correctly resolved. [#230](https://github.com/pyodide/micropip/pull/230)
+
+- When multiple index URLs are given, micropip.install will now ignore CORS error
+  when one index URL fails to find a package, and will fallback to the next index URL.
+  [#225](https://github.com/pyodide/micropip/pull/225)
 
 ## [0.9.0] - 2024/02/01
 
