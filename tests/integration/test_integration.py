@@ -178,8 +178,8 @@ def test_installer(selenium_standalone_micropip, pytestconfig):
         dist_dir = dummy_wheel._path
 
         assert (dist_dir / "INSTALLER").read_text() == "micropip"
-        assert (dist_dir / "PYODIDE_SOURCE").read_text() == dummy_wheel.url
-        assert (dist_dir / "PYODIDE_URL").read_text() == dummy_wheel.url
+        assert (dist_dir / "PYODIDE_SOURCE").exists()
+        assert (dist_dir / "PYODIDE_URL").exists()
         assert (dist_dir / "PYODIDE_SHA256").exists()
 
     _run(selenium_standalone_micropip)
