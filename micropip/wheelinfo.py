@@ -9,9 +9,9 @@ from urllib.parse import ParseResult, urlparse
 
 from ._compat import (
     fetch_bytes,
-    get_dynlibs,
-    loadDynlibsFromPackage,
+    install,
     loadedPackages,
+    to_js,
 )
 from ._utils import parse_wheel_filename
 from ._vendored.packaging.src.packaging.requirements import Requirement
@@ -53,10 +53,6 @@ class WheelInfo:
     _data: bytes | None = field(default=None, repr=False)  # Wheel file contents.
     _metadata: Metadata | None = None  # Wheel metadata.
     _requires: list[Requirement] | None = None  # List of requirements.
-
-    # Path to the .dist-info directory.
-    # This is only available after extracting the wheel, i.e. after calling `extract()`.
-    _dist_info: Path | None = None
 
     def __post_init__(self):
         assert (
@@ -140,9 +136,7 @@ class WheelInfo:
                 "Micropip internal error: attempted to install wheel before downloading it?"
             )
         _validate_sha256_checksum(self._data, self.sha256)
-        self._extract(target)
-        await self._load_libraries(target)
-        self._set_installer()
+        await self._install(target)
 
     async def download(self, fetch_kwargs: dict[str, Any]):
         if self._data is not None:
@@ -222,48 +216,34 @@ class WheelInfo:
                 ) from e
             raise e
 
-    def _extract(self, target: Path) -> None:
+    async def _install(self, target: Path) -> None:
+        """
+        Install the wheel to the target directory.
+        """
         assert self._data
-        with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
-            zf.extractall(target)
-            self._dist_info = target / wheel_dist_info_dir(zf, self.name)
 
-    def _set_installer(self) -> None:
-        """
-        Set the installer metadata in the wheel's .dist-info directory.
-        """
-        assert self._data
         wheel_source = "pypi" if self.sha256 is not None else self.url
+        metadata = {
+            "PYODIDE_SOURCE": wheel_source,
+            "PYODIDE_URL": self.url,
+            "PYODIDE_SHA256": _generate_package_hash(self._data),
+            "INSTALLER": "micropip",
+        }
 
-        self._write_dist_info("PYODIDE_SOURCE", wheel_source)
-        self._write_dist_info("PYODIDE_URL", self.url)
-        self._write_dist_info("PYODIDE_SHA256", _generate_package_hash(self._data))
-        self._write_dist_info("INSTALLER", "micropip")
         if self._requires:
-            self._write_dist_info(
-                "PYODIDE_REQUIRES", json.dumps(sorted(x.name for x in self._requires))
+            metadata["PYODIDE_REQUIRES"] = json.dumps(
+                sorted(x.name for x in self._requires)
             )
 
-        setattr(loadedPackages, self._project_name, wheel_source)
-
-    def _write_dist_info(self, file: str, content: str) -> None:
-        assert self._dist_info
-        (self._dist_info / file).write_text(content)
-
-    async def _load_libraries(self, target: Path) -> None:
-        """
-        Compiles shared libraries (WASM modules) in the wheel and loads them.
-        """
-        assert self._data
-
-        pkg = PackageData(
-            file_name=self.filename,
-            package_type="package",
-            shared_library=False,
+        await install(
+            # TODO: Probably update install API to accept bytes directly, instead of converting it to JS.
+            to_js(self._data),
+            self.filename,
+            str(target),
+            metadata,
         )
 
-        dynlibs = get_dynlibs(io.BytesIO(self._data), ".whl", target)
-        await loadDynlibsFromPackage(pkg, dynlibs)
+        setattr(loadedPackages, self._project_name, wheel_source)
 
 
 def _validate_sha256_checksum(data: bytes, expected: str | None = None) -> None:

@@ -1,13 +1,13 @@
+import importlib
+import io
 import re
+import zipfile
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any
+from typing import Any
 from urllib.request import Request, urlopen
 from urllib.response import addinfourl
 
 from .compatibility_layer import CompatibilityLayer
-
-if TYPE_CHECKING:
-    from ..wheelinfo import PackageData
 
 
 class CompatibilityNotInPyodide(CompatibilityLayer):
@@ -38,14 +38,31 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         return response.read().decode(), headers
 
     @staticmethod
-    def get_dynlibs(archive: IO[bytes], suffix: str, target_dir: Path) -> list[str]:
-        return []
-
-    @staticmethod
-    async def loadDynlibsFromPackage(
-        pkg_metadata: "PackageData", dynlibs: list[str]
+    async def install(
+        buffer: Any,
+        filename: str,
+        install_dir: str,
+        metadata: dict[str, str] | None = None,
     ) -> None:
-        pass
+        """
+        Install a package from a buffer to the specified directory.
+        TODO: Remove host tests that depends on internal behavior of install (https://github.com/pyodide/micropip/issues/210)
+              to make the compat code simpler
+        """
+        from micropip.metadata import wheel_dist_info_dir
+
+        with zipfile.ZipFile(io.BytesIO(buffer)) as zf:
+            zf.extractall(install_dir)
+            pkgname = filename.split("-")[
+                0
+            ]  # the name will be canonicalized inside wheel_dist_info_dir, so don't care about case
+            dist_dir = Path(install_dir) / wheel_dist_info_dir(zf, pkgname)
+
+        if metadata:
+            for k, v in metadata.items():
+                (dist_dir / k).write_text(v)
+
+        importlib.invalidate_caches()
 
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
