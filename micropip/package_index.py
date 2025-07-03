@@ -7,7 +7,7 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import urljoin, urlparse
 
 from ._compat import CompatibilityLayer
 from ._utils import is_package_compatible, parse_version
@@ -329,9 +329,7 @@ async def query_package(
 
         content_type = headers.get("content-type", "").lower()
         try:
-            base_url = urlunparse(urlparse(url)._replace(path=""))
-
-            parser = _select_parser(content_type, name, index_base_url=base_url)
+            parser = _select_parser(content_type, name, index_base_url=url)
         except ValueError as e:
             raise ValueError(f"Error trying to decode url: {url}") from e
         return parser(metadata)
