@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.10.0] - 2024/07/02
 
+### Added
+
+- Added `reinstall` parameter to micropip.install to allow reinstalling
+  a package that is already installed
+  [#64](https://github.com/pyodide/micropip/pull/64)
+
 ### Fixed
 
 - micropip now respects the `yanked` flag in the PyPI Simple API.

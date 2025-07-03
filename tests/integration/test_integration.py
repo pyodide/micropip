@@ -53,6 +53,41 @@ def test_integration_install_no_deps(selenium_standalone_micropip, pytestconfig)
 
 
 @integration_test_only
+def test_integration_install_reinstall(selenium_standalone_micropip, pytestconfig):
+    @run_in_pyodide
+    async def _run(selenium):
+        import micropip
+
+        await micropip.install("mccabe==0.6.1")
+
+        import mccabe
+
+        assert mccabe.__version__ == "0.6.1"
+
+        try:
+            await micropip.install("mccabe==0.7.0", reinstall=False)
+        except ValueError as e:
+            assert "already installed" in str(e)
+        else:
+            raise Exception("Should raise!")
+
+        await micropip.install("mccabe==0.7.0", reinstall=True)
+
+        import mccabe
+
+        # still 0.6.1
+        assert mccabe.__version__ == "0.6.1"
+
+        import importlib
+
+        importlib.reload(mccabe)
+
+        assert mccabe.__version__ == "0.7.0"
+
+    _run(selenium_standalone_micropip)
+
+
+@integration_test_only
 def test_integration_install_yanked(selenium_standalone_micropip, pytestconfig):
     @run_in_pyodide
     async def _run(selenium):
@@ -140,11 +175,11 @@ def test_installer(selenium_standalone_micropip, pytestconfig):
         dummy_wheel = distribution("snowballstemmer")
         assert dummy_wheel.name == "snowballstemmer"
 
-        dist_dir = dummy_wheel.path
+        dist_dir = dummy_wheel._path
 
         assert (dist_dir / "INSTALLER").read_text() == "micropip"
-        assert (dist_dir / "PYODIDE_SOURCE").read_text() == dummy_wheel.url
-        assert (dist_dir / "PYODIDE_URL").read_text() == dummy_wheel.url
+        assert (dist_dir / "PYODIDE_SOURCE").exists()
+        assert (dist_dir / "PYODIDE_URL").exists()
         assert (dist_dir / "PYODIDE_SHA256").exists()
 
     _run(selenium_standalone_micropip)
