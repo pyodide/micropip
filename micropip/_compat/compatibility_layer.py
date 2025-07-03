@@ -1,9 +1,5 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from ..wheelinfo import PackageData
+from typing import Any
 
 
 class CompatibilityLayer(ABC):
@@ -12,14 +8,6 @@ class CompatibilityLayer(ABC):
 
     All of the following methods / properties must be implemented for use both inside and outside of pyodide.
     """
-
-    class HttpStatusError(ABC, Exception):
-        status_code: int
-        message: str
-
-        @abstractmethod
-        def __init__(self, status_code: int, message: str):
-            pass
 
     class loadedPackages(ABC):
         @staticmethod
@@ -45,13 +33,11 @@ class CompatibilityLayer(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_dynlibs(archive: IO[bytes], suffix: str, target_dir: Path) -> list[str]:
-        pass
-
-    @staticmethod
-    @abstractmethod
-    async def loadDynlibsFromPackage(
-        pkg_metadata: "PackageData", dynlibs: list[str]
+    async def install(
+        buffer: Any,  # JsBuffer
+        filename: str,
+        install_dir: str,
+        metadata: dict[str, str] | None = None,
     ) -> None:
         pass
 

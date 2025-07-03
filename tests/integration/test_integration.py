@@ -159,3 +159,27 @@ def test_integration_freeze_basic(selenium_standalone_micropip, pytestconfig):
         assert "snowballstemmer" in json.loads(lockfile)["packages"]
 
     _run(selenium_standalone_micropip)
+
+
+@integration_test_only
+def test_installer(selenium_standalone_micropip, pytestconfig):
+
+    @run_in_pyodide
+    async def _run(selenium):
+        import micropip
+
+        await micropip.install("snowballstemmer")
+
+        from importlib.metadata import distribution
+
+        dummy_wheel = distribution("snowballstemmer")
+        assert dummy_wheel.name == "snowballstemmer"
+
+        dist_dir = dummy_wheel.path
+
+        assert (dist_dir / "INSTALLER").read_text() == "micropip"
+        assert (dist_dir / "PYODIDE_SOURCE").read_text() == dummy_wheel.url
+        assert (dist_dir / "PYODIDE_URL").read_text() == dummy_wheel.url
+        assert (dist_dir / "PYODIDE_SHA256").exists()
+
+    _run(selenium_standalone_micropip)

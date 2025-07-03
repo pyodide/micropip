@@ -8,7 +8,7 @@ from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
 from . import package_index
-from ._compat import LOCKFILE_PACKAGES
+from ._compat import CompatibilityLayer
 from ._utils import (
     best_compatible_tag_index,
     check_compatible,
@@ -30,6 +30,8 @@ logger = logging.getLogger("micropip")
 
 @dataclass
 class Transaction:
+    _compat_layer: type[CompatibilityLayer]
+
     ctx: dict[str, str]
     ctx_extras: list[dict[str, str]]
     keep_going: bool
@@ -234,9 +236,9 @@ class Transaction:
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        locked_package = LOCKFILE_PACKAGES.get(req.name)
+        locked_package = self._compat_layer.lockfile_packages.get(req.name)
         if locked_package and req.specifier.contains(
-            LOCKFILE_PACKAGES[req.name]["version"], prereleases=True
+            self._compat_layer.lockfile_packages[req.name]["version"], prereleases=True
         ):
             version = locked_package["version"]
             self.pyodide_packages.append(
@@ -256,7 +258,8 @@ class Transaction:
         metadata = await package_index.query_package(
             req.name,
             self.index_urls,
-            self.fetch_kwargs,
+            compat_layer=self._compat_layer,
+            fetch_kwargs=self.fetch_kwargs,
         )
 
         logger.debug("Transaction: got metadata %r for requirement %r", metadata, req)

@@ -19,7 +19,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.12", None),
+    "python": ("https://docs.python.org/3.13", None),
     "pyodide": ("https://pyodide.org/en/stable/", None),
 }
 

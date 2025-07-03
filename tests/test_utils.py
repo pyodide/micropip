@@ -32,7 +32,8 @@ def test_get_files_in_distribution():
 
     assert files
     for file in files:
-        assert file.is_file()
+        # The file should either exist (in the RECORD file) or some metadata file stored in the .dist-info directory.
+        assert file.is_file() or ".dist-info" in str(file)
 
     dist_files = dist.files
     for file in dist_files:
@@ -108,12 +109,12 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
 @run_in_pyodide
 def test_check_compatible_wasm32(selenium_standalone_micropip):
     """
-    Here we check in particular that pyodide_2024_0_wasm32 wheels are seen as
+    Here we check in particular that pyodide_2025_0_wasm32 wheels are seen as
     compatible as the platform is emscripten
     """
     from micropip._utils import check_compatible
 
-    wheel_name = "pywavelets-1.8.0.dev0-cp312-cp312-pyodide_2024_0_wasm32.whl"
+    wheel_name = "pywavelets-1.8.0.dev0-cp313-cp313-pyodide_2025_0_wasm32.whl"
     check_compatible(wheel_name)
 
 

@@ -1,13 +1,8 @@
 from pathlib import Path
-from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-if TYPE_CHECKING:
-    pass
-
-from pyodide._package_loader import get_dynlibs
 from pyodide.ffi import IN_BROWSER, to_js
-from pyodide.http import HttpStatusError, pyfetch
+from pyodide.http import pyfetch
 
 from .compatibility_layer import CompatibilityLayer
 
@@ -15,8 +10,8 @@ try:
     import pyodide_js
     from pyodide_js import loadedPackages, loadPackage
     from pyodide_js._api import (  # type: ignore[import]
+        install,
         loadBinaryFile,
-        loadDynlibsFromPackage,
     )
 
     LOCKFILE_PACKAGES = pyodide_js._api.lockfile_packages.to_py()
@@ -28,14 +23,6 @@ except ImportError:
 
 
 class CompatibilityInPyodide(CompatibilityLayer):
-    class HttpStatusError(Exception):
-        status_code: int
-        message: str
-
-        def __init__(self, status_code: int, message: str):
-            self.status_code = status_code
-            self.message = message
-            super().__init__(message)
 
     @staticmethod
     async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
@@ -51,11 +38,9 @@ class CompatibilityInPyodide(CompatibilityLayer):
     async def fetch_string_and_headers(
         url: str, kwargs: dict[str, str]
     ) -> tuple[str, dict[str, str]]:
-        try:
-            response = await pyfetch(url, **kwargs)
-            response.raise_for_status()
-        except HttpStatusError as e:
-            raise CompatibilityInPyodide.HttpStatusError(e.status, str(e)) from e
+
+        response = await pyfetch(url, **kwargs)
+        response.raise_for_status()
 
         content = await response.string()
         headers: dict[str, str] = response.headers
@@ -64,9 +49,7 @@ class CompatibilityInPyodide(CompatibilityLayer):
 
     loadedPackages = loadedPackages
 
-    get_dynlibs = get_dynlibs
-
-    loadDynlibsFromPackage = loadDynlibsFromPackage
+    install = install
 
     loadPackage = loadPackage
 

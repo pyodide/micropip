@@ -7,9 +7,9 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import urljoin, urlparse
 
-from ._compat import HttpStatusError, fetch_string_and_headers
+from ._compat import CompatibilityLayer
 from ._utils import is_package_compatible, parse_version
 from ._vendored.mousebender.simple import from_project_details_html
 from ._vendored.packaging.src.packaging.utils import InvalidWheelFilename
@@ -271,6 +271,9 @@ def _select_parser(
 async def query_package(
     name: str,
     index_urls: list[str] | str,
+    *,
+    # TODO: instead of passing this as a parameter, it should be a class attribute
+    compat_layer: type[CompatibilityLayer],
     fetch_kwargs: dict[str, Any] | None = None,
 ) -> ProjectInfo:
     """
@@ -312,21 +315,21 @@ async def query_package(
             url = f"{url}/{name}/"
             logger.debug("Url has no placeholder, appending package name : %r", url)
         try:
-            metadata, headers = await fetch_string_and_headers(url, _fetch_kwargs)
-        except HttpStatusError as e:
-            if e.status_code == 404:
-                logger.debug("NotFound (404) for %r, trying next index.", url)
-                continue
-            logger.debug(
-                "Error fetching %r (%s), trying next index.", url, e.status_code
+            metadata, headers = await compat_layer.fetch_string_and_headers(
+                url, _fetch_kwargs
             )
-            raise
+        except Exception as e:
+            logger.debug(
+                "Error fetching metadata for the package %r from (%r): %r, trying next index.",
+                name,
+                url,
+                e,
+            )
+            continue
 
         content_type = headers.get("content-type", "").lower()
         try:
-            base_url = urlunparse(urlparse(url)._replace(path=""))
-
-            parser = _select_parser(content_type, name, index_base_url=base_url)
+            parser = _select_parser(content_type, name, index_base_url=url)
         except ValueError as e:
             raise ValueError(f"Error trying to decode url: {url}") from e
         return parser(metadata)

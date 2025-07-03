@@ -183,6 +183,7 @@ class PackageManager:
             wheel_base = Path(getsitepackages()[0])
 
             transaction = Transaction(
+                _compat_layer=self.compat_layer,
                 ctx=ctx,  # type: ignore[arg-type]
                 ctx_extras=[],
                 keep_going=keep_going,
