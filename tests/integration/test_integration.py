@@ -175,7 +175,7 @@ def test_installer(selenium_standalone_micropip, pytestconfig):
         dummy_wheel = distribution("snowballstemmer")
         assert dummy_wheel.name == "snowballstemmer"
 
-        dist_dir = dummy_wheel.path
+        dist_dir = dummy_wheel._path
 
         assert (dist_dir / "INSTALLER").read_text() == "micropip"
         assert (dist_dir / "PYODIDE_SOURCE").read_text() == dummy_wheel.url
