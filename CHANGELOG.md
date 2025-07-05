@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.10.1] - 2024/07/05
+
+### Fixed
+
+- `micropip.freeze()` now updates the URLs inside the lockfile to absolute URLs.
+  This behavior is consistent with the `lockfileURL` behavior change in Pyodide 0.28.0.
+  [#241](https://github.com/pyodide/micropip/pull/241)
+
 ## [0.10.0] - 2024/07/02
 
 ### Added

@@ -320,7 +320,9 @@ class PackageManager:
         ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
         """
         return freeze_lockfile(
-            self.compat_layer.lockfile_packages, self.compat_layer.lockfile_info
+            self.compat_layer.lockfile_packages,
+            self.compat_layer.lockfile_info,
+            self.compat_layer.lockfile_base_url,
         )
 
     def add_mock_package(

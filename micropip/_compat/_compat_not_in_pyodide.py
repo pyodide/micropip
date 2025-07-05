@@ -84,3 +84,5 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
     lockfile_info = {}
 
     lockfile_packages = {}
+
+    lockfile_base_url = None
