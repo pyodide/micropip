@@ -152,10 +152,10 @@ def test_url_after_freeze_pyodide(selenium_standalone_micropip):
 
         # original lockfile will have relative URLs
         # TODO: this might change later if packages are served from PyPI
-        assert not orig_pkg["file_name"].startswith("http")
+        assert not orig_pkg["file_name"].startswith(("http://", "https://"))
 
         # new lockfile should have absolute URLs
-        assert new_pkg["file_name"].startswith("http")
+        assert new_pkg["file_name"].startswith(("http://", "https://"))
         assert new_pkg["file_name"].startswith(lockfileBaseUrl)
 
         assert orig_pkg["file_name"] in new_pkg["file_name"]
