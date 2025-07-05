@@ -125,40 +125,46 @@ def test_override_base_url():
 
 @run_in_pyodide
 def test_url_after_freeze_pyodide(selenium_standalone_micropip):
-    import json
 
-    from pyodide_js import lockfileBaseUrl
-    from pyodide_js._api import lockfile_packages
+    def _run(selenium, prefix):
+        import json
 
-    import micropip
+        from pyodide_js import lockfileBaseUrl
+        from pyodide_js._api import lockfile_packages
 
-    new_lockfile_str = micropip.freeze()
-    new_lockfile_packages = json.loads(new_lockfile_str)["packages"]
+        import micropip
 
-    orig_lockfile_packages = lockfile_packages.to_py()
+        new_lockfile_str = micropip.freeze()
+        new_lockfile_packages = json.loads(new_lockfile_str)["packages"]
 
-    for orig_pkg_name, orig_pkg in orig_lockfile_packages.items():
-        assert orig_pkg_name in new_lockfile_packages
+        orig_lockfile_packages = lockfile_packages.to_py()
 
-        new_pkg = new_lockfile_packages[orig_pkg_name]
+        for orig_pkg_name, orig_pkg in orig_lockfile_packages.items():
+            assert orig_pkg_name in new_lockfile_packages
 
-        assert new_pkg["name"] == orig_pkg["name"]
-        assert new_pkg["version"] == orig_pkg["version"]
-        assert new_pkg["sha256"] == orig_pkg["sha256"]
-        assert new_pkg["imports"] == orig_pkg["imports"]
-        assert new_pkg["depends"] == orig_pkg["depends"]
-        assert new_pkg["install_dir"] == orig_pkg["install_dir"]
-        assert new_pkg["unvendored_tests"] == orig_pkg["unvendored_tests"]
+            new_pkg = new_lockfile_packages[orig_pkg_name]
 
-        # original lockfile will have relative URLs
-        # TODO: this might change later if packages are served from PyPI
-        assert not orig_pkg["file_name"].startswith(("http://", "https://"))
+            assert new_pkg["name"] == orig_pkg["name"]
+            assert new_pkg["version"] == orig_pkg["version"]
+            assert new_pkg["sha256"] == orig_pkg["sha256"]
+            assert new_pkg["imports"] == orig_pkg["imports"]
+            assert new_pkg["depends"] == orig_pkg["depends"]
+            assert new_pkg["install_dir"] == orig_pkg["install_dir"]
+            assert new_pkg["unvendored_tests"] == orig_pkg["unvendored_tests"]
 
-        # new lockfile should have absolute URLs
-        assert new_pkg["file_name"].startswith(("http://", "https://"))
-        assert new_pkg["file_name"].startswith(lockfileBaseUrl)
+            # original lockfile will have relative URLs
+            # TODO: this might change later if packages are served from PyPI
+            assert not orig_pkg["file_name"].startswith(prefix)
 
-        assert orig_pkg["file_name"] in new_pkg["file_name"]
+            # new lockfile should have absolute URLs
+            assert new_pkg["file_name"].startswith(prefix)
+            assert new_pkg["file_name"].startswith(lockfileBaseUrl)
+
+            assert orig_pkg["file_name"] in new_pkg["file_name"]
+
+    selenium = selenium_standalone_micropip
+    prefix = ("/",) if selenium.browser == "node" else ("http://", "https://")
+    selenium.run_async(_run, prefix=prefix)
 
         
 
