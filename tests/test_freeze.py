@@ -1,7 +1,6 @@
 import pytest
-from pytest_pyodide import run_in_pyodide
-
 from conftest import mock_fetch_cls
+from pytest_pyodide import run_in_pyodide
 
 
 @pytest.mark.asyncio
@@ -118,10 +117,18 @@ def test_override_base_url():
 
     override_base_url(lockfile_packages, base_url)
 
-    assert lockfile_packages["pkg1"]["file_name"] == "https://example.com/packages/pkg1-1.0.0-py3-none-any.whl"
-    assert lockfile_packages["pkg2"]["file_name"] == "https://example.com/packages/pkg2-2.0.0-py3-none-any.whl"
-    assert lockfile_packages["pkg3"]["file_name"] == "https://other.com/pkg3-3.0.0-py3-none-any.whl"
-
+    assert (
+        lockfile_packages["pkg1"]["file_name"]
+        == "https://example.com/packages/pkg1-1.0.0-py3-none-any.whl"
+    )
+    assert (
+        lockfile_packages["pkg2"]["file_name"]
+        == "https://example.com/packages/pkg2-2.0.0-py3-none-any.whl"
+    )
+    assert (
+        lockfile_packages["pkg3"]["file_name"]
+        == "https://other.com/pkg3-3.0.0-py3-none-any.whl"
+    )
 
 
 def test_url_after_freeze_pyodide(selenium_standalone_micropip):
@@ -166,7 +173,3 @@ def test_url_after_freeze_pyodide(selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
     prefix = ("/",) if selenium.browser == "node" else ("http://", "https://")
     _run(selenium, prefix)
-
-        
-
-
