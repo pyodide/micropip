@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        pyodide-version: ["0.28.0a2"]
+        pyodide-version: ["0.28.0"]
         test-config: [
             # FIXME: recent version of chrome gets timeout
             { runner: selenium, runtime: chrome, runtime-version: "125" },
