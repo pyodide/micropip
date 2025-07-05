@@ -23,11 +23,10 @@ def freeze_data(
     lockfile_packages: dict[str, dict[str, Any]], lockfile_info: dict[str, str], lockfile_base_url: str | None = None,
 ) -> dict[str, Any]:
     packages = deepcopy(lockfile_packages)
+    packages.update(load_pip_packages(lockfile_packages))
     if lockfile_base_url is not None:
         # Override the base URL for the packages
         override_base_url(packages, lockfile_base_url)
-
-    packages.update(load_pip_packages(lockfile_packages))
 
     # Sort
     packages = dict(sorted(packages.items()))
