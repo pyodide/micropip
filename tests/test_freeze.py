@@ -1,4 +1,6 @@
 import pytest
+from pytest_pyodide import run_in_pyodide
+
 from conftest import mock_fetch_cls
 
 
@@ -102,3 +104,62 @@ def test_freeze_lockfile_compat(
     assert package.install_dir == "site"
     assert not package.unvendored_tests
     assert package.version == wheel.version
+
+
+def test_override_base_url():
+    from micropip.freeze import override_base_url
+
+    lockfile_packages = {
+        "pkg1": {"file_name": "pkg1-1.0.0-py3-none-any.whl"},
+        "pkg2": {"file_name": "pkg2-2.0.0-py3-none-any.whl"},
+        "pkg3": {"file_name": "https://other.com/pkg3-3.0.0-py3-none-any.whl"},
+    }
+    base_url = "https://example.com/packages/"
+
+    override_base_url(lockfile_packages, base_url)
+
+    assert lockfile_packages["pkg1"]["file_name"] == "https://example.com/packages/pkg1-1.0.0-py3-none-any.whl"
+    assert lockfile_packages["pkg2"]["file_name"] == "https://example.com/packages/pkg2-2.0.0-py3-none-any.whl"
+    assert lockfile_packages["pkg3"]["file_name"] == "https://other.com/pkg3-3.0.0-py3-none-any.whl"
+
+
+@run_in_pyodide
+def test_url_after_freeze_pyodide(selenium_standalone_micropip):
+    import json
+
+    from pyodide_js import lockfileBaseUrl
+    from pyodide_js._api import lockfile_packages
+
+    import micropip
+
+    new_lockfile_str = micropip.freeze()
+    new_lockfile_packages = json.loads(new_lockfile_str)["packages"]
+
+    orig_lockfile_packages = lockfile_packages.to_py()
+
+    for orig_pkg_name, orig_pkg in orig_lockfile_packages.items():
+        assert orig_pkg_name in new_lockfile_packages
+
+        new_pkg = new_lockfile_packages[orig_pkg_name]
+
+        assert new_pkg["name"] == orig_pkg["name"]
+        assert new_pkg["version"] == orig_pkg["version"]
+        assert new_pkg["sha256"] == orig_pkg["sha256"]
+        assert new_pkg["imports"] == orig_pkg["imports"]
+        assert new_pkg["depends"] == orig_pkg["depends"]
+        assert new_pkg["install_dir"] == orig_pkg["install_dir"]
+        assert new_pkg["unvendored_tests"] == orig_pkg["unvendored_tests"]
+
+        # original lockfile will have relative URLs
+        # TODO: this might change later if packages are served from PyPI
+        assert not orig_pkg["file_name"].startswith("http")
+
+        # new lockfile should have absolute URLs
+        assert new_pkg["file_name"].startswith("http")
+        assert new_pkg["file_name"].startswith(lockfileBaseUrl)
+
+        assert orig_pkg["file_name"] in new_pkg["file_name"]
+
+        
+
+
