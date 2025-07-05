@@ -8,7 +8,7 @@ from .compatibility_layer import CompatibilityLayer
 
 try:
     import pyodide_js
-    from pyodide_js import loadedPackages, loadPackage
+    from pyodide_js import loadedPackages, loadPackage, lockfileBaseUrl
     from pyodide_js._api import (  # type: ignore[import]
         install,
         loadBinaryFile,
@@ -58,3 +58,5 @@ class CompatibilityInPyodide(CompatibilityLayer):
     lockfile_info = LOCKFILE_INFO
 
     lockfile_packages = LOCKFILE_PACKAGES
+
+    lockfile_base_url = lockfileBaseUrl

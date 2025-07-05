@@ -21,6 +21,8 @@ LOCKFILE_INFO = compatibility_layer.lockfile_info
 
 LOCKFILE_PACKAGES = compatibility_layer.lockfile_packages
 
+lockfile_base_url = compatibility_layer.lockfile_base_url
+
 fetch_bytes = compatibility_layer.fetch_bytes
 
 fetch_string_and_headers = compatibility_layer.fetch_string_and_headers
@@ -40,4 +42,5 @@ __all__ = [
     "loadedPackages",
     "loadPackage",
     "to_js",
+    "lockfile_base_url",
 ]

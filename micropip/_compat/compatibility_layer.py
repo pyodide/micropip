@@ -19,6 +19,8 @@ class CompatibilityLayer(ABC):
 
     lockfile_packages: dict[str, dict[str, Any]]
 
+    lockfile_base_url: str | None = None
+
     @staticmethod
     @abstractmethod
     async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
