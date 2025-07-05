@@ -123,9 +123,10 @@ def test_override_base_url():
     assert lockfile_packages["pkg3"]["file_name"] == "https://other.com/pkg3-3.0.0-py3-none-any.whl"
 
 
-@run_in_pyodide
+
 def test_url_after_freeze_pyodide(selenium_standalone_micropip):
 
+    @run_in_pyodide
     def _run(selenium, prefix):
         import json
 
@@ -164,7 +165,7 @@ def test_url_after_freeze_pyodide(selenium_standalone_micropip):
 
     selenium = selenium_standalone_micropip
     prefix = ("/",) if selenium.browser == "node" else ("http://", "https://")
-    selenium.run_async(_run, prefix=prefix)
+    _run(selenium, prefix)
 
         
 
