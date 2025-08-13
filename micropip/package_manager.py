@@ -157,6 +157,16 @@ class PackageManager:
             Print more information about the process. By default, micropip does not
             change logger level. Setting ``verbose=True`` will print similar
             information as pip.
+
+        Examples
+        --------
+        >>> import micropip
+        >>> await micropip.install("snowballstemmer")
+        >>> await micropip.install(["snowballstemmer", "mccabe"])
+        >>> await micropip.install("numpy>=2.2.0")
+
+        For more details and advanced usage, see the user manual:
+        https://pyodide.org/en/stable/usage/loading-packages.html#micropip
         """
 
         with setup_logging().ctx_level(verbose) as logger:
