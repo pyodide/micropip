@@ -196,7 +196,7 @@ def check_compatible(filename: str) -> None:
         raise ValueError(
             f"Wheel abi '{abis_string}' is not supported. Supported abis are 'abi3' and 'cp{version}'."
         )
-    
+
     # Check interpreter compatibility
     current_version = int(version)
     for tag in tags:
@@ -204,14 +204,17 @@ def check_compatible(filename: str) -> None:
             wheel_version = int(tag.interpreter.removeprefix("cp"))
             # abi3: forward compatible (wheel_version <= current_version)
             # non-abi3: exact match required (wheel_version == current_version)
-            if (tag.abi == "abi3" and wheel_version <= current_version) or \
-               (tag.abi != "abi3" and wheel_version == current_version):
+            if (tag.abi == "abi3" and wheel_version <= current_version) or (
+                tag.abi != "abi3" and wheel_version == current_version
+            ):
                 return
         except ValueError:
             continue
 
     interpreters_string = ",".join({tag.interpreter for tag in tags})
-    raise ValueError(f"Wheel interpreter version '{interpreters_string}' is not supported.")
+    raise ValueError(
+        f"Wheel interpreter version '{interpreters_string}' is not supported."
+    )
 
 
 def validate_constraints(
