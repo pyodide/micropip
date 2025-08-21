@@ -5,7 +5,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import ParseResult, urlparse, unquote
+from urllib.parse import ParseResult, unquote, urlparse
 
 from ._compat import (
     fetch_bytes,
