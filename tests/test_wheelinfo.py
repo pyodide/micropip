@@ -15,6 +15,19 @@ def test_from_url():
     assert wheel.sha256 is None
 
 
+def test_from_url_with_percent_encoded_path():
+    # Test URL with percent-encoded characters (+ encoded as %2B in version string)
+    url = "https://test.com/dummy_module-1.0.0%2Blocalbuild.1-py3-none-any.whl"
+    wheel = WheelInfo.from_url(url)
+
+    assert wheel.name == "dummy-module"
+    assert str(wheel.version) == "1.0.0+localbuild.1"
+    assert wheel.url == url
+    assert wheel.filename == "dummy_module-1.0.0+localbuild.1-py3-none-any.whl"
+    assert wheel.size is None
+    assert wheel.sha256 is None
+
+
 def test_from_package_index():
     name = "dummy-module"
     filename = "dummy_module-0.0.1-py3-none-any.whl"
