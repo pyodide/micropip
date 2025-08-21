@@ -18,6 +18,7 @@ from ._vendored.packaging.src.packaging.utils import (
     parse_wheel_filename as parse_wheel_filename_orig,
 )
 from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
+from ._cached_version import CachedVersion
 
 
 def get_dist_info(dist: Distribution) -> Path:
@@ -87,8 +88,12 @@ def parse_wheel_filename(
 
 
 # TODO: Move these helper functions back to WheelInfo
-def parse_version(filename: str) -> Version:
-    return parse_wheel_filename(filename)[1]
+def parse_version(filename: str) -> CachedVersion:
+    """Parses a version from a wheel filename, returning a CachedVersion."""
+    version_obj = parse_wheel_filename(filename)[1]
+    if isinstance(version_obj, CachedVersion):
+        return version_obj
+    return CachedVersion(str(version_obj))
 
 
 def parse_tags(filename: str) -> frozenset[Tag]:
