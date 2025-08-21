@@ -5,7 +5,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult, unquote, urlparse
 
 from ._compat import (
     fetch_bytes,
@@ -78,7 +78,7 @@ class WheelInfo:
                 query=parsed_url.query,
                 fragment=parsed_url.fragment,
             )
-        file_name = Path(parsed_url.path).name
+        file_name = Path(unquote(parsed_url.path)).name
         name, version, build, tags = parse_wheel_filename(file_name)
         return WheelInfo(
             name=name,
