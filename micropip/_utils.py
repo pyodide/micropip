@@ -3,6 +3,7 @@ from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_config_var, get_platform
 
+from ._cached_version import CachedVersion
 from ._vendored.packaging.src.packaging.requirements import (
     InvalidRequirement,
     Requirement,
@@ -18,7 +19,6 @@ from ._vendored.packaging.src.packaging.utils import (
     parse_wheel_filename as parse_wheel_filename_orig,
 )
 from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
-from ._cached_version import CachedVersion
 
 
 def get_dist_info(dist: Distribution) -> Path:
