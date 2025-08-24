@@ -3,6 +3,7 @@ from importlib.metadata import Distribution
 from pathlib import Path
 from sysconfig import get_config_var, get_platform
 
+from ._cached_version import CachedVersion
 from ._vendored.packaging.src.packaging.requirements import (
     InvalidRequirement,
     Requirement,
@@ -88,7 +89,11 @@ def parse_wheel_filename(
 
 # TODO: Move these helper functions back to WheelInfo
 def parse_version(filename: str) -> Version:
-    return parse_wheel_filename(filename)[1]
+    """Parses a version from a wheel filename, returning a CachedVersion."""
+    version_obj = parse_wheel_filename(filename)[1]
+    if isinstance(version_obj, CachedVersion):
+        return version_obj
+    return CachedVersion(str(version_obj))
 
 
 def parse_tags(filename: str) -> frozenset[Tag]:

@@ -9,6 +9,7 @@ from functools import partial
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
+from ._cached_version import CachedVersion
 from ._compat import CompatibilityLayer
 from ._utils import is_package_compatible, parse_version
 from ._vendored.mousebender.simple import from_project_details_html
@@ -207,11 +208,11 @@ class ProjectInfo:
 def _is_valid_pep440_version(version_str: str) -> tuple[Version | None, bool]:
     """
     Check if the given string is a valid PEP 440 version.
-    Since parsing a version is expensive, we return the parsed version as well,
+    Since parsing a version is expensive, we return the parsed cached version as well,
     so that it can be reused if needed.
     """
     try:
-        version = Version(version_str)
+        version = CachedVersion(version_str)
         return version, True
     except InvalidVersion:
         return None, False
