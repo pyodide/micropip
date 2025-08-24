@@ -1,6 +1,4 @@
-from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
-
-__all__ = ["CachedVersion", "parse_cached_version", "InvalidVersion"]
+from ._vendored.packaging.src.packaging.version import Version
 
 
 class CachedVersion(Version):
@@ -29,16 +27,3 @@ class CachedVersion(Version):
         """
 
         return f"<CachedVersion('{self}')>"
-
-
-def parse_cached_version(version_str: str) -> CachedVersion:
-    """Parse version string into CachedVersion object.
-    Parameters
-    ----------
-    version_str: str
-        Version string to parse (e.g., "1.2.3", "2.0.0a1")
-    Returns
-    -------
-    CachedVersion object
-    """
-    return CachedVersion(version_str)
