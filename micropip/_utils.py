@@ -88,7 +88,7 @@ def parse_wheel_filename(
 
 
 # TODO: Move these helper functions back to WheelInfo
-def parse_version(filename: str) -> CachedVersion:
+def parse_version(filename: str) -> Version:
     """Parses a version from a wheel filename, returning a CachedVersion."""
     version_obj = parse_wheel_filename(filename)[1]
     if isinstance(version_obj, CachedVersion):

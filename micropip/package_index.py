@@ -9,7 +9,8 @@ from functools import partial
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
-from ._cached_version import CachedVersion, InvalidVersion, parse_cached_version
+from ._cached_version import CachedVersion
+from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
 from ._compat import CompatibilityLayer
 from ._utils import is_package_compatible, parse_version
 from ._vendored.mousebender.simple import from_project_details_html
@@ -39,7 +40,7 @@ class ProjectInfo:
     # List of releases available for the package, sorted in ascending order by version.
     # For each version, list of wheels compatible with the current platform are stored.
     # If no such wheel is available, the list is empty.
-    releases: dict[CachedVersion, Generator[WheelInfo, None, None]]
+    releases: dict[Version, Generator[WheelInfo, None, None]]
 
     @staticmethod
     def from_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
@@ -55,7 +56,7 @@ class ProjectInfo:
         releases_raw: dict[str, list[Any]] = data_dict["releases"]
 
         # Filter out non PEP 440 compliant versions
-        releases: dict[CachedVersion, list[Any]] = {}
+        releases: dict[Version, list[Any]] = {}
         for version_str, fileinfo in releases_raw.items():
             version, ok = _is_valid_pep440_version(version_str)
             if not ok or not version:
@@ -99,7 +100,7 @@ class ProjectInfo:
     @staticmethod
     def _parse_pep691_response(
         resp: dict[str, Any], index_base_url: str
-    ) -> tuple[str, dict[CachedVersion, list[Any]]]:
+    ) -> tuple[str, dict[Version, list[Any]]]:
         name = resp["name"]
 
         # List of versions (PEP 700), this key is not critical to find packages
@@ -109,7 +110,7 @@ class ProjectInfo:
         versions = resp.get("versions", [])
 
         # Group files by version
-        releases: dict[CachedVersion, list[Any]] = defaultdict(list)
+        releases: dict[Version, list[Any]] = defaultdict(list)
 
         for version_str in versions:
             version, ok = _is_valid_pep440_version(version_str)
@@ -140,7 +141,7 @@ class ProjectInfo:
 
     @classmethod
     def _compatible_wheels(
-        cls, files: list[dict[str, Any]], version: CachedVersion, name: str
+        cls, files: list[dict[str, Any]], version: Version, name: str
     ) -> Generator[WheelInfo, None, None]:
         for file in files:
             filename = file["filename"]
@@ -181,7 +182,7 @@ class ProjectInfo:
 
     @classmethod
     def _compatible_only(
-        cls, name: str, releases: dict[CachedVersion, list[dict[str, Any]]]
+        cls, name: str, releases: dict[Version, list[dict[str, Any]]]
     ) -> "ProjectInfo":
         """
         Return a generator of wheels compatible with the current platform.
@@ -204,14 +205,14 @@ class ProjectInfo:
         )
 
 
-def _is_valid_pep440_version(version_str: str) -> tuple[CachedVersion | None, bool]:
+def _is_valid_pep440_version(version_str: str) -> tuple[Version | None, bool]:
     """
     Check if the given string is a valid PEP 440 version.
     Since parsing a version is expensive, we return the parsed cached version as well,
     so that it can be reused if needed.
     """
     try:
-        version = parse_cached_version(version_str)
+        version = CachedVersion(version_str)
         return version, True
     except InvalidVersion:
         return None, False
