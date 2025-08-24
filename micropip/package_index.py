@@ -10,11 +10,11 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 from ._cached_version import CachedVersion
-from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
 from ._compat import CompatibilityLayer
 from ._utils import is_package_compatible, parse_version
 from ._vendored.mousebender.simple import from_project_details_html
 from ._vendored.packaging.src.packaging.utils import InvalidWheelFilename
+from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
 from .types import DistributionMetadata
 from .wheelinfo import WheelInfo
 
