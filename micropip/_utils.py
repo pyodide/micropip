@@ -91,9 +91,7 @@ def parse_wheel_filename(
 def parse_version(filename: str) -> Version:
     """Parses a version from a wheel filename, returning a CachedVersion."""
     version_obj = parse_wheel_filename(filename)[1]
-    if isinstance(version_obj, CachedVersion):
-        return version_obj
-    return CachedVersion(str(version_obj))
+    return CachedVersion.from_version(version_obj)
 
 
 def parse_tags(filename: str) -> frozenset[Tag]:
