@@ -10,7 +10,11 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 from ._compat import CompatibilityLayer
-from ._utils import is_package_compatible, parse_version
+from ._utils import (
+    best_compatible_tag_index,
+    parse_tags,
+    parse_version,
+)
 from ._vendored.mousebender.simple import from_project_details_html
 from ._vendored.packaging.src.packaging.utils import InvalidWheelFilename
 from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
@@ -147,8 +151,13 @@ class ProjectInfo:
 
             # Checking compatibility takes a bit of time,
             # so we use a generator to avoid doing it for all files.
-            compatible = is_package_compatible(filename)
-            if not compatible:
+            try:
+                tags = parse_tags(filename)
+            except (InvalidVersion, InvalidWheelFilename):
+                continue
+
+            tag_index = best_compatible_tag_index(tags)
+            if tag_index is None:
                 continue
 
             # JSON API has a "digests" key, while Simple API has a "hashes" key.
@@ -177,6 +186,7 @@ class ProjectInfo:
                 size=size,
                 core_metadata=core_metadata,
                 yanked_reason=yanked_reason,
+                best_tag_index=tag_index,
             )
 
     @classmethod

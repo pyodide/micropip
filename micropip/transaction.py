@@ -413,7 +413,10 @@ def _find_best_wheel(wheels: Iterable[WheelInfo]) -> WheelInfo | None:
     best_wheel = None
     best_tag_index = float("infinity")
     for wheel in wheels:
-        tag_index = best_compatible_tag_index(wheel.tags)
+        tag_index = wheel._best_tag_index
+        if tag_index is None:
+            tag_index = best_compatible_tag_index(wheel.tags)
+            wheel._best_tag_index = tag_index
         if tag_index is not None and tag_index < best_tag_index:
             best_wheel = wheel
             best_tag_index = tag_index

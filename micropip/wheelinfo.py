@@ -47,6 +47,7 @@ class WheelInfo:
     yanked_reason: str | bool = (
         False  # Whether the wheel has been yanked and the reason (if given) (PEP-592)
     )
+    _best_tag_index: int | None = field(default=None, repr=False, compare=False)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -101,6 +102,7 @@ class WheelInfo:
         size: int | None,
         core_metadata: DistributionMetadata = None,
         yanked_reason: str | bool = False,
+        best_tag_index: int | None = None,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
@@ -118,6 +120,7 @@ class WheelInfo:
             size=size,
             core_metadata=core_metadata,
             yanked_reason=yanked_reason,
+            _best_tag_index=best_tag_index,
         )
 
     async def install(self, target: Path) -> None:
