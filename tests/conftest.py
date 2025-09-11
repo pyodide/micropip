@@ -11,7 +11,6 @@ from typing import Any
 
 import pytest
 from pytest_httpserver import HTTPServer
-from pytest_pyodide import spawn_web_server
 from pytest_pyodide.runner import JavascriptException
 
 from micropip._vendored.packaging.src.packaging.utils import parse_wheel_filename
@@ -85,12 +84,19 @@ def selenium_standalone_micropip(selenium_standalone, wheel_path):
         pytest.exit("No wheel files found in wheel/ directory")
 
     wheel_file = wheel_files[0]
-    with spawn_web_server(wheel_dir) as server:
-        server_hostname, server_port, _ = server
-        base_url = f"http://{server_hostname}:{server_port}/"
+
+    httpserver = HTTPServer()
+    httpserver.expect_request(f"/{wheel_file.name}").respond_with_data(
+        wheel_file.read_bytes(),
+        content_type="application/zip",
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
+
+    with httpserver:
+        url = httpserver.url_for(f"/{wheel_file.name}")
         selenium_standalone.run_js(
             f"""
-            await pyodide.loadPackage("{base_url + wheel_file.name}");
+            await pyodide.loadPackage("{url}");
             pyodide.runPython("import micropip");
             """
         )
