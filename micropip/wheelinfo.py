@@ -13,7 +13,7 @@ from ._compat import (
     loadedPackages,
     to_js,
 )
-from ._utils import parse_wheel_filename
+from ._utils import parse_wheel_filename, best_compatible_tag_index
 from ._vendored.packaging.src.packaging.requirements import Requirement
 from ._vendored.packaging.src.packaging.tags import Tag
 from ._vendored.packaging.src.packaging.version import Version
@@ -62,6 +62,15 @@ class WheelInfo:
         self._project_name = safe_name(self.name)
         self.metadata_url = self.url + ".metadata"
         self.yanked = bool(self.yanked_reason)
+
+    @property
+    def best_tag_index(self) -> int | None:
+        """
+        Returns an index if a compatible tag exists, otherwise None.
+        """
+        if self._best_tag_index is None:
+            self._best_tag_index = best_compatible_tag_index(self.tags)
+        return self._best_tag_index
 
     @classmethod
     def from_url(cls, url: str) -> "WheelInfo":
