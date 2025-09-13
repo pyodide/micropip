@@ -13,7 +13,7 @@ from ._compat import (
     loadedPackages,
     to_js,
 )
-from ._utils import parse_wheel_filename, best_compatible_tag_index
+from ._utils import best_compatible_tag_index, parse_wheel_filename
 from ._vendored.packaging.src.packaging.requirements import Requirement
 from ._vendored.packaging.src.packaging.tags import Tag
 from ._vendored.packaging.src.packaging.version import Version
