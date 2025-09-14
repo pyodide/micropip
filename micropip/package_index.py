@@ -147,7 +147,7 @@ class ProjectInfo:
 
             # Checking compatibility takes a bit of time,
             # so we use a generator to avoid doing it for all files.
-            compatible = is_package_compatible(filename)
+            compatible, tag_index = is_package_compatible(filename)
             if not compatible:
                 continue
 
@@ -177,6 +177,7 @@ class ProjectInfo:
                 size=size,
                 core_metadata=core_metadata,
                 yanked_reason=yanked_reason,
+                best_tag_index=tag_index,
             )
 
     @classmethod

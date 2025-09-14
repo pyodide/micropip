@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 from . import package_index
 from ._compat import CompatibilityLayer
 from ._utils import (
-    best_compatible_tag_index,
     check_compatible,
     constrain_requirement,
     validate_constraints,
@@ -413,7 +412,7 @@ def _find_best_wheel(wheels: Iterable[WheelInfo]) -> WheelInfo | None:
     best_wheel = None
     best_tag_index = float("infinity")
     for wheel in wheels:
-        tag_index = best_compatible_tag_index(wheel.tags)
+        tag_index = wheel.best_tag_index
         if tag_index is not None and tag_index < best_tag_index:
             best_wheel = wheel
             best_tag_index = tag_index
