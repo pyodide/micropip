@@ -78,9 +78,12 @@ A dependency can be refined as per the [PEP-508] spec:
 ```python
 await micropip.install("snowballstemmer==2.2.0")
 await micropip.install("snowballstemmer>=2.2.0")
-await micropip.install("snowballstemmer @ https://.../snowballstemmer.*.whl")
 await micropip.install("snowballstemmer[all]")
 ```
+
+Giving a concrete URI for the wheel
+(`snowballstemmer @ https://.../snowballstemmer.*.whl`)
+is not supported in micropip.
 
 ### Disabling dependency resolution
 
