@@ -66,14 +66,19 @@ class Transaction:
     async def gather_requirements(
         self,
         requirements: list[str] | list[Requirement],
+        *,
+        extras: set[str] | None = None,
     ) -> None:
         requirement_promises = [
-            self.add_requirement(requirement) for requirement in requirements
+            self.add_requirement(requirement, extras=extras)
+            for requirement in requirements
         ]
 
         await asyncio.gather(*requirement_promises)
 
-    async def add_requirement(self, req: str | Requirement) -> None:
+    async def add_requirement(
+        self, req: str | Requirement, *, extras: set[str] | None = None
+    ) -> None:
         if isinstance(req, Requirement):
             return await self.add_requirement_inner(req)
 
@@ -84,6 +89,7 @@ class Transaction:
 
         if as_req:
             if as_req.name and len(as_req.specifier):
+                as_req.extras |= extras
                 return await self.add_requirement_inner(as_req)
             if as_req.url:
                 req = as_req.url
@@ -92,9 +98,11 @@ class Transaction:
             # custom download location
             wheel = WheelInfo.from_url(req)
             check_compatible(wheel.filename)
-            return await self.add_wheel(wheel, extras=set(), specifier="")
+            return await self.add_wheel(wheel, extras=extras or set(), specifier="")
 
-        return await self.add_requirement_inner(Requirement(req))
+        req = Requirement(req)
+        req.extras |= extras
+        return await self.add_requirement_inner(req)
 
     def check_version_satisfied(
         self, req: Requirement, *, allow_reinstall: bool = False

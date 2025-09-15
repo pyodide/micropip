@@ -52,6 +52,7 @@ class PackageManager:
         constraints: list[str] | None = None,
         reinstall: bool = False,
         verbose: bool | int | None = None,
+        extras: set[str] | None = None,
     ) -> None:
         """Install the given package and all of its dependencies.
 
@@ -158,6 +159,13 @@ class PackageManager:
             change logger level. Setting ``verbose=True`` will print similar
             information as pip.
 
+        extras:
+            When installing the requirement, enable the given extas (optional
+            components). This is an alternative syntax to configuring it in the
+            requirement itself (`install("package[extra1,extra2]")` is
+            equivalent to `install("package", extras={"extra1", "extra2"})`),
+            and enables installing extras when installing a package from a URL.
+
         Examples
         --------
         >>> import micropip
@@ -176,6 +184,11 @@ class PackageManager:
             ctx = default_environment()
             if isinstance(requirements, str):
                 requirements = [requirements]
+
+            if extras is not None and len(requirements) != 1:
+                raise TypeError(
+                    "The extras= argument is only supported on a single requirement"
+                )
 
             fetch_kwargs = {}
 
@@ -202,7 +215,7 @@ class PackageManager:
                 constraints=constraints,
                 reinstall=reinstall,
             )
-            await transaction.gather_requirements(requirements)
+            await transaction.gather_requirements(requirements, extras=extras)
 
             if transaction.failed:
                 failed_requirements = ", ".join(
