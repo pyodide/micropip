@@ -199,7 +199,13 @@ class Transaction:
             wheel = WheelInfo.from_url(req.url)
             check_compatible(wheel.filename)
             return await self.add_wheel(wheel, extras=req.extras, specifier="")
+        else:
+            await self._add_requirement_by_name(req)
 
+    async def _add_requirement_by_name(
+        self,
+        req: Requirement,
+    ) -> None:
         try:
             if self.search_pyodide_lock_first:
                 if await self._add_requirement_from_pyodide_lock(req):
