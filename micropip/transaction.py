@@ -80,21 +80,15 @@ class Transaction:
         try:
             as_req = constrain_requirement(Requirement(req), self.constrained_reqs)
         except InvalidRequirement:
-            as_req = None
+            if urlparse(req).path.endswith(".whl"):
+                # custom download location
+                wheel = WheelInfo.from_url(req)
+                check_compatible(wheel.filename)
+                return await self.add_wheel(wheel, extras=set(), specifier="")
+            else:
+                raise
 
-        if as_req:
-            if as_req.name and len(as_req.specifier):
-                return await self.add_requirement_inner(as_req)
-            if as_req.url:
-                req = as_req.url
-
-        if urlparse(req).path.endswith(".whl"):
-            # custom download location
-            wheel = WheelInfo.from_url(req)
-            check_compatible(wheel.filename)
-            return await self.add_wheel(wheel, extras=set(), specifier="")
-
-        return await self.add_requirement_inner(Requirement(req))
+        return await self.add_requirement_inner(as_req)
 
     def check_version_satisfied(
         self, req: Requirement, *, allow_reinstall: bool = False
@@ -200,6 +194,11 @@ class Transaction:
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
             return
+
+        if req.url:
+            wheel = WheelInfo.from_url(req.url)
+            check_compatible(wheel.filename)
+            return await self.add_wheel(wheel, extras=req.extras, specifier="")
 
         try:
             if self.search_pyodide_lock_first:
