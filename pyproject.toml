@@ -35,6 +35,7 @@ requires = ["hatchling>=1.25", "hatch-vcs>=0.4"]
 
 build-backend = "hatchling.build"
 
+# Versioning via hatch-vcs
 [tool.hatch.version]
 source = "vcs"
 
