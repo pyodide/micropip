@@ -74,3 +74,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "micropip._vendored.*"
 warn_unreachable = false
+
+[tool.pytest.ini_options]
+addopts = "--ignore=micropip/_vendored --ignore=micropip/_compat --doctest-modules"

@@ -1,7 +1,7 @@
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pyodide.ffi import IN_BROWSER, to_js
+from pyodide.ffi import to_js
 from pyodide.http import pyfetch
 
 from .compatibility_layer import CompatibilityLayer
@@ -16,10 +16,10 @@ try:
 
     LOCKFILE_PACKAGES = pyodide_js._api.lockfile_packages.to_py()
     LOCKFILE_INFO = pyodide_js._api.lockfile_info.to_py()
-except ImportError:
-    if IN_BROWSER:
-        raise
-    # Otherwise, this is pytest test collection so let it go.
+except ImportError as e:
+    raise ImportError(
+        "Failed to import pyodide modules, please report this issue to Pyodide team."
+    ) from e
 
 
 class CompatibilityInPyodide(CompatibilityLayer):
