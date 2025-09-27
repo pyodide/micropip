@@ -17,7 +17,9 @@ try:
     LOCKFILE_PACKAGES = pyodide_js._api.lockfile_packages.to_py()
     LOCKFILE_INFO = pyodide_js._api.lockfile_info.to_py()
 except ImportError as e:
-    raise ImportError("Failed to import pyodide modules, please report this issue to Pyodide team.") from e
+    raise ImportError(
+        "Failed to import pyodide modules, please report this issue to Pyodide team."
+    ) from e
 
 
 class CompatibilityInPyodide(CompatibilityLayer):
