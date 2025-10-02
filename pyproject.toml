@@ -31,7 +31,7 @@ test = [
 
 
 [build-system]
-requires = ["hatchling>=1.25", "hatch-vcs>=0.4"]
+requires = ["hatchling>=1.6.0,<2", "hatch-vcs>=0.4.0,<0.6.0"]
 
 build-backend = "hatchling.build"
 
@@ -44,22 +44,16 @@ version-file = "micropip/_version.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
-  "micropip/_vendored/packaging/**",
-]
-include = [
-  "micropip/_vendored/packaging/src/**",
-  "micropip/_vendored/packaging/LICENSE*",
-  "micropip/_vendored/packaging/README.rst",
-]
-
-[tool.hatch.build.targets.wheel]
-exclude = [
-  "micropip/_vendored/packaging/**",
-]
-include = [
-  "micropip/_vendored/packaging/src/**",
-  "micropip/_vendored/packaging/LICENSE*",
-  "micropip/_vendored/packaging/README.rst",
+  "micropip/_vendored/packaging/.github/**",
+  "micropip/_vendored/packaging/docs/**",
+  "micropip/_vendored/packaging/tasks/**",
+  "micropip/_vendored/packaging/tests/**",
+  "micropip/_vendored/packaging/.pre-commit-config.yaml",
+  "micropip/_vendored/packaging/.readthedocs.yml",
+  "micropip/_vendored/packaging/CHANGELOG.rst",
+  "micropip/_vendored/packaging/CONTRIBUTING.rst",
+  "micropip/_vendored/packaging/noxfile.py",
+  "micropip/_vendored/packaging/pyproject.toml",
 ]
 
 [tool.ruff]
