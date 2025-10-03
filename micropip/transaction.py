@@ -91,11 +91,11 @@ class Transaction:
         except InvalidRequirement:
             if not urlparse(req).path.endswith(".whl"):
                 raise
-        
+
         # custom download location
         return await self.add_requirement_from_url(req)
-    
-    async def add_requirement_from_url(self, req: str) -> WheelInfo:
+
+    async def add_requirement_from_url(self, req: str) -> None:
         wheel = WheelInfo.from_url(req)
         check_compatible(wheel.filename)
         return await self.add_wheel(wheel, extras=set(), specifier="")
