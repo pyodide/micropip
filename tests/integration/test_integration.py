@@ -206,7 +206,6 @@ def test_install_url_based_wheel(selenium_standalone_micropip):
 
         await micropip.install(f"typer[all] @ {url}")
 
-
     # typer 0.10.0 has "[all]" dependency that comes with colorama, shellingham, and rich
     typer_0_10_0_url = "https://files.pythonhosted.org/packages/d9/07/8100c125307a26f03c305764f22cd995ae1878071ddf1df3588add73b53c/typer-0.10.0-py3-none-any.whl"
     _run(selenium_standalone_micropip, typer_0_10_0_url)
