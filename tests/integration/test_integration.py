@@ -206,8 +206,8 @@ def test_install_url_based_wheel(selenium_standalone_micropip):
 
         await micropip.install(f"typer[all] @ {url}")
 
-        import typer # noqa: F401
-        import rich  # noqa: F401
+        import typer  # noqa: F401
+        import rich   # noqa: F401
 
 
     # typer 0.10.0 has "[all]" dependency that comes with colorama, shellingham, and rich
