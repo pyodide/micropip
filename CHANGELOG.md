@@ -6,13 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.11.0] - 2025/10/XX
+
 ### Added
 
-- `micropip.install` now supports installing dependencies of wheels from custom download locations.
-
 - `micropip.install` now supports extras in custom download locations through the `pkg[extras] @ https://example.com/pkg-1.0.0-py3-none-any.whl` syntax.
-
-### Changed
 
 ## [0.10.1] - 2025/07/05
 
