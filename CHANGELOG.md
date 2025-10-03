@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `micropip.install` now supports extras in custom download locations through the `pkg[extras] @ https://example.com/pkg-1.0.0-py3-none-any.whl` syntax.
+  [#257](https://github.com/pyodide/micropip/pull/257)
 
 ## [0.10.1] - 2025/07/05
 
