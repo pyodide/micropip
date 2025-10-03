@@ -79,22 +79,15 @@ class Transaction:
 
         try:
             as_req = constrain_requirement(Requirement(req), self.constrained_reqs)
+            return await self.add_requirement_inner(as_req)
         except InvalidRequirement:
-            as_req = None
-
-        if as_req:
-            if as_req.name and len(as_req.specifier):
-                return await self.add_requirement_inner(as_req)
-            if as_req.url:
-                req = as_req.url
-
-        if urlparse(req).path.endswith(".whl"):
-            # custom download location
-            wheel = WheelInfo.from_url(req)
-            check_compatible(wheel.filename)
-            return await self.add_wheel(wheel, extras=set(), specifier="")
-
-        return await self.add_requirement_inner(Requirement(req))
+            if urlparse(req).path.endswith(".whl"):
+                # custom download location
+                wheel = WheelInfo.from_url(req)
+                check_compatible(wheel.filename)
+                return await self.add_wheel(wheel, extras=set(), specifier="")
+            else:
+                raise
 
     def check_version_satisfied(
         self, req: Requirement, *, allow_reinstall: bool = False
@@ -202,7 +195,10 @@ class Transaction:
             return
 
         try:
-            if self.search_pyodide_lock_first:
+            # req.url is set if the requiremnet is from a custom download location
+            # e.g. micropip.install("https://example.com/pkg-1.0.0-py3-none-any.whl")
+            # or micropip.install("pkg[extras] @ https://example.com/pkg-1.0.0-py3-none-any.whl")
+            if self.search_pyodide_lock_first and not req.url:
                 if await self._add_requirement_from_pyodide_lock(req):
                     logger.debug("Transaction: package found in lock file: %r", req)
                     return
