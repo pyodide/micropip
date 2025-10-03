@@ -79,15 +79,26 @@ class Transaction:
 
         try:
             as_req = constrain_requirement(Requirement(req), self.constrained_reqs)
+
+            if as_req.name.endswith(".whl"):
+                # This happens when the requirement is passed as a relative URL:
+                # For instance, micropip.install("pkg-1.0.0-py3-none-any.whl")
+                # packaging cannot distinguish this is a relative URL or a very weird wheel name ... sigh ...
+                # But we want to treat it as a custom download location.
+                return await self.add_requirement_from_url(req)
+
             return await self.add_requirement_inner(as_req)
         except InvalidRequirement:
-            if urlparse(req).path.endswith(".whl"):
-                # custom download location
-                wheel = WheelInfo.from_url(req)
-                check_compatible(wheel.filename)
-                return await self.add_wheel(wheel, extras=set(), specifier="")
-            else:
+            if not urlparse(req).path.endswith(".whl"):
                 raise
+        
+        # custom download location
+        return await self.add_requirement_from_url(req)
+    
+    async def add_requirement_from_url(self, req: str) -> WheelInfo:
+        wheel = WheelInfo.from_url(req)
+        check_compatible(wheel.filename)
+        return await self.add_wheel(wheel, extras=set(), specifier="")
 
     def check_version_satisfied(
         self, req: Requirement, *, allow_reinstall: bool = False
