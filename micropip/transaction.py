@@ -92,13 +92,15 @@ class Transaction:
             if not urlparse(req).path.endswith(".whl"):
                 raise
 
-        # custom download location
+        # custom download location, for instance, micropip.install("https://example.com/pkg-1.0.0-py3-none-any.whl")
         return await self.add_requirement_from_url(req)
 
-    async def add_requirement_from_url(self, req: str) -> None:
+    async def add_requirement_from_url(
+        self, req: str, extras: set[str] | None = None
+    ) -> None:
         wheel = WheelInfo.from_url(req)
         check_compatible(wheel.filename)
-        return await self.add_wheel(wheel, extras=set(), specifier="")
+        return await self.add_wheel(wheel, extras=extras or set(), specifier="")
 
     def check_version_satisfied(
         self, req: Requirement, *, allow_reinstall: bool = False
@@ -142,7 +144,7 @@ class Transaction:
                 "or micropip.uninstall(...) to uninstall the package first."
             )
 
-    async def add_requirement_inner(
+    async def add_requirement_inner(  # noqa: C901
         self,
         req: Requirement,
     ) -> None:
@@ -205,11 +207,13 @@ class Transaction:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
             return
 
+        if req.url:
+            # custom download location, for instance, micropip.install("pkg @ https://example.com/pkg-1.0.0-py3-none-any.whl")
+            # in this case, we don't need to search the index_urls or pyodide lock file.
+            return await self.add_requirement_from_url(req.url, extras=req.extras)
+
         try:
-            # req.url is set if the requiremnet is from a custom download location
-            # e.g. micropip.install("https://example.com/pkg-1.0.0-py3-none-any.whl")
-            # or micropip.install("pkg[extras] @ https://example.com/pkg-1.0.0-py3-none-any.whl")
-            if self.search_pyodide_lock_first and not req.url:
+            if self.search_pyodide_lock_first:
                 if await self._add_requirement_from_pyodide_lock(req):
                     logger.debug("Transaction: package found in lock file: %r", req)
                     return
