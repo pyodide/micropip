@@ -186,7 +186,7 @@ def test_installer(selenium_standalone_micropip, pytestconfig):
 
 
 @integration_test_only
-def test_install_url_based_wheel(selenium_standalone_micropip):
+def test_install_url_based_wheel(selenium_standalone_micropip, pytestconfig):
     # Dependencies of URL based wheels are fetched from PyPI.
     # It is tricky to test this without accessing PyPI, hence integration test
     @run_in_pyodide
