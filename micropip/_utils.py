@@ -117,7 +117,7 @@ def best_compatible_tag_index(tags: frozenset[Tag]) -> int | None:
     return None
 
 
-def is_package_compatible(filename: str) -> bool:
+def is_package_compatible(filename: str) -> tuple[bool, int | None]:
     """
     Check if a package is compatible with the current platform.
 
@@ -128,17 +128,15 @@ def is_package_compatible(filename: str) -> bool:
     """
 
     if not filename.endswith(".whl"):
-        return False
-
-    if filename.endswith("py3-none-any.whl"):
-        return True
+        return False, None
 
     try:
         tags = parse_tags(filename)
     except (InvalidVersion, InvalidWheelFilename):
-        return False
+        return False, None
 
-    return best_compatible_tag_index(tags) is not None
+    tag_index = best_compatible_tag_index(tags)
+    return (tag_index is not None), tag_index
 
 
 def check_compatible(filename: str) -> None:
@@ -146,7 +144,7 @@ def check_compatible(filename: str) -> None:
     Check if a package is compatible with the current platform.
     If not, raise an exception with a error message that explains why.
     """
-    compatible = is_package_compatible(filename)
+    compatible, _ = is_package_compatible(filename)
     if compatible:
         return
 

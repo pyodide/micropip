@@ -93,5 +93,4 @@ module = "micropip._vendored.*"
 warn_unreachable = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-norecursedirs = ["micropip/_vendored"]
+addopts = "--ignore=micropip/_vendored --ignore=micropip/_compat --doctest-modules"

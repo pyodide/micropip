@@ -5,7 +5,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult, unquote, urlparse
 
 from ._compat import (
     fetch_bytes,
@@ -13,7 +13,7 @@ from ._compat import (
     loadedPackages,
     to_js,
 )
-from ._utils import parse_wheel_filename
+from ._utils import best_compatible_tag_index, parse_wheel_filename
 from ._vendored.packaging.src.packaging.requirements import Requirement
 from ._vendored.packaging.src.packaging.tags import Tag
 from ._vendored.packaging.src.packaging.version import Version
@@ -47,6 +47,7 @@ class WheelInfo:
     yanked_reason: str | bool = (
         False  # Whether the wheel has been yanked and the reason (if given) (PEP-592)
     )
+    _best_tag_index: int | None = field(default=None, repr=False, compare=False)
 
     # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
 
@@ -61,6 +62,15 @@ class WheelInfo:
         self._project_name = safe_name(self.name)
         self.metadata_url = self.url + ".metadata"
         self.yanked = bool(self.yanked_reason)
+
+    @property
+    def best_tag_index(self) -> int | None:
+        """
+        Returns an index if a compatible tag exists, otherwise None.
+        """
+        if self._best_tag_index is None:
+            self._best_tag_index = best_compatible_tag_index(self.tags)
+        return self._best_tag_index
 
     @classmethod
     def from_url(cls, url: str) -> "WheelInfo":
@@ -78,7 +88,7 @@ class WheelInfo:
                 query=parsed_url.query,
                 fragment=parsed_url.fragment,
             )
-        file_name = Path(parsed_url.path).name
+        file_name = Path(unquote(parsed_url.path)).name
         name, version, build, tags = parse_wheel_filename(file_name)
         return WheelInfo(
             name=name,
@@ -101,6 +111,7 @@ class WheelInfo:
         size: int | None,
         core_metadata: DistributionMetadata = None,
         yanked_reason: str | bool = False,
+        best_tag_index: int | None = None,
     ) -> "WheelInfo":
         """Extract available metadata from response received from package index"""
         parsed_url = urlparse(url)
@@ -118,6 +129,7 @@ class WheelInfo:
             size=size,
             core_metadata=core_metadata,
             yanked_reason=yanked_reason,
+            _best_tag_index=best_tag_index,
         )
 
     async def install(self, target: Path) -> None:

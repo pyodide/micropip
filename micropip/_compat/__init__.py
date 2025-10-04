@@ -4,9 +4,9 @@ from .compatibility_layer import CompatibilityLayer
 
 compatibility_layer: type[CompatibilityLayer]
 
-IN_BROWSER = "_pyodide_core" in sys.modules
+_IN_PYODIDE = "_pyodide_core" in sys.modules
 
-if IN_BROWSER:
+if _IN_PYODIDE:
     from ._compat_in_pyodide import CompatibilityInPyodide
 
     compatibility_layer = CompatibilityInPyodide
