@@ -44,7 +44,9 @@ version-file = "micropip/_version.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
+  "micropip/_vendored/packaging/.git",
   "micropip/_vendored/packaging/.github/**",
+  "micropip/_vendored/packaging/.gitignore",
   "micropip/_vendored/packaging/docs/**",
   "micropip/_vendored/packaging/tasks/**",
   "micropip/_vendored/packaging/tests/**",
@@ -54,6 +56,7 @@ exclude = [
   "micropip/_vendored/packaging/CONTRIBUTING.rst",
   "micropip/_vendored/packaging/noxfile.py",
   "micropip/_vendored/packaging/pyproject.toml",
+  "micropip/_vendored/packaging/SECURITY.md",
 ]
 
 [tool.ruff]
