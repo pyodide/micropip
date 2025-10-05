@@ -31,13 +31,33 @@ test = [
 
 
 [build-system]
-requires = ["setuptools>=42", "setuptools_scm[toml]>=6.2", "wheel"]
+requires = ["hatchling", "hatch-vcs"]
 
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
 
-# Evable versioning via setuptools_scm
-[tool.setuptools_scm]
-write_to = "micropip/_version.py"
+# Versioning via hatch-vcs
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "micropip/_version.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "micropip/_vendored/packaging/.git",
+  "micropip/_vendored/packaging/.github/**",
+  "micropip/_vendored/packaging/.gitignore",
+  "micropip/_vendored/packaging/docs/**",
+  "micropip/_vendored/packaging/tasks/**",
+  "micropip/_vendored/packaging/tests/**",
+  "micropip/_vendored/packaging/.pre-commit-config.yaml",
+  "micropip/_vendored/packaging/.readthedocs.yml",
+  "micropip/_vendored/packaging/CHANGELOG.rst",
+  "micropip/_vendored/packaging/CONTRIBUTING.rst",
+  "micropip/_vendored/packaging/noxfile.py",
+  "micropip/_vendored/packaging/pyproject.toml",
+  "micropip/_vendored/packaging/SECURITY.md",
+]
 
 [tool.ruff]
 exclude = ["micropip/_vendored/"]
