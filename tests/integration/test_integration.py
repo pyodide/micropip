@@ -202,7 +202,7 @@ def test_install_url_based_wheel(selenium_standalone_micropip, pytestconfig):
         else:
             raise Exception("Should raise!")
 
-        await micropip.uninstall("typer")
+        micropip.uninstall("typer")
 
         await micropip.install(f"typer[all] @ {url}")
 
