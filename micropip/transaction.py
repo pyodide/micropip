@@ -79,22 +79,28 @@ class Transaction:
 
         try:
             as_req = constrain_requirement(Requirement(req), self.constrained_reqs)
+
+            if as_req.name.endswith(".whl"):
+                # This happens when the requirement is passed as a relative URL:
+                # For instance, micropip.install("pkg-1.0.0-py3-none-any.whl")
+                # packaging cannot distinguish this is a relative URL or a very weird wheel name ... sigh ...
+                # But we want to treat it as a custom download location.
+                return await self.add_requirement_from_url(req)
+
+            return await self.add_requirement_inner(as_req)
         except InvalidRequirement:
-            as_req = None
+            if not urlparse(req).path.endswith(".whl"):
+                raise
 
-        if as_req:
-            if as_req.name and len(as_req.specifier):
-                return await self.add_requirement_inner(as_req)
-            if as_req.url:
-                req = as_req.url
+        # custom download location, for instance, micropip.install("https://example.com/pkg-1.0.0-py3-none-any.whl")
+        return await self.add_requirement_from_url(req)
 
-        if urlparse(req).path.endswith(".whl"):
-            # custom download location
-            wheel = WheelInfo.from_url(req)
-            check_compatible(wheel.filename)
-            return await self.add_wheel(wheel, extras=set(), specifier="")
-
-        return await self.add_requirement_inner(Requirement(req))
+    async def add_requirement_from_url(
+        self, req: str, extras: set[str] | None = None
+    ) -> None:
+        wheel = WheelInfo.from_url(req)
+        check_compatible(wheel.filename)
+        return await self.add_wheel(wheel, extras=extras or set(), specifier="")
 
     def check_version_satisfied(
         self, req: Requirement, *, allow_reinstall: bool = False
@@ -138,7 +144,7 @@ class Transaction:
                 "or micropip.uninstall(...) to uninstall the package first."
             )
 
-    async def add_requirement_inner(
+    async def add_requirement_inner(  # noqa: C901
         self,
         req: Requirement,
     ) -> None:
@@ -200,6 +206,11 @@ class Transaction:
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
             return
+
+        if req.url:
+            # custom download location, for instance, micropip.install("pkg @ https://example.com/pkg-1.0.0-py3-none-any.whl")
+            # in this case, we don't need to search the index_urls or pyodide lock file.
+            return await self.add_requirement_from_url(req.url, extras=req.extras)
 
         try:
             if self.search_pyodide_lock_first:

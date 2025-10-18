@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [0.10.1] - 2024/07/05
+## [0.11.0] - 2025/10/18
+
+### Added
+
+- `micropip.install` now supports extras in custom download locations through the `pkg[extras] @ https://example.com/pkg-1.0.0-py3-none-any.whl` syntax.
+  [#257](https://github.com/pyodide/micropip/pull/257)
+
+## [0.10.1] - 2025/07/05
 
 ### Fixed
 
@@ -14,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This behavior is consistent with the `lockfileURL` behavior change in Pyodide 0.28.0.
   [#241](https://github.com/pyodide/micropip/pull/241)
 
-## [0.10.0] - 2024/07/02
+## [0.10.0] - 2025/07/02
 
 ### Added
 
@@ -35,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when one index URL fails to find a package, and will fallback to the next index URL.
   [#225](https://github.com/pyodide/micropip/pull/225)
 
-## [0.9.0] - 2024/02/01
+## [0.9.0] - 2025/02/01
 
 ### Fixed
 

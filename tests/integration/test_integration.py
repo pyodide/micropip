@@ -183,3 +183,32 @@ def test_installer(selenium_standalone_micropip, pytestconfig):
         assert (dist_dir / "PYODIDE_SHA256").exists()
 
     _run(selenium_standalone_micropip)
+
+
+@integration_test_only
+def test_install_url_based_wheel(selenium_standalone_micropip, pytestconfig):
+    # Dependencies of URL based wheels are fetched from PyPI.
+    # It is tricky to test this without accessing PyPI, hence integration test
+    @run_in_pyodide
+    async def _run(selenium, url):
+        import micropip
+
+        await micropip.install(f"typer @ {url}")
+
+        try:
+            import rich
+        except ModuleNotFoundError:
+            pass
+        else:
+            raise Exception("Should raise!")
+
+        micropip.uninstall("typer")
+
+        await micropip.install(f"typer[all] @ {url}")
+
+        import rich  # noqa: F401
+        import typer  # noqa: F401
+
+    # typer 0.10.0 has "[all]" dependency that comes with colorama, shellingham, and rich
+    typer_0_10_0_url = "https://files.pythonhosted.org/packages/d9/07/8100c125307a26f03c305764f22cd995ae1878071ddf1df3588add73b53c/typer-0.10.0-py3-none-any.whl"
+    _run(selenium_standalone_micropip, typer_0_10_0_url)
