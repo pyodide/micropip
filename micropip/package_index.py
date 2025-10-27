@@ -250,8 +250,8 @@ def _select_parser(
     """
     Select the function to parse the response based on the content type.
     """
-    main_content_type = content_type.split(';')[0].strip()
-    
+    main_content_type = content_type.split(";")[0].strip()
+
     match main_content_type:
         case "application/vnd.pypi.simple.v1+json":
             return ProjectInfo.from_simple_json_api
