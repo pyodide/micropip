@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed content-type header parsing to handle PyPI mirrors that include charset parameters.
-  This improves compatibility with mirrors that return headers like 'application/json; charset=utf-8'.
+  This improves compatibility with mirrors that return headers like `application/json; charset=utf-8`.
   [#261](https://github.com/pyodide/micropip/pull/261)
 
 ## [0.11.0] - 2025/10/18
