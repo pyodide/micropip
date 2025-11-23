@@ -7,12 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import ParseResult, unquote, urlparse
 
-from ._compat import (
-    fetch_bytes,
-    install,
-    loadedPackages,
-    to_js,
-)
+from ._compat import CompatibilityLayer
 from ._utils import best_compatible_tag_index, parse_wheel_filename
 from ._vendored.packaging.src.packaging.requirements import Requirement
 from ._vendored.packaging.src.packaging.tags import Tag
@@ -132,7 +127,9 @@ class WheelInfo:
             _best_tag_index=best_tag_index,
         )
 
-    async def install(self, target: Path) -> None:
+    async def install(
+        self, target: Path, compat_layer: type[CompatibilityLayer]
+    ) -> None:
         """
         Install the wheel to the target directory.
 
@@ -148,13 +145,15 @@ class WheelInfo:
                 "Micropip internal error: attempted to install wheel before downloading it?"
             )
         _validate_sha256_checksum(self._data, self.sha256)
-        await self._install(target)
+        await self._install(target, compat_layer)
 
-    async def download(self, fetch_kwargs: dict[str, Any]):
+    async def download(
+        self, fetch_kwargs: dict[str, Any], compat_layer: type[CompatibilityLayer]
+    ):
         if self._data is not None:
             return
 
-        self._data = await self._fetch_bytes(self.url, fetch_kwargs)
+        self._data = await self._fetch_bytes(self.url, fetch_kwargs, compat_layer)
 
         # The wheel's metadata might be downloaded separately from the wheel itself.
         # If it is not downloaded yet or if the metadata is not available, extract it from the wheel.
@@ -174,6 +173,7 @@ class WheelInfo:
     async def download_pep658_metadata(
         self,
         fetch_kwargs: dict[str, Any],
+        compat_layer: type[CompatibilityLayer],
     ) -> None:
         """
         Download the wheel's metadata. If the metadata is not available, return None.
@@ -181,7 +181,7 @@ class WheelInfo:
         if self.core_metadata is None:
             return None
 
-        data = await self._fetch_bytes(self.metadata_url, fetch_kwargs)
+        data = await self._fetch_bytes(self.metadata_url, fetch_kwargs, compat_layer)
 
         match self.core_metadata:
             case {"sha256": checksum}:  # sha256 checksum available
@@ -204,14 +204,19 @@ class WheelInfo:
         self._requires = requires
         return requires
 
-    async def _fetch_bytes(self, url: str, fetch_kwargs: dict[str, Any]):
+    async def _fetch_bytes(
+        self,
+        url: str,
+        fetch_kwargs: dict[str, Any],
+        compat_layer: type[CompatibilityLayer],
+    ):
         if self.parsed_url.scheme not in ("https", "http", "emfs", "file"):
             # Don't raise ValueError it gets swallowed
             raise TypeError(
                 f"Cannot download from a non-remote location: {url!r} ({self.parsed_url!r})"
             )
         try:
-            bytes = await fetch_bytes(url, fetch_kwargs)
+            bytes = await compat_layer.fetch_bytes(url, fetch_kwargs)
             return bytes
         except OSError as e:
             if self.parsed_url.hostname in [
@@ -228,7 +233,9 @@ class WheelInfo:
                 ) from e
             raise e
 
-    async def _install(self, target: Path) -> None:
+    async def _install(
+        self, target: Path, compat_layer: type[CompatibilityLayer]
+    ) -> None:
         """
         Install the wheel to the target directory.
         """
@@ -247,15 +254,15 @@ class WheelInfo:
                 sorted(x.name for x in self._requires)
             )
 
-        await install(
+        await compat_layer.install(
             # TODO: Probably update install API to accept bytes directly, instead of converting it to JS.
-            to_js(self._data),
+            compat_layer.to_js(self._data),
             self.filename,
             str(target),
             metadata,
         )
 
-        setattr(loadedPackages, self._project_name, wheel_source)
+        setattr(compat_layer.loadedPackages, self._project_name, wheel_source)
 
 
 def _validate_sha256_checksum(data: bytes, expected: str | None = None) -> None:
