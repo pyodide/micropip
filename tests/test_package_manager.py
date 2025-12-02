@@ -2,19 +2,10 @@ import pytest
 from conftest import mock_fetch_cls
 
 import micropip.package_index as package_index
-from micropip.package_manager import PackageManager
 
 
-def get_test_package_manager() -> PackageManager:
-    package_manager = PackageManager()
-
-    # TODO: inject necessary constructor parameters
-
-    return package_manager
-
-
-def test_set_index_urls():
-    manager = get_test_package_manager()
+def test_set_index_urls(host_package_manager):
+    manager = host_package_manager
 
     default_index_urls = package_index.DEFAULT_INDEX_URLS
     assert manager.index_urls == default_index_urls
@@ -34,8 +25,8 @@ def test_set_index_urls():
 
 
 @pytest.mark.asyncio
-async def test_list_packages(mock_fetch: mock_fetch_cls):
-    manager = get_test_package_manager()
+async def test_list_packages(mock_fetch: mock_fetch_cls, host_package_manager):
+    manager = host_package_manager
 
     dummy = "dummy"
     mock_fetch.add_pkg_version(dummy)
@@ -50,8 +41,10 @@ async def test_list_packages(mock_fetch: mock_fetch_cls):
 
 
 @pytest.mark.asyncio
-async def test_custom_index_url(mock_package_index_json_api, monkeypatch):
-    manager = get_test_package_manager()
+async def test_custom_index_url(
+    mock_package_index_json_api, monkeypatch, host_compat_layer, host_package_manager
+):
+    manager = host_package_manager
 
     mock_server_fake_package = mock_package_index_json_api(
         pkgs=["fake-pkg-micropip-test"]
@@ -64,9 +57,7 @@ async def test_custom_index_url(mock_package_index_json_api, monkeypatch):
         _wheel_url = url
         return b"fake wheel"
 
-    from micropip import wheelinfo
-
-    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
+    monkeypatch.setattr(host_compat_layer, "fetch_bytes", _mock_fetch_bytes)
 
     manager.set_index_urls([mock_server_fake_package])
 
