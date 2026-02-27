@@ -332,13 +332,17 @@ class Transaction:
         logger.info("Collecting %s%s", wheel.name, specifier)
         logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
-        wheel_download_task = asyncio.create_task(wheel.download(self.fetch_kwargs))
+        wheel_download_task = asyncio.create_task(
+            wheel.download(self.fetch_kwargs, self._compat_layer)
+        )
         if self.deps:
             # Case 1) If metadata file is available,
             #         we can gather requirements without waiting for the wheel to be downloaded.
             if wheel.pep658_metadata_available():
                 try:
-                    await wheel.download_pep658_metadata(self.fetch_kwargs)
+                    await wheel.download_pep658_metadata(
+                        self.fetch_kwargs, self._compat_layer
+                    )
                 except OSError:
                     # If something goes wrong while downloading the metadata,
                     # we have to wait for the wheel to be downloaded.

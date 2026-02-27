@@ -264,14 +264,13 @@ async def test_install_pre(
 
 
 @pytest.mark.asyncio
-async def test_fetch_wheel_fail(monkeypatch, wheel_base):
+async def test_fetch_wheel_fail(monkeypatch, wheel_base, host_compat_layer):
     import micropip
-    from micropip import wheelinfo
 
     def _mock_fetch_bytes(arg, *args, **kwargs):
         raise OSError(f"Request for {arg} failed with status 404: Not Found")
 
-    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
+    monkeypatch.setattr(host_compat_layer, "fetch_bytes", _mock_fetch_bytes)
 
     msg = "Access-Control-Allow-Origin"
     with pytest.raises(ValueError, match=msg):
@@ -395,7 +394,9 @@ def test_logging(selenium_standalone_micropip, wheel_catalog):
 
 
 @pytest.mark.asyncio
-async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
+async def test_custom_index_urls(
+    mock_package_index_json_api, monkeypatch, host_compat_layer
+):
     mock_server_fake_package = mock_package_index_json_api(
         pkgs=["fake-pkg-micropip-test"]
     )
@@ -407,9 +408,7 @@ async def test_custom_index_urls(mock_package_index_json_api, monkeypatch):
         _wheel_url = url
         return b"fake wheel"
 
-    from micropip import wheelinfo
-
-    monkeypatch.setattr(wheelinfo, "fetch_bytes", _mock_fetch_bytes)
+    monkeypatch.setattr(host_compat_layer, "fetch_bytes", _mock_fetch_bytes)
 
     try:
         await micropip.install(
