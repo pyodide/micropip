@@ -11,7 +11,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 )
 
 from . import _mock_package, package_index
-from ._compat import CompatibilityLayer, compatibility_layer
+from ._compat import CompatibilityLayer
 from ._utils import get_files_in_distribution, get_root
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
@@ -29,10 +29,7 @@ class PackageManager:
     independent of other instances.
     """
 
-    def __init__(self, compat: type[CompatibilityLayer] | None = None) -> None:
-
-        if compat is None:
-            compat = compatibility_layer
+    def __init__(self, compat: type[CompatibilityLayer]) -> None:
 
         self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
         self.compat_layer: type[CompatibilityLayer] = compat
@@ -239,7 +236,9 @@ class PackageManager:
             # Install PyPI packages
             # detect whether the wheel metadata is from PyPI or from custom location
             # wheel metadata from PyPI has SHA256 checksum digest.
-            await asyncio.gather(*(wheel.install(wheel_base) for wheel in wheels))
+            await asyncio.gather(
+                *(wheel.install(wheel_base, self.compat_layer) for wheel in wheels)
+            )
 
             # Install built-in packages
             if pyodide_packages:

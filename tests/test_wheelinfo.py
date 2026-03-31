@@ -51,24 +51,24 @@ def test_from_package_index():
 
 
 @pytest.mark.asyncio
-async def test_download(wheel_catalog):
+async def test_download(wheel_catalog, host_compat_layer):
     pytest_wheel = wheel_catalog.get("pytest")
     wheel = WheelInfo.from_url(pytest_wheel.url)
 
     assert wheel._metadata is None
 
-    await wheel.download({})
+    await wheel.download({}, host_compat_layer)
 
     assert wheel._metadata is not None
 
 
 @pytest.mark.asyncio
-async def test_requires(wheel_catalog, tmp_path):
+async def test_requires(wheel_catalog, tmp_path, host_compat_layer):
     pytest_wheel = wheel_catalog.get("pytest")
     wheel = WheelInfo.from_url(pytest_wheel.url)
-    await wheel.download({})
+    await wheel.download({}, host_compat_layer)
 
-    wheel._install(tmp_path)
+    wheel._install(tmp_path, host_compat_layer)
 
     requirements_default = [str(r.name) for r in wheel.requires(set())]
     assert "pluggy" in requirements_default
@@ -80,7 +80,7 @@ async def test_requires(wheel_catalog, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_download_pep658_metadata(wheel_catalog):
+async def test_download_pep658_metadata(wheel_catalog, host_compat_layer):
     pytest_wheel = wheel_catalog.get("pytest")
     sha256 = "dummy-sha256"
     size = 1234
@@ -98,7 +98,7 @@ async def test_download_pep658_metadata(wheel_catalog):
 
     assert wheel_with_metadata.pep658_metadata_available()
     assert wheel_with_metadata._metadata is None
-    await wheel_with_metadata.download_pep658_metadata({})
+    await wheel_with_metadata.download_pep658_metadata({}, host_compat_layer)
     assert wheel_with_metadata._metadata is not None
 
     # metadata should be calculated from the metadata file
@@ -119,7 +119,7 @@ async def test_download_pep658_metadata(wheel_catalog):
 
     assert not wheel_without_metadata.pep658_metadata_available()
     assert wheel_without_metadata._metadata is None
-    await wheel_without_metadata.download_pep658_metadata({})
+    await wheel_without_metadata.download_pep658_metadata({}, host_compat_layer)
     assert wheel_without_metadata._metadata is None
 
     # 3) the metadata extracted from the wheel should be the same
@@ -134,14 +134,14 @@ async def test_download_pep658_metadata(wheel_catalog):
     )
 
     assert wheel._metadata is None
-    await wheel.download({})
+    await wheel.download({}, host_compat_layer)
     assert wheel._metadata is not None
 
     assert wheel._metadata.deps == wheel_with_metadata._metadata.deps
 
 
 @pytest.mark.asyncio
-async def test_download_pep658_metadata_checksum(wheel_catalog):
+async def test_download_pep658_metadata_checksum(wheel_catalog, host_compat_layer):
     pytest_wheel = wheel_catalog.get("pytest")
     sha256 = "dummy-sha256"
     size = 1234
@@ -158,7 +158,7 @@ async def test_download_pep658_metadata_checksum(wheel_catalog):
 
     assert wheel._metadata is None
     with pytest.raises(RuntimeError, match="Invalid checksum: expected dummy-sha256"):
-        await wheel.download_pep658_metadata({})
+        await wheel.download_pep658_metadata({}, host_compat_layer)
 
     checksum = "62eb95408ccec185e7a3b8f354a1df1721cd8f463922f5a900c7bf4b69c5a4e8"  # TODO: calculate this from the file
     wheel = WheelInfo.from_package_index(
@@ -172,5 +172,5 @@ async def test_download_pep658_metadata_checksum(wheel_catalog):
     )
 
     assert wheel._metadata is None
-    await wheel.download_pep658_metadata({})
+    await wheel.download_pep658_metadata({}, host_compat_layer)
     assert wheel._metadata is not None
