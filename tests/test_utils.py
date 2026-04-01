@@ -210,3 +210,41 @@ def test_constrain_requirement_direct_url(valid_constraint, wheel_catalog):
     assert not msg
     constrained = _utils.constrain_requirement(req, constrained_reqs)
     assert constrained.url == url
+
+
+@run_in_pyodide
+def test_sys_tags_pep783_both_tags_present(selenium_standalone_micropip):
+    """sys_tags() should produce both pyemscripten_ and pyodide_ platform tags."""
+    from sysconfig import get_config_var
+
+    from micropip._utils import sys_tags
+
+    version = get_config_var("PYEMSCRIPTEN_PLATFORM_VERSION")
+    if not version:
+        version = get_config_var("PYODIDE_ABI_VERSION")
+
+    tags = list(sys_tags())
+    pyemscripten_tags = [
+        t for t in tags if t.platform == f"pyemscripten_{version}_wasm32"
+    ]
+    pyodide_tags = [t for t in tags if t.platform == f"pyodide_{version}_wasm32"]
+
+    assert len(pyemscripten_tags) > 0, "No pyemscripten_ tags found"
+    assert len(pyodide_tags) > 0, "No pyodide_ tags found"
+
+
+@run_in_pyodide
+def test_check_compatible_pyemscripten_wheel(selenium_standalone_micropip):
+    """Wheels tagged with pyemscripten_ platform should be compatible in Pyodide."""
+    from sys import version_info
+    from sysconfig import get_config_var
+
+    from micropip._utils import check_compatible
+
+    version = get_config_var("PYEMSCRIPTEN_PLATFORM_VERSION")
+    if not version:
+        version = get_config_var("PYODIDE_ABI_VERSION")
+
+    cpver = f"cp{version_info.major}{version_info.minor}"
+    wheel_name = f"pkg-1.0.0-{cpver}-{cpver}-pyemscripten_{version}_wasm32.whl"
+    check_compatible(wheel_name)  # should not raise
