@@ -70,11 +70,22 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
 @functools.cache
 def sys_tags() -> tuple[Tag, ...]:
     new_tags = []
-    abi_version = get_config_var("PYODIDE_ABI_VERSION")
-    pyodide_platform_tag = f"pyodide_{abi_version}_wasm32"
+
+    abi_version = get_config_var("PYEMSCRIPTEN_PLATFORM_VERSION")
+    if not abi_version:
+        # Fallback to PYODIDE_ABI_VERSION for compatibility
+        abi_version = get_config_var("PYODIDE_ABI_VERSION")
+    
+    pyodide_platform_tags = [
+        # PEP 783
+        f"pyemscripten_{abi_version}_wasm32",
+        # for backward compatibility
+        f"pyodide_{abi_version}_wasm32",
+    ]
     for tag in sys_tags_orig():
         if "emscripten" in tag.platform:
-            new_tags.append(Tag(tag.interpreter, tag.abi, pyodide_platform_tag))
+            for pyodide_platform_tag in pyodide_platform_tags:
+                new_tags.append(Tag(tag.interpreter, tag.abi, pyodide_platform_tag))
         new_tags.append(tag)
     return tuple(new_tags)
 
