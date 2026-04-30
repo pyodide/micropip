@@ -29,74 +29,62 @@ def test_install_file_protocol_node(selenium_standalone_micropip, request):
     DIST_PATH = request.config.option.dist_dir
 
     pyparsing_wheel_name = list(DIST_PATH.glob("pyparsing*.whl"))[0].name
-    selenium.run_js(
-        f"""
+    selenium.run_js(f"""
         await pyodide.runPythonAsync(`
             import micropip
             await micropip.install('file:{pyparsing_wheel_name}')
             import pyparsing
         `);
-        """
-    )
+        """)
 
 
 def test_install_different_version(selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
-    selenium.run_js(
-        """
+    selenium.run_js("""
         await pyodide.runPythonAsync(`
             import micropip
             await micropip.install(
                 "https://files.pythonhosted.org/packages/89/06/2c2d3034b4d6bf22f2a4ae546d16925898658a33b4400cfb7e2c1e2871a3/pytz-2020.5-py2.py3-none-any.whl"
             );
         `);
-        """
-    )
-    selenium.run_js(
-        """
+        """)
+    selenium.run_js("""
         await pyodide.runPythonAsync(`
             import pytz
             assert pytz.__version__ == "2020.5"
         `);
-        """
-    )
+        """)
 
 
 def test_install_different_version2(selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
-    selenium.run_js(
-        """
+    selenium.run_js("""
         await pyodide.runPythonAsync(`
             import micropip
             await micropip.install(
                 "pytz == 2020.5"
             );
         `);
-        """
-    )
-    selenium.run_js(
-        """
+        """)
+    selenium.run_js("""
         await pyodide.runPythonAsync(`
             import pytz
             assert pytz.__version__ == "2020.5"
         `);
-        """
-    )
+        """)
 
 
 @pytest.mark.parametrize("jinja2", ["jinja2", "Jinja2"])
 def test_install_mixed_case2(selenium_standalone_micropip, jinja2):
     selenium = selenium_standalone_micropip
-    selenium.run_js(
-        f"""
+    selenium.run_js(f"""
         await pyodide.loadPackage("micropip");
         await pyodide.runPythonAsync(`
             import micropip
             await micropip.install("{jinja2}")
             import jinja2
         `);
-        """
-    )
+        """)
 
 
 @pytest.mark.parametrize("set_constraints", [False, True])

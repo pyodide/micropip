@@ -120,17 +120,15 @@ class PackageManager:
         index_urls:
 
             A list of URLs or a single URL to use as the package index when looking
-            up packages. If None, *https://pypi.org/pypi/{package_name}/json* is used.
+            up packages. If None, *https://pypi.org/simple* is used.
 
             - The index URL should support the \
-            `JSON API <https://warehouse.pypa.io/api-reference/json/>`__ .
-
-            - The index URL may contain the placeholder {package_name} which will be \
-            replaced with the package name when looking up a package. If it does not \
-            contain the placeholder, the package name will be appended to the URL.
+            `Simple repository API <https://packaging.python.org/en/latest/specifications/simple-repository-api/>`__ .
 
             - If a list of URLs is provided, micropip will try each URL in order until \
             it finds a package. If no package is found, an error will be raised.
+
+            - The index URL must support CORS when used in a web browser.
 
         constraints:
 
@@ -462,7 +460,7 @@ class PackageManager:
         Set the index URLs to use when looking up packages.
 
         - The index URL should support the
-            `JSON API <https://warehouse.pypa.io/api-reference/json/>`__ .
+            `Simple repository API <https://packaging.python.org/en/latest/specifications/simple-repository-api/>`__ .
 
         - The index URL may contain the placeholder {package_name} which will be
             replaced with the package name when looking up a package. If it does not
@@ -470,6 +468,8 @@ class PackageManager:
 
         - If a list of URLs is provided, micropip will try each URL in order until
             it finds a package. If no package is found, an error will be raised.
+
+        - The index URL must support CORS when used in a web browser.
 
         Parameters
         ----------
