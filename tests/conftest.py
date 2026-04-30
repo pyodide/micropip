@@ -94,12 +94,10 @@ def selenium_standalone_micropip(selenium_standalone, wheel_path):
 
     with httpserver:
         url = httpserver.url_for(f"/{wheel_file.name}")
-        selenium_standalone.run_js(
-            f"""
+        selenium_standalone.run_js(f"""
             await pyodide.loadPackage("{url}");
             pyodide.runPython("import micropip");
-            """
-        )
+            """)
 
     yield selenium_standalone
 

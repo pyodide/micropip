@@ -83,12 +83,10 @@ def test_freeze_lockfile_compat(
     wheel = wheel_catalog.get(name)
     url = wheel.url
 
-    lockfile_content = selenium.run_async(
-        f"""
+    lockfile_content = selenium.run_async(f"""
         await micropip.install("{url}")
         micropip.freeze()
-    """
-    )
+    """)
 
     lockfile_path = tmp_path / "lockfile.json"
     with open(lockfile_path, "w") as f:

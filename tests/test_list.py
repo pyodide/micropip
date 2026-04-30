@@ -46,45 +46,38 @@ def test_list_load_package_from_url(selenium_standalone_micropip, wheel_catalog)
     url = snowball_wheel.url
 
     selenium = selenium_standalone_micropip
-    selenium.run_js(
-        f"""
+    selenium.run_js(f"""
         await pyodide.loadPackage({url!r});
         await pyodide.runPythonAsync(`
             import micropip
             assert "snowballstemmer" in micropip.list()
         `);
-        """
-    )
+        """)
 
 
 def test_list_pyodide_package(selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
-    selenium.run_js(
-        """
+    selenium.run_js("""
         await pyodide.runPythonAsync(`
             import micropip
             await micropip.install(
                 "regex"
             );
         `);
-        """
-    )
-    selenium.run_js(
-        """
+        """)
+    selenium.run_js("""
         await pyodide.runPythonAsync(`
             import micropip
             pkgs = micropip.list()
             assert "regex" in pkgs
             assert pkgs["regex"].source.lower() == "pyodide"
         `);
-        """
-    )
+        """)
 
 
 def test_list_loaded_from_js(selenium_standalone_micropip):
     selenium = selenium_standalone_micropip
-    selenium.run_js(
-        """
+    selenium.run_js("""
         await pyodide.loadPackage("regex");
         await pyodide.runPythonAsync(`
             import micropip
@@ -92,5 +85,4 @@ def test_list_loaded_from_js(selenium_standalone_micropip):
             assert "regex" in pkgs
             assert pkgs["regex"].source.lower() == "pyodide"
         `);
-        """
-    )
+        """)
