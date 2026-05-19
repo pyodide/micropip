@@ -26,6 +26,12 @@ from .wheelinfo import WheelInfo
 
 logger = logging.getLogger("micropip")
 
+_VCS_URL_PREFIXES = ("git+", "hg+", "svn+", "bzr+")
+
+
+def _looks_like_vcs_url(req: str) -> bool:
+    return req.startswith(_VCS_URL_PREFIXES)
+
 
 @dataclass
 class Transaction:
@@ -76,6 +82,14 @@ class Transaction:
     async def add_requirement(self, req: str | Requirement) -> None:
         if isinstance(req, Requirement):
             return await self.add_requirement_inner(req)
+
+        if isinstance(req, str) and _looks_like_vcs_url(req):
+            raise ValueError(
+                f"Cannot install {req!r}: micropip only installs prebuilt wheels "
+                "and does not support installing from a VCS URL "
+                "(git+, hg+, svn+, bzr+). Provide a wheel URL or a package name "
+                "available on a configured index."
+            )
 
         try:
             as_req = constrain_requirement(Requirement(req), self.constrained_reqs)

@@ -154,6 +154,25 @@ async def test_install_non_pure_python_wheel(host_compat_layer):
         await transaction.add_requirement(url)
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "git+https://github.com/example/example.git",
+        "git+https://github.com/example/example.git@v1.0.0",
+        "hg+https://example.com/repo",
+        "svn+https://example.com/repo",
+        "bzr+https://example.com/repo",
+    ],
+)
+@pytest.mark.asyncio
+async def test_add_requirement_vcs_url_helpful_error(url, host_compat_layer):
+    from micropip.transaction import Transaction
+
+    transaction = create_transaction(Transaction, host_compat_layer)
+    with pytest.raises(ValueError, match="does not support installing from a VCS URL"):
+        await transaction.add_requirement(url)
+
+
 def _pypi_metadata(package, versions_to_tags):
     # Build package release metadata as would be returned from
     # https://pypi.org/pypi/{pkgname}/json
