@@ -169,8 +169,12 @@ async def test_add_requirement_vcs_url_helpful_error(url, host_compat_layer):
     from micropip.transaction import Transaction
 
     transaction = create_transaction(Transaction, host_compat_layer)
-    with pytest.raises(ValueError, match="does not support installing from a VCS URL"):
+    with pytest.raises(ValueError) as exc_info:
         await transaction.add_requirement(url)
+    assert (
+        "Provide a URL pointing to a wheel or a package name available on a configured index."
+        in str(exc_info.value)
+    )
 
 
 def _pypi_metadata(package, versions_to_tags):
