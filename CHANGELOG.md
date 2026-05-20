@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `install` now raises a helpful `ValueError` when given a VCS URL
+  (`git+`, `hg+`, `svn+`, `bzr+`) instead of an opaque parser error,
+  explaining that micropip only installs prebuilt wheels.
+  [#77](https://github.com/pyodide/micropip/issues/77)
+
 ## [0.11.1] - 2026/04/02
 
 ### Fixed
