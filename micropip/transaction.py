@@ -87,8 +87,8 @@ class Transaction:
             raise ValueError(
                 f"Cannot install {req!r}: micropip only installs prebuilt wheels "
                 "and does not support installing from a VCS URL "
-                "(git+, hg+, svn+, bzr+). Provide a wheel URL or a package name "
-                "available on a configured index."
+                "(git+, hg+, svn+, bzr+). Provide a URL pointing to a wheel "
+                "or a package name available on a configured index."
             )
 
         try:
