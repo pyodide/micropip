@@ -171,26 +171,55 @@ def check_compatible(filename: str) -> None:
         raise ValueError(f"Wheel version is invalid: {filename!r}") from None
 
     tag: Tag = next(iter(tags))
-    if "emscripten" not in tag.platform:
+    platform = tag.platform
+
+    # PEP 783 Pyodide ABI platform tags, e.g. ``pyemscripten_2026_0_wasm32`` or
+    # ``pyodide_2026_0_wasm32``. These encode the Pyodide ABI version rather than
+    # the underlying Emscripten version, so they must be compared against the
+    # runtime's ABI version, not its Emscripten version.
+    pyodide_abi_prefixes = ("pyemscripten_", "pyodide_")
+    if platform.startswith(pyodide_abi_prefixes):
+
+        def platform_to_abi_version(platform: str) -> str:
+            for prefix in pyodide_abi_prefixes:
+                platform = platform.removeprefix(prefix)
+            return platform.removesuffix("_wasm32").replace("_", ".")
+
+        wheel_abi_version = platform_to_abi_version(platform)
+        runtime_abi_version = get_config_var(
+            "PYEMSCRIPTEN_PLATFORM_VERSION"
+        ) or get_config_var("PYODIDE_ABI_VERSION")
+        if runtime_abi_version:
+            runtime_abi_version = runtime_abi_version.replace("_", ".")
+        if wheel_abi_version != runtime_abi_version:
+            raise ValueError(
+                f"Wheel was built with Pyodide ABI version {wheel_abi_version} but "
+                f"the current environment has Pyodide ABI version "
+                f"{runtime_abi_version}"
+            )
+
+    elif "emscripten" in platform:
+
+        def platform_to_version(platform: str) -> str:
+            return (
+                platform.replace("-", "_")
+                .removeprefix("emscripten_")
+                .removesuffix("_wasm32")
+                .replace("_", ".")
+            )
+
+        wheel_emscripten_version = platform_to_version(platform)
+        pyodide_emscripten_version = platform_to_version(get_platform())
+        if wheel_emscripten_version != pyodide_emscripten_version:
+            raise ValueError(
+                f"Wheel was built with Emscripten v{wheel_emscripten_version} but "
+                f"Pyodide was built with Emscripten v{pyodide_emscripten_version}"
+            )
+
+    else:
         raise ValueError(
-            f"Wheel platform '{tag.platform}' is not compatible with "
+            f"Wheel platform '{platform}' is not compatible with "
             f"Pyodide's platform '{get_platform()}'"
-        )
-
-    def platform_to_version(platform: str) -> str:
-        return (
-            platform.replace("-", "_")
-            .removeprefix("emscripten_")
-            .removesuffix("_wasm32")
-            .replace("_", ".")
-        )
-
-    wheel_emscripten_version = platform_to_version(tag.platform)
-    pyodide_emscripten_version = platform_to_version(get_platform())
-    if wheel_emscripten_version != pyodide_emscripten_version:
-        raise ValueError(
-            f"Wheel was built with Emscripten v{wheel_emscripten_version} but "
-            f"Pyodide was built with Emscripten v{pyodide_emscripten_version}"
         )
 
     abi_incompatible = True
