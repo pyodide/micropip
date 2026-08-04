@@ -118,6 +118,33 @@ def test_check_compatible_wasm32(selenium_standalone_micropip):
     check_compatible(wheel_name)
 
 
+@pytest.mark.parametrize("prefix", ["pyemscripten", "pyodide"])
+def test_check_compatible_abi_version_mismatch(monkeypatch, prefix):
+    """
+    A wheel built for a different Pyodide ABI version should report the ABI
+    version mismatch instead of garbling it into an Emscripten version.
+    """
+    import micropip._utils as _utils
+    from micropip._utils import check_compatible
+
+    monkeypatch.setattr(
+        _utils,
+        "get_config_var",
+        lambda name: (
+            "2026_0"
+            if name in ("PYEMSCRIPTEN_PLATFORM_VERSION", "PYODIDE_ABI_VERSION")
+            else None
+        ),
+    )
+
+    wheel_name = f"pkg-1.0.0-{CPVER}-{CPVER}-{prefix}_2025_0_wasm32.whl"
+    with raiseValueError(
+        "Wheel was built with Pyodide ABI version 2025.0 but the current "
+        "environment has Pyodide ABI version 2026.0"
+    ):
+        check_compatible(wheel_name)
+
+
 _best_tag_test_cases = (
     "package, version, incompatible_tags, compatible_tags",
     # Tests assume that `compatible_tags` is sorted from least to most compatible:
