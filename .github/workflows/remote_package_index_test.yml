@@ -10,15 +10,13 @@ permissions:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
-    env:
-      DISPLAY: :99
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
-        pyodide-version: [0.23.4]
+        os: [ubuntu-latest]
+        pyodide-version: ["314.0.8"]
         test-config: [
-          {runner: selenium, runtime: chrome, runtime-version: latest },
+          {runner: selenium, runtime: chrome },
         ]
 
     steps:
@@ -28,18 +26,12 @@ jobs:
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: 3.11.1
+          python-version: 3.14
 
-      - uses: pyodide/pyodide-actions/download-pyodide@012fa537869d343726d01863a34b773fc4d96a14 # v2
+      - uses: pyodide/pyodide-actions/download-pyodide@754454c397921a0a74d301d5f0816276919bc914 # main
         with:
           version: ${{ matrix.pyodide-version }}
           to: dist
-
-      - uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
-        with:
-          runner: ${{ matrix.test-config.runner }}
-          browser: ${{ matrix.test-config.runtime }}
-          browser-version: ${{ matrix.test-config.runtime-version }}
 
       - name: Install requirements
         shell: bash -l {0}
@@ -55,4 +47,4 @@ jobs:
             --runner=${{ matrix.test-config.runner }} \
             --rt ${{ matrix.test-config.runtime }} \
             --run-remote-index-tests \
-            tests/test_remote_indexes.py
+            tests/integration/test_remote_indexes.py
