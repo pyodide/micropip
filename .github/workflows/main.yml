@@ -16,17 +16,14 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     needs: [check-integration-test-trigger]
-    env:
-      DISPLAY: :99
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        pyodide-version: ["0.28.0"]
+        pyodide-version: ["0.29.5", "314.0.8"]
         test-config: [
-            # FIXME: recent version of chrome gets timeout
-            { runner: selenium, runtime: chrome, runtime-version: "125" },
-            { runner: selenium, runtime: node, runtime-version: "22" },
+            { runner: selenium, runtime: chrome },
+            { runner: selenium, runtime: node, runtime-version: "26" },
           ]
 
     steps:
@@ -38,16 +35,15 @@ jobs:
         with:
           python-version: 3.13
 
-      - uses: pyodide/pyodide-actions/download-pyodide@012fa537869d343726d01863a34b773fc4d96a14 # v2
+      - uses: pyodide/pyodide-actions/download-pyodide@754454c397921a0a74d301d5f0816276919bc914 # main
         with:
           version: ${{ matrix.pyodide-version }}
           to: dist
 
-      - uses: pyodide/pyodide-actions/install-browser@012fa537869d343726d01863a34b773fc4d96a14 # v2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: matrix.test-config.runtime == 'node'
         with:
-          runner: ${{ matrix.test-config.runner }}
-          browser: ${{ matrix.test-config.runtime }}
-          browser-version: ${{ matrix.test-config.runtime-version }}
+          node-version: ${{ matrix.test-config.runtime-version }}
 
       - name: Install requirements
         shell: bash -l {0}

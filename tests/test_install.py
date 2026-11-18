@@ -346,14 +346,18 @@ def test_emfs_error(selenium_standalone_micropip):
     @run_in_pyodide()
     async def run_test(selenium):
         import micropip
+        from micropip._utils import sys_tags
 
-        await micropip.install("emfs:a-2.0.2-cp313-cp313-pyodide_2025_0_wasm32.whl")
+        tag = sys_tags()[0]
+        wheel = f"a-2.0.2-{tag.interpreter}-{tag.abi}-{tag.platform}.whl"
+        try:
+            await micropip.install(f"emfs:{wheel}")
+        except FileNotFoundError as e:
+            assert f"No such file or directory: '{wheel}'" in str(e)
+        else:
+            raise AssertionError("FileNotFoundError not raised")
 
-    with pytest.raises(
-        FileNotFoundError,
-        match="No such file or directory: 'a-2.0.2-cp313-cp313-pyodide_2025_0_wasm32.whl'",
-    ):
-        run_test(selenium_standalone_micropip)
+    run_test(selenium_standalone_micropip)
 
 
 def test_logging(selenium_standalone_micropip, wheel_catalog):

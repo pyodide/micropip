@@ -109,13 +109,23 @@ def test_check_compatible(mock_platform, interp, abi, arch, ctx):
 @run_in_pyodide
 def test_check_compatible_wasm32(selenium_standalone_micropip):
     """
-    Here we check in particular that pyodide_2025_0_wasm32 wheels are seen as
-    compatible as the platform is emscripten
+    Here we check in particular that pyemscripten_<abi>_wasm32 and
+    pyodide_<abi>_wasm32 wheels are seen as compatible as the platform is emscripten
     """
+    import sys
+    from sysconfig import get_config_var
+
     from micropip._utils import check_compatible
 
-    wheel_name = "pywavelets-1.8.0.dev0-cp313-cp313-pyodide_2025_0_wasm32.whl"
-    check_compatible(wheel_name)
+    cpver = f"cp{sys.version_info.major}{sys.version_info.minor}"
+    abi_version = get_config_var("PYEMSCRIPTEN_PLATFORM_VERSION") or get_config_var(
+        "PYODIDE_ABI_VERSION"
+    )
+    for platform in ("pyemscripten", "pyodide"):
+        wheel_name = (
+            f"pywavelets-1.8.0.dev0-{cpver}-{cpver}-{platform}_{abi_version}_wasm32.whl"
+        )
+        check_compatible(wheel_name)
 
 
 _best_tag_test_cases = (
