@@ -1,5 +1,4 @@
 import pytest
-from conftest import mock_fetch_cls
 from pytest_pyodide import run_in_pyodide
 
 import micropip
@@ -128,127 +127,141 @@ def test_install_constraints(
     )
 
 
-@pytest.mark.asyncio
-async def test_package_with_extra(mock_fetch):
-    mock_fetch.add_pkg_version("depa")
-    mock_fetch.add_pkg_version("depb")
-    mock_fetch.add_pkg_version("pkga", extras={"opt_feature": ["depa"]})
-    mock_fetch.add_pkg_version("pkgb", extras={"opt_feature": ["depb"]})
+def test_package_with_extra(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("depa")
+    fake_index.add_pkg_version("depb")
+    fake_index.add_pkg_version("pkga", extras={"opt_feature": ["depa"]})
+    fake_index.add_pkg_version("pkgb", extras={"opt_feature": ["depb"]})
 
-    await micropip.install(["pkga[opt_feature]", "pkgb"])
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
 
-    pkg_list = micropip.list()
+        await micropip.install(["pkga[opt_feature]", "pkgb"], index_urls=[index_url])
 
-    assert "pkga" in pkg_list
-    assert "depa" in pkg_list
+        pkg_list = micropip.list()
+        assert "pkga" in pkg_list
+        assert "depa" in pkg_list
+        assert "pkgb" in pkg_list
+        assert "depb" not in pkg_list
 
-    assert "pkgb" in pkg_list
-    assert "depb" not in pkg_list
+    run(selenium_standalone_micropip, fake_index.url)
 
 
-@pytest.mark.asyncio
-async def test_package_with_extra_all(mock_fetch):
-    mock_fetch.add_pkg_version("depa")
-    mock_fetch.add_pkg_version("depb")
-    mock_fetch.add_pkg_version("depc")
-    mock_fetch.add_pkg_version("depd")
-
-    mock_fetch.add_pkg_version("pkga", extras={"all": ["depa", "depb"]})
-    mock_fetch.add_pkg_version(
+def test_package_with_extra_all(selenium_standalone_micropip, fake_index):
+    for dep in ("depa", "depb", "depc", "depd"):
+        fake_index.add_pkg_version(dep)
+    fake_index.add_pkg_version("pkga", extras={"all": ["depa", "depb"]})
+    fake_index.add_pkg_version(
         "pkgb", extras={"opt_feature": ["depc"], "all": ["depc", "depd"]}
     )
 
-    await micropip.install(["pkga[all]", "pkgb[opt_feature]"])
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
 
-    pkg_list = micropip.list()
-    assert "depa" in pkg_list
-    assert "depb" in pkg_list
+        await micropip.install(
+            ["pkga[all]", "pkgb[opt_feature]"], index_urls=[index_url]
+        )
 
-    assert "depc" in pkg_list
-    assert "depd" not in pkg_list
+        pkg_list = micropip.list()
+        assert "depa" in pkg_list
+        assert "depb" in pkg_list
+        assert "depc" in pkg_list
+        assert "depd" not in pkg_list
+
+    run(selenium_standalone_micropip, fake_index.url)
 
 
 @pytest.mark.parametrize("transitive_req", [True, False])
-@pytest.mark.asyncio
-async def test_package_with_extra_transitive(
-    mock_fetch, transitive_req, mock_importlib
+def test_package_with_extra_transitive(
+    selenium_standalone_micropip, fake_index, transitive_req
 ):
-    mock_fetch.add_pkg_version("depb")
-
+    fake_index.add_pkg_version("depb")
     pkga_optional_dep = "depa[opt_feature]" if transitive_req else "depa"
-    mock_fetch.add_pkg_version("depa", extras={"opt_feature": ["depb"]})
-    mock_fetch.add_pkg_version("pkga", extras={"opt_feature": [pkga_optional_dep]})
+    fake_index.add_pkg_version("depa", extras={"opt_feature": ["depb"]})
+    fake_index.add_pkg_version("pkga", extras={"opt_feature": [pkga_optional_dep]})
 
-    await micropip.install(["pkga[opt_feature]"])
-    pkg_list = micropip.list()
-    assert "depa" in pkg_list
-    if transitive_req:
-        assert "depb" in pkg_list
-    else:
-        assert "depb" not in pkg_list
+    @run_in_pyodide
+    async def run(selenium, index_url, transitive_req):
+        import micropip
 
+        await micropip.install(["pkga[opt_feature]"], index_urls=[index_url])
 
-@pytest.mark.asyncio
-async def test_install_keep_going(mock_fetch: mock_fetch_cls) -> None:
-    dummy = "dummy"
-    dep1 = "dep1"
-    dep2 = "dep2"
-    mock_fetch.add_pkg_version(dummy, requirements=[dep1, dep2])
-    mock_fetch.add_pkg_version(dep1, platform="invalid")
-    mock_fetch.add_pkg_version(dep2, platform="invalid")
+        pkg_list = micropip.list()
+        assert "depa" in pkg_list
+        assert ("depb" in pkg_list) == transitive_req
 
-    # report order is non-deterministic
-    msg = f"({dep1}|{dep2}).*({dep2}|{dep1})"
-    with pytest.raises(ValueError, match=msg):
-        await micropip.install(dummy, keep_going=True)
+    run(selenium_standalone_micropip, fake_index.url, transitive_req)
 
 
-@pytest.mark.asyncio
-async def test_install_version_compare_prerelease(mock_fetch: mock_fetch_cls) -> None:
-    dummy = "dummy"
-    version_old = "3.2.0"
-    version_new = "3.2.1a1"
+def test_install_keep_going(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy", requirements=["dep1", "dep2"])
+    fake_index.add_pkg_version("dep1", tag="cp313-cp313-invalid")
+    fake_index.add_pkg_version("dep2", tag="cp313-cp313-invalid")
 
-    mock_fetch.add_pkg_version(dummy, version_old)
-    mock_fetch.add_pkg_version(dummy, version_new)
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import pytest
 
-    await micropip.install(f"{dummy}=={version_new}")
-    await micropip.install(f"{dummy}>={version_old}")
+        import micropip
 
-    installed_pkgs = micropip.list()
-    # Older version should not be installed
-    assert installed_pkgs[dummy].version == version_new
+        # report order is non-deterministic
+        with pytest.raises(ValueError, match="(dep1|dep2).*(dep2|dep1)"):
+            await micropip.install("dummy", keep_going=True, index_urls=[index_url])
 
-
-@pytest.mark.asyncio
-async def test_install_no_deps(mock_fetch: mock_fetch_cls) -> None:
-    dummy = "dummy"
-    dep = "dep"
-    mock_fetch.add_pkg_version(dummy, requirements=[dep])
-    mock_fetch.add_pkg_version(dep)
-
-    await micropip.install(dummy, deps=False)
-
-    assert dummy in micropip.list()
-    assert dep not in micropip.list()
+    run(selenium_standalone_micropip, fake_index.url)
 
 
-@pytest.mark.asyncio
+def test_install_version_compare_prerelease(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy", "3.2.0")
+    fake_index.add_pkg_version("dummy", "3.2.1a1")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
+
+        await micropip.install("dummy==3.2.1a1", index_urls=[index_url])
+        await micropip.install("dummy>=3.2.0", index_urls=[index_url])
+
+        # Older version should not be installed
+        assert micropip.list()["dummy"].version == "3.2.1a1"
+
+    run(selenium_standalone_micropip, fake_index.url)
+
+
+def test_install_no_deps(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy", requirements=["dep"])
+    fake_index.add_pkg_version("dep")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
+
+        await micropip.install("dummy", deps=False, index_urls=[index_url])
+
+        assert "dummy" in micropip.list()
+        assert "dep" not in micropip.list()
+
+    run(selenium_standalone_micropip, fake_index.url)
+
+
 @pytest.mark.parametrize("pre", [True, False])
-async def test_install_pre(
-    mock_fetch: mock_fetch_cls,
-    pre: bool,
-) -> None:
-    dummy = "dummy"
+def test_install_pre(selenium_standalone_micropip, fake_index, pre):
     version_alpha = "2.0.1a1"
     version_stable = "1.0.0"
+    fake_index.add_pkg_version("dummy", version_stable)
+    fake_index.add_pkg_version("dummy", version_alpha)
 
-    version_should_select = version_alpha if pre else version_stable
+    @run_in_pyodide
+    async def run(selenium, index_url, pre, expected):
+        import micropip
 
-    mock_fetch.add_pkg_version(dummy, version_stable)
-    mock_fetch.add_pkg_version(dummy, version_alpha)
-    await micropip.install(dummy, pre=pre)
-    assert micropip.list()[dummy].version == version_should_select
+        await micropip.install("dummy", pre=pre, index_urls=[index_url])
+        assert micropip.list()["dummy"].version == expected
+
+    expected = version_alpha if pre else version_stable
+    run(selenium_standalone_micropip, fake_index.url, pre, expected)
 
 
 @pytest.mark.asyncio
@@ -297,13 +310,20 @@ async def test_install_with_credentials(selenium_standalone_micropip):
     await call_micropip_install()
 
 
-@pytest.mark.asyncio
-async def test_load_binary_wheel1(
-    mock_fetch: mock_fetch_cls, mock_importlib: None, mock_platform: None
-) -> None:
-    dummy = "dummy"
-    mock_fetch.add_pkg_version(dummy, platform="emscripten")
-    await micropip.install(dummy)
+def test_load_binary_wheel1(selenium_standalone_micropip, fake_index):
+    selenium = selenium_standalone_micropip
+    tag = selenium.run("from micropip._utils import sys_tags; str(sys_tags()[0])")
+    assert "emscripten" in tag
+    fake_index.add_pkg_version("dummy", tag=tag)
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
+
+        await micropip.install("dummy", index_urls=[index_url])
+        assert "dummy" in micropip.list()
+
+    run(selenium, fake_index.url)
 
 
 @pytest.mark.skip_refcount_check
@@ -441,29 +461,29 @@ def test_install_pkg_with_sharedlib_deps(selenium_standalone_micropip, wheel_cat
     run(selenium, numpy_wheel.url, shapely_wheel.url)
 
 
-@pytest.mark.asyncio
-async def test_reinstall_different_version(
-    mock_fetch: mock_fetch_cls,
-    mock_importlib,
-) -> None:
-    import importlib.metadata
+def test_reinstall_different_version(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy", "1.0.0")
+    fake_index.add_pkg_version("dummy", "2.0.0")
 
-    import pytest
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import importlib.metadata
 
-    dummy = "dummy"
-    version_old = "1.0.0"
-    version_new = "2.0.0"
+        import pytest
 
-    mock_fetch.add_pkg_version(dummy, version_old)
-    mock_fetch.add_pkg_version(dummy, version_new)
+        import micropip
 
-    await micropip.install(f"{dummy}=={version_new}")
-    assert micropip.list()[dummy].version == version_new
-    assert importlib.metadata.version(dummy) == version_new
+        await micropip.install("dummy==2.0.0", index_urls=[index_url])
+        assert micropip.list()["dummy"].version == "2.0.0"
+        assert importlib.metadata.version("dummy") == "2.0.0"
 
-    with pytest.raises(ValueError, match="already installed"):
-        await micropip.install(f"{dummy}=={version_old}", reinstall=False)
+        with pytest.raises(ValueError, match="already installed"):
+            await micropip.install(
+                "dummy==1.0.0", reinstall=False, index_urls=[index_url]
+            )
 
-    await micropip.install(f"{dummy}=={version_old}", reinstall=True)
-    assert micropip.list()[dummy].version == version_old
-    assert importlib.metadata.version(dummy) == version_old
+        await micropip.install("dummy==1.0.0", reinstall=True, index_urls=[index_url])
+        assert micropip.list()["dummy"].version == "1.0.0"
+        assert importlib.metadata.version("dummy") == "1.0.0"
+
+    run(selenium_standalone_micropip, fake_index.url)
