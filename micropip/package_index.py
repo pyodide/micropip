@@ -272,7 +272,7 @@ async def query_package(
     index_urls: list[str] | str,
     *,
     # TODO: instead of passing this as a parameter, it should be a class attribute
-    compat_layer: type[CompatibilityLayer],
+    compat_layer: CompatibilityLayer,
     fetch_kwargs: dict[str, Any] | None = None,
 ) -> ProjectInfo:
     """

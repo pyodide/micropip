@@ -127,9 +127,7 @@ class WheelInfo:
             _best_tag_index=best_tag_index,
         )
 
-    async def install(
-        self, target: Path, compat_layer: type[CompatibilityLayer]
-    ) -> None:
+    async def install(self, target: Path, compat_layer: CompatibilityLayer) -> None:
         """
         Install the wheel to the target directory.
 
@@ -148,7 +146,7 @@ class WheelInfo:
         await self._install(target, compat_layer)
 
     async def download(
-        self, fetch_kwargs: dict[str, Any], compat_layer: type[CompatibilityLayer]
+        self, fetch_kwargs: dict[str, Any], compat_layer: CompatibilityLayer
     ):
         if self._data is not None:
             return
@@ -173,7 +171,7 @@ class WheelInfo:
     async def download_pep658_metadata(
         self,
         fetch_kwargs: dict[str, Any],
-        compat_layer: type[CompatibilityLayer],
+        compat_layer: CompatibilityLayer,
     ) -> None:
         """
         Download the wheel's metadata. If the metadata is not available, return None.
@@ -208,7 +206,7 @@ class WheelInfo:
         self,
         url: str,
         fetch_kwargs: dict[str, Any],
-        compat_layer: type[CompatibilityLayer],
+        compat_layer: CompatibilityLayer,
     ):
         if self.parsed_url.scheme not in ("https", "http", "emfs", "file"):
             # Don't raise ValueError it gets swallowed
@@ -233,9 +231,7 @@ class WheelInfo:
                 ) from e
             raise e
 
-    async def _install(
-        self, target: Path, compat_layer: type[CompatibilityLayer]
-    ) -> None:
+    async def _install(self, target: Path, compat_layer: CompatibilityLayer) -> None:
         """
         Install the wheel to the target directory.
         """
@@ -255,14 +251,13 @@ class WheelInfo:
             )
 
         await compat_layer.install(
-            # TODO: Probably update install API to accept bytes directly, instead of converting it to JS.
-            compat_layer.to_js(self._data),
+            self._data,
             self.filename,
             str(target),
             metadata,
         )
 
-        setattr(compat_layer.loadedPackages, self._project_name, wheel_source)
+        compat_layer.add_loaded_package(self._project_name, wheel_source)
 
 
 def _validate_sha256_checksum(data: bytes, expected: str | None = None) -> None:

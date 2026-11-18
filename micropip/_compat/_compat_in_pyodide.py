@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from pyodide.ffi import to_js
@@ -13,9 +14,6 @@ try:
         install,
         loadBinaryFile,
     )
-
-    LOCKFILE_PACKAGES = pyodide_js._api.lockfile_packages.to_py()
-    LOCKFILE_INFO = pyodide_js._api.lockfile_info.to_py()
 except ImportError as e:
     raise ImportError(
         "Failed to import pyodide modules, please report this issue to Pyodide team."
@@ -23,9 +21,14 @@ except ImportError as e:
 
 
 class CompatibilityInPyodide(CompatibilityLayer):
+    """The compatibility layer for the Pyodide runtime."""
 
-    @staticmethod
-    async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
+    def __init__(self) -> None:
+        self.lockfile_info = pyodide_js._api.lockfile_info.to_py()
+        self.lockfile_packages = pyodide_js._api.lockfile_packages.to_py()
+        self.lockfile_base_url = lockfileBaseUrl
+
+    async def fetch_bytes(self, url: str, kwargs: dict[str, Any]) -> bytes:
         parsed_url = urlparse(url)
         if parsed_url.scheme == "emfs":
             return Path(parsed_url.path).read_bytes()
@@ -36,11 +39,9 @@ class CompatibilityInPyodide(CompatibilityLayer):
         response.raise_for_status()
         return await response.bytes()
 
-    @staticmethod
     async def fetch_string_and_headers(
-        url: str, kwargs: dict[str, str]
+        self, url: str, kwargs: dict[str, Any]
     ) -> tuple[str, dict[str, str]]:
-
         response = await pyfetch(url, **kwargs)
         response.raise_for_status()
 
@@ -49,16 +50,29 @@ class CompatibilityInPyodide(CompatibilityLayer):
 
         return content, headers
 
-    loadedPackages = loadedPackages
+    async def install(
+        self,
+        data: bytes,
+        filename: str,
+        install_dir: str,
+        metadata: dict[str, str] | None = None,
+    ) -> None:
+        await install(to_js(data), filename, install_dir, metadata)
 
-    install = install
+    async def load_packages(self, names: list[str]) -> None:
+        await loadPackage(to_js(names))
 
-    loadPackage = loadPackage
+    # pyodide.loadedPackages is shared with the JS side (pyodide.loadPackage
+    # consults it), so the Pyodide layer keeps it in sync instead of holding
+    # its own state.
+    def loaded_packages(self) -> dict[str, str]:
+        return loadedPackages.to_py()
 
-    to_js = to_js
+    def add_loaded_package(self, name: str, source: str) -> None:
+        setattr(loadedPackages, name, source)
 
-    lockfile_info = LOCKFILE_INFO
-
-    lockfile_packages = LOCKFILE_PACKAGES
-
-    lockfile_base_url = lockfileBaseUrl
+    def remove_loaded_package(self, name: str) -> bool:
+        if not hasattr(loadedPackages, name):
+            return False
+        delattr(loadedPackages, name)
+        return True

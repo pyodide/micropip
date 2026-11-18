@@ -35,7 +35,7 @@ def _looks_like_vcs_url(req: str) -> bool:
 
 @dataclass
 class Transaction:
-    _compat_layer: type[CompatibilityLayer]
+    _compat_layer: CompatibilityLayer
 
     ctx: dict[str, str]
     ctx_extras: list[dict[str, str]]

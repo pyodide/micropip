@@ -4,60 +4,58 @@ from typing import Any
 
 class CompatibilityLayer(ABC):
     """
-    CompatibilityLayer represents the interface that must be implemented for each viable environment.
+    CompatibilityLayer is the interface between micropip and the runtime it runs in.
 
-    All of the following methods / properties must be implemented for use both inside and outside of pyodide.
+    micropip talks to the runtime (fetching files, installing wheels, reading the
+    lock file, ...) only through an instance of this class, which is passed to
+    ``PackageManager``. Subclasses must set the lock file attributes (e.g. in
+    ``__init__``) and implement all abstract methods.
     """
 
-    class loadedPackages(ABC):
-        @staticmethod
-        @abstractmethod
-        def to_py():
-            pass
-
     lockfile_info: dict[str, str]
+    """The ``info`` section of the lock file."""
 
     lockfile_packages: dict[str, dict[str, Any]]
+    """The ``packages`` section of the lock file."""
 
     lockfile_base_url: str | None = None
+    """The base URL that relative file names in the lock file are resolved against."""
 
-    @staticmethod
     @abstractmethod
-    async def fetch_bytes(url: str, kwargs: dict[str, str]) -> bytes:
-        pass
+    async def fetch_bytes(self, url: str, kwargs: dict[str, Any]) -> bytes:
+        """Fetch ``url`` and return the response body."""
 
-    @staticmethod
     @abstractmethod
     async def fetch_string_and_headers(
-        url: str, kwargs: dict[str, Any]
+        self, url: str, kwargs: dict[str, Any]
     ) -> tuple[str, dict[str, str]]:
-        pass
+        """Fetch ``url`` and return the decoded response body and the response headers."""
 
-    @staticmethod
     @abstractmethod
     async def install(
-        buffer: Any,  # JsBuffer
+        self,
+        data: bytes,
         filename: str,
         install_dir: str,
         metadata: dict[str, str] | None = None,
     ) -> None:
-        pass
+        """Install the wheel ``data`` (named ``filename``) into ``install_dir``.
 
-    @staticmethod
-    @abstractmethod
-    async def loadPackage(names: str | list[str]) -> None:
-        pass
+        ``metadata`` is written as extra files into the ``.dist-info`` directory.
+        """
 
-    @staticmethod
     @abstractmethod
-    def to_js(
-        obj: Any,
-        /,
-        *,
-        depth: int = -1,
-        pyproxies: Any = None,
-        create_pyproxies: bool = True,
-        dict_converter: Any = None,
-        default_converter: Any = None,
-    ) -> Any:
-        pass
+    async def load_packages(self, names: list[str]) -> None:
+        """Load packages from the lock file by name."""
+
+    @abstractmethod
+    def loaded_packages(self) -> dict[str, str]:
+        """Return a mapping from the name of each loaded package to its source."""
+
+    @abstractmethod
+    def add_loaded_package(self, name: str, source: str) -> None:
+        """Record that the package ``name`` was installed from ``source``."""
+
+    @abstractmethod
+    def remove_loaded_package(self, name: str) -> bool:
+        """Forget the package ``name``. Return ``False`` if it was not recorded."""
