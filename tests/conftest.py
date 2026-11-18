@@ -182,6 +182,20 @@ def wheel_catalog(pytestconfig):
 
 
 @pytest.fixture
+def fake_index(httpserver):
+    """
+    A package index that serves wheels built on the fly over HTTP.
+
+    Prefer this over ``mock_fetch``: it works from inside Pyodide, so tests can
+    run micropip end-to-end without monkeypatching it.
+    See ``tests/fake_index.py`` for details.
+    """
+    from fake_index import FakePackageIndex
+
+    return FakePackageIndex(httpserver)
+
+
+@pytest.fixture
 def mock_platform(monkeypatch):
     monkeypatch.setenv("_PYTHON_HOST_PLATFORM", PLATFORM)
     from micropip import _utils
