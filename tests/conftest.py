@@ -1,8 +1,6 @@
 import functools
 import gzip
-import io
 import sys
-import zipfile
 from dataclasses import dataclass
 from importlib.metadata import Distribution, PackageNotFoundError
 from pathlib import Path
@@ -186,8 +184,8 @@ def fake_index(httpserver):
     """
     A package index that serves wheels built on the fly over HTTP.
 
-    Prefer this over ``mock_fetch``: it works from inside Pyodide, so tests can
-    run micropip end-to-end without monkeypatching it.
+    It works from inside Pyodide, so tests can run micropip end-to-end
+    without monkeypatching it.
     See ``tests/fake_index.py`` for details.
     """
     from fake_index import FakePackageIndex
@@ -244,133 +242,6 @@ def mock_importlib(monkeypatch, wheel_base):
     monkeypatch.setattr(
         importlib.metadata.Distribution, "from_name", _mock_importlib_from_name
     )
-
-
-class Wildcard:
-    def __eq__(self, other):
-        return True
-
-
-class mock_fetch_cls:
-    def __init__(self, compat_layer=None):
-        self._compat_layer = compat_layer
-        self.releases_map = {}
-        self.metadata_map = {}
-        self.top_level_map = {}
-
-    def _make_wheel_filename(
-        self, name: str, version: str, platform: str = "generic"
-    ) -> str:
-        if platform == "generic":
-            platform_str = "py3-none-any"
-        elif platform == "emscripten":
-            platform_str = f"{CPVER}-{CPVER}-{PLATFORM}"
-        elif platform == "linux":
-            platform_str = f"{CPVER}-{CPVER}-manylinux_2_31_x86_64"
-        elif platform == "windows":
-            platform_str = f"{CPVER}-{CPVER}-win_amd64"
-        elif platform == "invalid":
-            platform_str = f"{CPVER}-{CPVER}-invalid"
-        else:
-            platform_str = platform
-
-        return f"{name.replace('-', '_').lower()}-{version}-{platform_str}.whl"
-
-    def __eq__(self, other):
-        return True
-
-    def add_pkg_version(
-        self,
-        name: str,
-        version: str = "1.0.0",
-        *,
-        requirements: list[str] | None = None,
-        extras: dict[str, list[str]] | None = None,
-        platform: str = "generic",
-        top_level: list[str] | None = None,
-    ) -> None:
-        if requirements is None:
-            requirements = []
-        if extras is None:
-            extras = {}
-        if top_level is None:
-            top_level = []
-        if name not in self.releases_map:
-            self.releases_map[name] = {
-                "info": {
-                    "name": name,
-                },
-                "releases": {},
-            }
-        releases = self.releases_map[name]["releases"]
-        filename = self._make_wheel_filename(name, version, platform)
-        releases[version] = [
-            {
-                "filename": filename,
-                "url": f"http://fake.domain/f/{filename}",
-                "digests": {
-                    "sha256": Wildcard(),
-                },
-            }
-        ]
-        metadata = [("Name", name), ("Version", version)] + [
-            ("Requires-Dist", req) for req in requirements
-        ]
-        for extra, reqs in extras.items():
-            metadata += [("Provides-Extra", extra)] + [
-                ("Requires-Dist", f"{req}; extra == {extra!r}") for req in reqs
-            ]
-        self.metadata_map[filename] = metadata
-        self.top_level_map[filename] = top_level
-
-    async def query_package(self, pkgname, index_urls, *, compat_layer, fetch_kwargs):
-        from micropip.package_index import ProjectInfo
-
-        try:
-            return ProjectInfo.from_json_api(self.releases_map[pkgname])
-        except KeyError as e:
-            raise ValueError(
-                f"Can't fetch metadata for '{pkgname}' from PyPI. "
-                "Please make sure you have entered a correct package name."
-            ) from e
-
-    async def _fetch_bytes(self, url, kwargs):
-        from micropip.transaction import WheelInfo
-
-        wheel_info = WheelInfo.from_url(url)
-        version = wheel_info.version
-        name = wheel_info.name
-        filename = wheel_info.filename
-        metadata = self.metadata_map[filename]
-        metadata_str = "\n".join(": ".join(x) for x in metadata)
-        toplevel = self.top_level_map[filename]
-        toplevel_str = "\n".join(toplevel)
-
-        metadata_dir = f"{name}-{version}.dist-info"
-
-        tmp = io.BytesIO()
-        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as archive:
-
-            def write_file(filename, contents):
-                archive.writestr(f"{metadata_dir}/{filename}", contents)
-
-            write_file("METADATA", metadata_str)
-            write_file("WHEEL", "Wheel-Version: 1.0")
-            write_file("top_level.txt", toplevel_str)
-
-        tmp.seek(0)
-
-        return tmp.read()
-
-
-@pytest.fixture
-def mock_fetch(monkeypatch, mock_importlib, host_compat_layer):
-    from micropip import package_index
-
-    result = mock_fetch_cls(host_compat_layer)
-    monkeypatch.setattr(package_index, "query_package", result.query_package)
-    monkeypatch.setattr(host_compat_layer, "fetch_bytes", result._fetch_bytes)
-    return result
 
 
 def _mock_package_index_gen(
