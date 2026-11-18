@@ -1,5 +1,6 @@
 import pytest
 from conftest import SNOWBALL_WHEEL
+from pytest_pyodide import run_in_pyodide
 
 from micropip._vendored.packaging.src.packaging.tags import Tag
 
@@ -90,57 +91,56 @@ async def test_add_requirement(wheel_catalog, host_compat_layer):
     )
 
 
-@pytest.mark.asyncio
-async def test_add_requirement_marker(mock_importlib, wheel_base, host_compat_layer):
-    from micropip.transaction import Transaction
+def test_add_requirement_marker(selenium_standalone_micropip, fake_index):
+    # Only "dummy" exists on the index; installing any of the other
+    # requirements would fail, so this also checks they are skipped.
+    fake_index.add_pkg_version("dummy")
 
-    transaction = create_transaction(Transaction, host_compat_layer)
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
 
-    await transaction.gather_requirements(
-        [
-            "werkzeug",
-            'contextvars ; python_version < "3.7"',
-            'aiocontextvars ; python_version < "3.7"',
-            "numpy ; extra == 'full'",
-            "zarr ; extra == 'full'",
-            "numpy ; extra == 'jupyter'",
-            "ipykernel ; extra == 'jupyter'",
-            "numpy ; extra == 'socketio'",
-            "python-socketio[client] ; extra == 'socketio'",
-        ],
-    )
+        await micropip.install(
+            [
+                "dummy",
+                'contextvars ; python_version < "3.7"',
+                'aiocontextvars ; python_version < "3.7"',
+                "numpy ; extra == 'full'",
+                "zarr ; extra == 'full'",
+                "numpy ; extra == 'jupyter'",
+                "ipykernel ; extra == 'jupyter'",
+                "numpy ; extra == 'socketio'",
+                "python-socketio[client] ; extra == 'socketio'",
+            ],
+            index_urls=[index_url],
+        )
 
-    non_targets = [
-        "contextvars",
-        "aiocontextvars",
-        "numpy",
-        "zarr",
-        "ipykernel",
-        "python-socketio",
-    ]
+        pkgs = micropip.list()
+        assert "dummy" in pkgs
+        for name in (
+            "contextvars",
+            "aiocontextvars",
+            "numpy",
+            "zarr",
+            "ipykernel",
+            "python-socketio",
+        ):
+            assert name not in pkgs
 
-    wheel_files = [wheel.name for wheel in transaction.wheels]
-    assert "werkzeug" in wheel_files
-    for t in non_targets:
-        assert t not in wheel_files
+    run(selenium_standalone_micropip, fake_index.url)
 
 
-@pytest.mark.asyncio
-async def test_add_requirement_query_url(
-    mock_importlib, wheel_base, monkeypatch, host_compat_layer
-):
-    from micropip.transaction import Transaction
+def test_add_requirement_query_url(selenium_standalone_micropip, fake_index):
+    wheel = fake_index.add_pkg_version("dummy")
 
-    async def mock_add_wheel(self, wheel, extras, *, specifier=""):
-        self.mock_wheel = wheel
+    @run_in_pyodide
+    async def run(selenium, url):
+        import micropip
 
-    monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
+        await micropip.install(url)
+        assert "dummy" in micropip.list()
 
-    transaction = create_transaction(Transaction, host_compat_layer)
-    await transaction.add_requirement(f"{SNOWBALL_WHEEL}?b=1")
-    wheel = transaction.mock_wheel
-    assert wheel.name == "snowballstemmer"
-    assert wheel.filename == SNOWBALL_WHEEL  # without the query params
+    run(selenium_standalone_micropip, f"{wheel.url}?b=1")
 
 
 @pytest.mark.asyncio
@@ -381,42 +381,20 @@ def test_search_pyodide_lock_first(host_compat_layer):
     assert t.search_pyodide_lock_first is False
 
 
-@pytest.mark.asyncio
-async def test_index_url_priority(
-    mock_importlib,
-    wheel_base,
-    monkeypatch,
-    mock_package_index_simple_json_api,
-    host_compat_layer,
-):
-    # Test that if the index_urls are provided, package should be searched in
-    # the index_urls first before searching in Pyodide lock file.
-    from micropip.transaction import Transaction
+def test_index_url_priority(selenium_standalone_micropip, fake_index):
+    # If index_urls are provided, packages should be searched in the
+    # index_urls first, before searching in the Pyodide lock file.
+    # "regex" is in the Pyodide lock file, but the index has a newer version.
+    fake_index.add_pkg_version("regex", "9999.0.0")
 
-    # add_wheel is called only when the package is found in the index_urls
-    add_wheel_called = None
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
 
-    async def mock_add_wheel(self, wheel, extras, *, specifier=""):
-        nonlocal add_wheel_called
-        add_wheel_called = wheel
+        await micropip.install("regex", index_urls=[index_url])
 
-    monkeypatch.setattr(Transaction, "add_wheel", mock_add_wheel)
+        pkg = micropip.list()["regex"]
+        assert pkg.version == "9999.0.0"
+        assert pkg.source.lower() == "pypi"
 
-    mock_index_url = mock_package_index_simple_json_api(pkgs=["black"])
-
-    t = Transaction(
-        _compat_layer=host_compat_layer,
-        keep_going=True,
-        deps=False,
-        pre=False,
-        ctx={},
-        ctx_extras=[],
-        fetch_kwargs={},
-        index_urls=mock_index_url,
-    )
-
-    await t.add_requirement("black")
-    assert add_wheel_called is not None
-    assert add_wheel_called.name == "black"
-    # 23.7.0 is the latest version of black in the mock index
-    assert str(add_wheel_called.version) == "23.7.0"
+    run(selenium_standalone_micropip, fake_index.url)

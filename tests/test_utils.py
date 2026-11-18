@@ -1,8 +1,7 @@
-from contextlib import contextmanager
 from importlib.metadata import distribution
 
 import pytest
-from conftest import CPVER, EMSCRIPTEN_VER, INVALID_CONSTRAINT_MESSAGES, PLATFORM
+from conftest import INVALID_CONSTRAINT_MESSAGES
 from pytest_pyodide import run_in_pyodide
 
 import micropip._utils as _utils
@@ -44,66 +43,78 @@ def test_get_files_in_distribution():
         assert file in files, f"{file} not found"
 
 
-@contextmanager
-def does_not_raise():
-    yield
-
-
-def raiseValueError(msg):
-    return pytest.raises(ValueError, match=msg)
-
-
 @pytest.mark.parametrize(
-    "interp, abi, arch,ctx",
+    "interp, abi, arch, error",
     [
         (
             "cp35",
             "cp35m",
             "macosx_10_9_intel",
-            raiseValueError(
-                f"Wheel platform 'macosx_10_9_intel' .* Pyodide's platform '{PLATFORM}'"
-            ),
+            "Wheel platform 'macosx_10_9_intel' .* Pyodide's platform '{platform_name}'",
         ),
         (
             "cp35",
             "cp35m",
             "emscripten_2_0_27_wasm32",
-            raiseValueError(
-                f"Emscripten v2.0.27 but Pyodide was built with Emscripten v{EMSCRIPTEN_VER}"
-            ),
+            "Emscripten v2.0.27 but Pyodide was built with Emscripten v{emscripten}",
         ),
         (
             "cp35",
             "cp35m",
-            PLATFORM,
-            raiseValueError(
-                f"Wheel abi 'cp35m' .* Supported abis are 'abi3' and '{CPVER}'."
-            ),
+            "{platform}",
+            "Wheel abi 'cp35m' .* Supported abis are 'abi3' and '{cpver}'.",
         ),
-        ("cp35", "abi3", PLATFORM, does_not_raise()),
-        (CPVER, "abi3", PLATFORM, does_not_raise()),
-        (CPVER, CPVER, PLATFORM, does_not_raise()),
+        ("cp35", "abi3", "{platform}", None),
+        ("{cpver}", "abi3", "{platform}", None),
+        ("{cpver}", "{cpver}", "{platform}", None),
         (
             "cp35",
-            CPVER,
-            PLATFORM,
-            raiseValueError("Wheel interpreter version 'cp35' is not supported."),
+            "{cpver}",
+            "{platform}",
+            "Wheel interpreter version 'cp35' is not supported.",
         ),
         (
             "cp391",
             "abi3",
-            PLATFORM,
-            raiseValueError("Wheel interpreter version 'cp391' is not supported."),
+            "{platform}",
+            "Wheel interpreter version 'cp391' is not supported.",
         ),
     ],
 )
-def test_check_compatible(mock_platform, interp, abi, arch, ctx):
-    from micropip._utils import check_compatible
+def test_check_compatible(selenium_standalone_micropip, interp, abi, arch, error):
+    """
+    Placeholders ({platform}, {cpver}, ...) are filled in
+    with the values of the Pyodide runtime the test runs on.
+    """
 
-    pkg = "scikit_learn-0.22.2.post1"
-    wheel_name = f"{pkg}-{interp}-{abi}-{arch}.whl"
-    with ctx:
-        check_compatible(wheel_name)
+    @run_in_pyodide
+    def run(selenium, interp, abi, arch, error):
+        import sys
+
+        import pytest
+
+        from micropip._utils import check_compatible, get_platform
+
+        # e.g. "emscripten-4.0.9-wasm32" -> "emscripten_4_0_9_wasm32"
+        platform = get_platform().replace("-", "_").replace(".", "_")
+        values = {
+            "platform": platform,
+            "platform_name": get_platform(),
+            "cpver": f"cp{sys.version_info.major}{sys.version_info.minor}",
+            "emscripten": platform.removeprefix("emscripten_")
+            .removesuffix("_wasm32")
+            .replace("_", "."),
+        }
+        tag = "-".join(x.format(**values) for x in (interp, abi, arch))
+        wheel_name = f"scikit_learn-0.22.2.post1-{tag}.whl"
+
+        if error is None:
+            check_compatible(wheel_name)
+        else:
+            with pytest.raises(ValueError, match=error.format(**values)):
+                check_compatible(wheel_name)
+
+    run(selenium_standalone_micropip, interp, abi, arch, error)
 
 
 @run_in_pyodide
