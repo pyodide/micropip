@@ -1,7 +1,6 @@
 import pytest
 from pytest_pyodide import run_in_pyodide
 
-import micropip
 from micropip._vendored.packaging.src.packaging.utils import parse_wheel_filename
 
 
@@ -264,18 +263,20 @@ def test_install_pre(selenium_standalone_micropip, fake_index, pre):
     run(selenium_standalone_micropip, fake_index.url, pre, expected)
 
 
-@pytest.mark.asyncio
-async def test_fetch_wheel_fail(monkeypatch, wheel_base, host_compat_layer):
-    import micropip
+def test_fetch_wheel_fail(selenium_standalone_micropip, fake_index):
+    # The index serves 404 for files it doesn't know about
+    url = fake_index.url.replace("/simple", "/files/xxx-1.0.0-py3-none-any.whl")
 
-    def _mock_fetch_bytes(arg, *args, **kwargs):
-        raise OSError(f"Request for {arg} failed with status 404: Not Found")
+    @run_in_pyodide
+    async def run(selenium, url):
+        import pytest
 
-    monkeypatch.setattr(host_compat_layer, "fetch_bytes", _mock_fetch_bytes)
+        import micropip
 
-    msg = "Access-Control-Allow-Origin"
-    with pytest.raises(ValueError, match=msg):
-        await micropip.install("https://x.com/xxx-1.0.0-py3-none-any.whl")
+        with pytest.raises(ValueError, match="Access-Control-Allow-Origin"):
+            await micropip.install(url)
+
+    run(selenium_standalone_micropip, url)
 
 
 @pytest.mark.skip_refcount_check
@@ -405,33 +406,28 @@ def test_logging(selenium_standalone_micropip, wheel_catalog):
     run_test(selenium_standalone_micropip, wheel_url, name, version)
 
 
-@pytest.mark.asyncio
-async def test_custom_index_urls(
-    mock_package_index_json_api, monkeypatch, host_compat_layer
-):
-    mock_server_fake_package = mock_package_index_json_api(
-        pkgs=["fake-pkg-micropip-test"]
+def test_custom_index_urls(selenium_standalone_micropip, fake_index, httpserver):
+    from fake_index import FakePackageIndex
+
+    # An index that doesn't have the package, micropip should fall back to the next one
+    empty_index = FakePackageIndex(httpserver)
+    wheel = fake_index.add_pkg_version("dummy")
+
+    @run_in_pyodide
+    async def run(selenium, index_urls, wheel_url):
+        import micropip
+
+        await micropip.install("dummy", index_urls=index_urls)
+
+        assert micropip.list()["dummy"].source.lower() == "pypi"
+        assert "dummy" in micropip.freeze()
+        assert wheel_url in micropip.freeze()
+
+    run(
+        selenium_standalone_micropip,
+        [empty_index.url, fake_index.url],
+        wheel.url,
     )
-
-    _wheel_url = ""
-
-    async def _mock_fetch_bytes(url, *args):
-        nonlocal _wheel_url
-        _wheel_url = url
-        return b"fake wheel"
-
-    monkeypatch.setattr(host_compat_layer, "fetch_bytes", _mock_fetch_bytes)
-
-    try:
-        await micropip.install(
-            "fake-pkg-micropip-test", index_urls=[mock_server_fake_package]
-        )
-    except Exception:
-        # We just check that the custom index url was used
-        # install will fail because the package is not real, but it doesn't matter.
-        pass
-
-    assert "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl" in _wheel_url
 
 
 def test_install_pkg_with_sharedlib_deps(selenium_standalone_micropip, wheel_catalog):

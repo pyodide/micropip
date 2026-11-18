@@ -32,7 +32,9 @@ class CompatibilityInPyodide(CompatibilityLayer):
         if parsed_url.scheme == "file":
             return (await loadBinaryFile(parsed_url.path)).to_bytes()
 
-        return await (await pyfetch(url, **kwargs)).bytes()
+        response = await pyfetch(url, **kwargs)
+        response.raise_for_status()
+        return await response.bytes()
 
     @staticmethod
     async def fetch_string_and_headers(
