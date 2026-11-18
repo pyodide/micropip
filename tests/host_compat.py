@@ -3,9 +3,9 @@ A compatibility layer for running micropip's unit tests on the host (outside Pyo
 
 micropip only ships a compatibility layer for Pyodide. This one lets host unit
 tests fetch files with urllib (e.g. from ``wheel_catalog`` or the mock package
-indexes) by injecting an instance into ``PackageManager``, ``Transaction``,
-``query_package``, etc. Installing packages is not supported: tests that install
-packages should run in Pyodide.
+indexes) by injecting an instance into ``PackageManager`` or ``Resolver``.
+Installing packages is not supported: tests that install packages should run
+in Pyodide.
 """
 
 from typing import Any

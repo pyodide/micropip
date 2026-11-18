@@ -20,7 +20,7 @@ from micropip._vendored.packaging.src.packaging.tags import Tag
     ["http:", "https:", "file:", "emfs:", ""],
 )
 def test_parse_wheel_url1(protocol, path):
-    from micropip.transaction import WheelInfo
+    from micropip.resolver import WheelInfo
 
     url = protocol + path
     wheel = WheelInfo.from_url(url)
@@ -36,7 +36,7 @@ def test_parse_wheel_url1(protocol, path):
 
 
 def test_parse_wheel_url2():
-    from micropip.transaction import WheelInfo
+    from micropip.resolver import WheelInfo
 
     msg = r"Invalid wheel filename \(wrong number of parts\)"
     with pytest.raises(ValueError, match=msg):
@@ -45,7 +45,7 @@ def test_parse_wheel_url2():
 
 
 def test_parse_wheel_url3():
-    from micropip.transaction import WheelInfo
+    from micropip.resolver import WheelInfo
 
     url = "http://a/scikit_learn-0.22.2.post1-cp35-cp35m-macosx_10_9_intel.whl"
     wheel = WheelInfo.from_url(url)
@@ -53,35 +53,16 @@ def test_parse_wheel_url3():
     assert wheel.tags == frozenset({Tag("cp35", "cp35m", "macosx_10_9_intel")})
 
 
-def create_transaction(Transaction, compat_layer):
-    from micropip.package_index import DEFAULT_INDEX_URLS
-
-    return Transaction(
-        _compat_layer=compat_layer,
-        wheels=[],
-        locked={},
-        keep_going=True,
-        deps=True,
-        pre=False,
-        pyodide_packages=[],
-        failed=[],
-        ctx={},
-        ctx_extras=[],
-        fetch_kwargs={},
-        index_urls=DEFAULT_INDEX_URLS,
-    )
-
-
 @pytest.mark.asyncio
 async def test_add_requirement(wheel_catalog, host_compat_layer):
-    from micropip.transaction import Transaction
+    from micropip.resolver import Resolver
 
     snowballstemmer_wheel = wheel_catalog.get("snowballstemmer")
 
-    transaction = create_transaction(Transaction, host_compat_layer)
-    await transaction.add_requirement(snowballstemmer_wheel.url)
+    resolver = Resolver(host_compat_layer, keep_going=True)
+    await resolver.add_requirement(snowballstemmer_wheel.url)
 
-    wheel = transaction.wheels[0]
+    wheel = resolver.wheels[0]
     assert wheel.name == "snowballstemmer"
     assert str(wheel.version) == "2.0.0"
     assert wheel.filename == SNOWBALL_WHEEL
@@ -145,13 +126,13 @@ def test_add_requirement_query_url(selenium_standalone_micropip, fake_index):
 
 @pytest.mark.asyncio
 async def test_install_non_pure_python_wheel(host_compat_layer):
-    from micropip.transaction import Transaction
+    from micropip.resolver import Resolver
 
     msg = "Wheel platform 'macosx_10_9_intel' is not compatible with Pyodide's platform"
     with pytest.raises(ValueError, match=msg):
         url = "http://a/scikit_learn-0.22.2.post1-cp35-cp35m-macosx_10_9_intel.whl"
-        transaction = create_transaction(Transaction, host_compat_layer)
-        await transaction.add_requirement(url)
+        resolver = Resolver(host_compat_layer, keep_going=True)
+        await resolver.add_requirement(url)
 
 
 @pytest.mark.parametrize(
@@ -166,11 +147,11 @@ async def test_install_non_pure_python_wheel(host_compat_layer):
 )
 @pytest.mark.asyncio
 async def test_add_requirement_vcs_url_helpful_error(url, host_compat_layer):
-    from micropip.transaction import Transaction
+    from micropip.resolver import Resolver
 
-    transaction = create_transaction(Transaction, host_compat_layer)
+    resolver = Resolver(host_compat_layer, keep_going=True)
     with pytest.raises(ValueError) as exc_info:
-        await transaction.add_requirement(url)
+        await resolver.add_requirement(url)
     assert (
         "Provide a URL pointing to a wheel or a package name available on a configured index."
         in str(exc_info.value)
@@ -209,7 +190,7 @@ def _pypi_metadata(package, versions_to_tags):
 
 def test_last_version_from_pypi():
     from micropip._vendored.packaging.src.packaging.requirements import Requirement
-    from micropip.transaction import find_wheel
+    from micropip.resolver import find_wheel
 
     requirement = Requirement("dummy_module")
     versions = ["0.0.1", "0.15.5", "0.9.1"]
@@ -228,7 +209,7 @@ def test_find_wheel_invalid_version():
     it should be skipped instead of producing an error
     """
     from micropip._vendored.packaging.src.packaging.requirements import Requirement
-    from micropip.transaction import find_wheel
+    from micropip.resolver import find_wheel
 
     requirement = Requirement("dummy_module")
     versions = ["0.0.1", "0.15.5", "0.9.1", "2004d"]
@@ -243,7 +224,7 @@ def test_find_wheel_invalid_version():
 
 def test_yanked_version():
     from micropip._vendored.packaging.src.packaging.requirements import Requirement
-    from micropip.transaction import find_wheel
+    from micropip.resolver import find_wheel
 
     versions = ["0.0.1", "0.15.5", "0.9.1"]
 
@@ -303,7 +284,7 @@ _best_tag_test_cases = (
 @pytest.mark.parametrize(*_best_tag_test_cases)
 def test_best_tag_from_pypi(package, version, incompatible_tags, compatible_tags):
     from micropip._vendored.packaging.src.packaging.requirements import Requirement
-    from micropip.transaction import find_wheel
+    from micropip.resolver import find_wheel
 
     requirement = Requirement(package)
     tags = incompatible_tags + compatible_tags
@@ -336,7 +317,7 @@ def test_last_version_and_best_tag_from_pypi(
     package, old_version, new_version, old_tags, new_tags
 ):
     from micropip._vendored.packaging.src.packaging.requirements import Requirement
-    from micropip.transaction import find_wheel
+    from micropip.resolver import find_wheel
 
     requirement = Requirement(package)
 
@@ -352,10 +333,10 @@ def test_last_version_and_best_tag_from_pypi(
 
 def test_search_pyodide_lock_first(host_compat_layer):
     from micropip import package_index
-    from micropip.transaction import Transaction
+    from micropip.resolver import Resolver
 
-    t = Transaction(
-        _compat_layer=host_compat_layer,
+    t = Resolver(
+        compat_layer=host_compat_layer,
         ctx={},
         ctx_extras=[],
         keep_going=True,
@@ -367,8 +348,8 @@ def test_search_pyodide_lock_first(host_compat_layer):
     )
     assert t.search_pyodide_lock_first is True
 
-    t = Transaction(
-        _compat_layer=host_compat_layer,
+    t = Resolver(
+        compat_layer=host_compat_layer,
         ctx={},
         ctx_extras=[],
         keep_going=True,

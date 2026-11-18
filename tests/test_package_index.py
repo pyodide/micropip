@@ -2,6 +2,7 @@ import pytest
 from conftest import TEST_PYPI_RESPONSE_DIR
 
 import micropip.package_index as package_index
+from micropip.resolver import Resolver
 
 
 def _check_project_info(project_info: package_index.ProjectInfo):
@@ -143,14 +144,27 @@ async def test_query_package(mock_fixture, pkg1, pkg2, request, host_compat_laye
         [pkg1_index_url],
         [pkg2_index_url, pkg1_index_url],
     ):
-        project_info = await package_index.query_package(
-            pkg1, index_urls=_index_urls, compat_layer=host_compat_layer
-        )
+        resolver = Resolver(host_compat_layer, index_urls=_index_urls)
+        project_info = await resolver.query_package(pkg1)
 
         assert project_info.name == pkg1
         assert project_info.releases
 
     with pytest.raises(ValueError, match="Can't fetch metadata"):
-        await package_index.query_package(
-            pkg1, index_urls=[pkg2_index_url], compat_layer=host_compat_layer
+        await Resolver(host_compat_layer, index_urls=[pkg2_index_url]).query_package(
+            pkg1
         )
+
+
+@pytest.mark.parametrize(
+    "index_urls, expected",
+    [
+        ("https://a.com/simple", ["https://a.com/simple/pkg/"]),
+        (
+            ["PYPI", "https://a.com/{package_name}.json"],
+            ["https://pypi.org/simple/pkg/", "https://a.com/pkg.json"],
+        ),
+    ],
+)
+def test_project_urls(index_urls, expected):
+    assert package_index.project_urls("pkg", index_urls) == expected
