@@ -1,44 +1,50 @@
-import pytest
-from conftest import mock_fetch_cls
-
-import micropip
+from pytest_pyodide import run_in_pyodide
 
 
-@pytest.mark.asyncio
-async def test_list_pypi_package(mock_fetch: mock_fetch_cls) -> None:
-    dummy = "dummy"
-    mock_fetch.add_pkg_version(dummy)
+def test_list_pypi_package(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy")
 
-    await micropip.install(dummy)
-    pkg_list = micropip.list()
-    assert dummy in pkg_list
-    assert pkg_list[dummy].source.lower() == "pypi"
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
 
+        await micropip.install("dummy", index_urls=[index_url])
+        pkg_list = micropip.list()
+        assert "dummy" in pkg_list
+        assert pkg_list["dummy"].source.lower() == "pypi"
 
-@pytest.mark.asyncio
-async def test_list_wheel_package(mock_fetch: mock_fetch_cls) -> None:
-    dummy = "dummy"
-    mock_fetch.add_pkg_version(dummy)
-    dummy_url = f"https://dummy.com/{dummy}-1.0.0-py3-none-any.whl"
-
-    await micropip.install(dummy_url)
-
-    pkg_list = micropip.list()
-    assert dummy in pkg_list
-    assert pkg_list[dummy].source.lower() == dummy_url
+    run(selenium_standalone_micropip, fake_index.url)
 
 
-@pytest.mark.asyncio
-async def test_list_wheel_name_mismatch(mock_fetch: mock_fetch_cls) -> None:
-    dummy_pkg_name = "dummy-Dummy"
-    mock_fetch.add_pkg_version(dummy_pkg_name)
-    dummy_url = "https://dummy.com/dummy_dummy-1.0.0-py3-none-any.whl"
+def test_list_wheel_package(selenium_standalone_micropip, fake_index):
+    wheel = fake_index.add_pkg_version("dummy")
 
-    await micropip.install(dummy_url)
+    @run_in_pyodide
+    async def run(selenium, wheel_url):
+        import micropip
 
-    pkg_list = micropip.list()
-    assert dummy_pkg_name in pkg_list
-    assert pkg_list[dummy_pkg_name].source.lower() == dummy_url
+        await micropip.install(wheel_url)
+        pkg_list = micropip.list()
+        assert "dummy" in pkg_list
+        assert pkg_list["dummy"].source.lower() == wheel_url.lower()
+
+    run(selenium_standalone_micropip, wheel.url)
+
+
+def test_list_wheel_name_mismatch(selenium_standalone_micropip, fake_index):
+    wheel = fake_index.add_pkg_version("dummy-Dummy")
+    assert wheel.filename == "dummy_dummy-1.0.0-py3-none-any.whl"
+
+    @run_in_pyodide
+    async def run(selenium, wheel_url):
+        import micropip
+
+        await micropip.install(wheel_url)
+        pkg_list = micropip.list()
+        assert "dummy-Dummy" in pkg_list
+        assert pkg_list["dummy-Dummy"].source.lower() == wheel_url.lower()
+
+    run(selenium_standalone_micropip, wheel.url)
 
 
 def test_list_load_package_from_url(selenium_standalone_micropip, wheel_catalog):
