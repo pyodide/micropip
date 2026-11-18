@@ -292,9 +292,9 @@ def host_compat_layer():
     """
     Fixture to provide the compatibility layer for the host environment.
     """
-    from micropip._compat._compat_not_in_pyodide import CompatibilityNotInPyodide
+    from host_compat import HostCompatibilityLayer
 
-    yield CompatibilityNotInPyodide
+    yield HostCompatibilityLayer
 
 
 @pytest.fixture

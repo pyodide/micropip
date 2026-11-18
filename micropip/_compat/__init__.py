@@ -2,45 +2,33 @@ import sys
 
 from .compatibility_layer import CompatibilityLayer
 
-compatibility_layer: type[CompatibilityLayer]
-
 _IN_PYODIDE = "_pyodide_core" in sys.modules
+
+_default_compatibility_layer: type[CompatibilityLayer] | None = None
 
 if _IN_PYODIDE:
     from ._compat_in_pyodide import CompatibilityInPyodide
 
-    compatibility_layer = CompatibilityInPyodide
-else:
-    from ._compat_not_in_pyodide import CompatibilityNotInPyodide
+    _default_compatibility_layer = CompatibilityInPyodide
 
-    compatibility_layer = CompatibilityNotInPyodide
 
-install = compatibility_layer.install
+def get_default_compatibility_layer() -> type[CompatibilityLayer]:
+    """
+    Return the compatibility layer for the current runtime.
 
-LOCKFILE_INFO = compatibility_layer.lockfile_info
+    micropip only ships a compatibility layer for Pyodide. Outside of Pyodide,
+    ``import micropip`` still works (e.g. to build docs or run unit tests), but
+    anything that needs the runtime raises an error unless a layer is passed to
+    ``PackageManager`` explicitly.
+    """
+    if _default_compatibility_layer is None:
+        raise RuntimeError(
+            "micropip requires the Pyodide runtime, but it is not running in Pyodide."
+        )
+    return _default_compatibility_layer
 
-LOCKFILE_PACKAGES = compatibility_layer.lockfile_packages
-
-lockfile_base_url = compatibility_layer.lockfile_base_url
-
-fetch_bytes = compatibility_layer.fetch_bytes
-
-fetch_string_and_headers = compatibility_layer.fetch_string_and_headers
-
-loadedPackages = compatibility_layer.loadedPackages
-
-loadPackage = compatibility_layer.loadPackage
-
-to_js = compatibility_layer.to_js
 
 __all__ = [
-    "LOCKFILE_INFO",
-    "LOCKFILE_PACKAGES",
-    "install",
-    "fetch_bytes",
-    "fetch_string_and_headers",
-    "loadedPackages",
-    "loadPackage",
-    "to_js",
-    "lockfile_base_url",
+    "CompatibilityLayer",
+    "get_default_compatibility_layer",
 ]
