@@ -11,7 +11,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 )
 
 from . import _mock_package, package_index
-from ._compat import CompatibilityLayer
+from ._compat import CompatibilityLayer, get_default_compatibility_layer
 from ._utils import get_files_in_distribution, get_root
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
@@ -29,13 +29,26 @@ class PackageManager:
     independent of other instances.
     """
 
-    def __init__(self, compat: type[CompatibilityLayer]) -> None:
-
+    def __init__(self, compat: type[CompatibilityLayer] | None = None) -> None:
+        """
+        Parameters
+        ----------
+        compat
+            The compatibility layer that connects micropip to the runtime
+            (fetching files, installing wheels, the lock file, ...).
+            Defaults to the Pyodide compatibility layer.
+        """
         self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
-        self.compat_layer: type[CompatibilityLayer] = compat
+        self._compat_layer = compat
         self.constraints: list[str] = []
 
-        pass
+    @property
+    def compat_layer(self) -> type[CompatibilityLayer]:
+        # Resolved on first use, so a PackageManager can be created outside of
+        # Pyodide (e.g. the module-level singleton on ``import micropip``).
+        if self._compat_layer is None:
+            self._compat_layer = get_default_compatibility_layer()
+        return self._compat_layer
 
     async def install(
         self,

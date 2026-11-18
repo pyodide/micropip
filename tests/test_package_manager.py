@@ -28,10 +28,9 @@ def test_list_packages(selenium_standalone_micropip, fake_index):
 
     @run_in_pyodide
     async def run(selenium, wheel_url):
-        from micropip._compat import compatibility_layer
         from micropip.package_manager import PackageManager
 
-        manager = PackageManager(compatibility_layer)
+        manager = PackageManager()
         await manager.install(wheel_url)
 
         pkg_list = manager.list_packages()
@@ -46,10 +45,9 @@ def test_custom_index_url(selenium_standalone_micropip, fake_index):
 
     @run_in_pyodide
     async def run(selenium, index_url):
-        from micropip._compat import compatibility_layer
         from micropip.package_manager import PackageManager
 
-        manager = PackageManager(compatibility_layer)
+        manager = PackageManager()
         manager.set_index_urls([index_url])
         await manager.install("dummy")
 

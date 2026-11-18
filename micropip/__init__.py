@@ -5,9 +5,7 @@ try:
 except ImportError:
     pass
 
-from ._compat import compatibility_layer
-
-_package_manager_singleton = PackageManager(compatibility_layer)
+_package_manager_singleton = PackageManager()
 
 install = _package_manager_singleton.install
 set_index_urls = _package_manager_singleton.set_index_urls
