@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   explaining that micropip only installs prebuilt wheels.
   [#277](https://github.com/pyodide/micropip/pull/277)
 
+- Outside of Pyodide, `import micropip` still works, but functions that need the
+  Pyodide runtime (fetching or installing packages) now raise a `RuntimeError`.
+  Previously a urllib-based fallback, only meant for micropip's own tests, was used.
+
 ### Fixed
 
 - `install` now reports a failed wheel download (e.g. HTTP 404) as a fetch error

@@ -1,16 +1,19 @@
-import re
 from typing import Any
-from urllib.request import Request, urlopen
-from urllib.response import addinfourl
 
 from .compatibility_layer import CompatibilityLayer
 
+_NOT_SUPPORTED = "micropip can only {} in Pyodide."
+
 
 class CompatibilityNotInPyodide(CompatibilityLayer):
+    """
+    Placeholder compatibility layer used when micropip is imported outside of Pyodide.
 
-    # Vendored from packaging
-    # TODO: use packaging APIs here instead?
-    _canonicalize_regex = re.compile(r"[-_.]+")
+    It lets ``import micropip`` succeed (e.g. for building docs or running unit tests
+    on the host), but anything that needs the Pyodide runtime raises an error.
+    Tests that need a working layer on the host should inject their own,
+    see ``tests/host_compat.py``.
+    """
 
     class loadedPackages(CompatibilityLayer.loadedPackages):
         @staticmethod
@@ -18,20 +21,14 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
             return {}
 
     @staticmethod
-    def _fetch(url: str, kwargs: dict[str, Any]) -> addinfourl:
-        return urlopen(Request(url, **kwargs))
-
-    @staticmethod
     async def fetch_bytes(url: str, kwargs: dict[str, Any]) -> bytes:
-        return CompatibilityNotInPyodide._fetch(url, kwargs=kwargs).read()
+        raise RuntimeError(_NOT_SUPPORTED.format("fetch files"))
 
     @staticmethod
     async def fetch_string_and_headers(
         url: str, kwargs: dict[str, Any]
     ) -> tuple[str, dict[str, str]]:
-        response = CompatibilityNotInPyodide._fetch(url, kwargs=kwargs)
-        headers = {k.lower(): v for k, v in response.headers.items()}
-        return response.read().decode(), headers
+        raise RuntimeError(_NOT_SUPPORTED.format("fetch files"))
 
     @staticmethod
     async def install(
@@ -40,11 +37,11 @@ class CompatibilityNotInPyodide(CompatibilityLayer):
         install_dir: str,
         metadata: dict[str, str] | None = None,
     ) -> None:
-        raise NotImplementedError("Installing packages is only supported in Pyodide.")
+        raise RuntimeError(_NOT_SUPPORTED.format("install packages"))
 
     @staticmethod
     async def loadPackage(names: str | list[str]) -> None:
-        pass
+        raise RuntimeError(_NOT_SUPPORTED.format("load packages"))
 
     @staticmethod
     def to_js(
