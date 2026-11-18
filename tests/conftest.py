@@ -1,10 +1,7 @@
 import functools
 import gzip
-import sys
 from dataclasses import dataclass
-from importlib.metadata import Distribution, PackageNotFoundError
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any
 
 import pytest
@@ -29,10 +26,6 @@ def pytest_addoption(parser):
         help="Run integration tests.",
     )
 
-
-EMSCRIPTEN_VER = "3.1.14"
-PLATFORM = f"emscripten_{EMSCRIPTEN_VER.replace('.', '_')}_wasm32"
-CPVER = f"cp{sys.version_info.major}{sys.version_info.minor}"
 
 TEST_PYPI_RESPONSE_DIR = Path(__file__).parent / "test_data" / "pypi_response"
 TEST_WHEEL_DIR = Path(__file__).parent / "test_data" / "wheel"
@@ -191,57 +184,6 @@ def fake_index(httpserver):
     from fake_index import FakePackageIndex
 
     return FakePackageIndex(httpserver)
-
-
-@pytest.fixture
-def mock_platform(monkeypatch):
-    monkeypatch.setenv("_PYTHON_HOST_PLATFORM", PLATFORM)
-    from micropip import _utils
-
-    _utils.sys_tags.cache_clear()
-    monkeypatch.setattr(_utils, "get_platform", lambda: PLATFORM)
-
-
-@pytest.fixture
-def wheel_base(monkeypatch):
-    with TemporaryDirectory() as tmpdirname:
-        WHEEL_BASE = Path(tmpdirname).absolute()
-        import site
-
-        monkeypatch.setattr(
-            site, "getsitepackages", lambda: [WHEEL_BASE], raising=False
-        )
-        yield WHEEL_BASE
-
-
-@pytest.fixture
-def mock_importlib(monkeypatch, wheel_base):
-    import importlib.metadata
-
-    def _mock_importlib_from_name(name: str) -> Distribution:
-        dists = _mock_importlib_distributions()
-        for dist in dists:
-            if dist.name == name:
-                return dist
-        raise PackageNotFoundError(name)
-
-    def _mock_importlib_version(name: str) -> str:
-        dists = _mock_importlib_distributions()
-        for dist in dists:
-            if dist.name == name:
-                return dist.version
-        raise PackageNotFoundError(name)
-
-    def _mock_importlib_distributions():
-        return (Distribution.at(p) for p in wheel_base.glob("*.dist-info"))  # type: ignore[union-attr]
-
-    monkeypatch.setattr(importlib.metadata, "version", _mock_importlib_version)
-    monkeypatch.setattr(
-        importlib.metadata, "distributions", _mock_importlib_distributions
-    )
-    monkeypatch.setattr(
-        importlib.metadata.Distribution, "from_name", _mock_importlib_from_name
-    )
 
 
 def _mock_package_index_gen(

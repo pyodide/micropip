@@ -63,12 +63,10 @@ async def test_download(wheel_catalog, host_compat_layer):
 
 
 @pytest.mark.asyncio
-async def test_requires(wheel_catalog, tmp_path, host_compat_layer):
+async def test_requires(wheel_catalog, host_compat_layer):
     pytest_wheel = wheel_catalog.get("pytest")
     wheel = WheelInfo.from_url(pytest_wheel.url)
     await wheel.download({}, host_compat_layer)
-
-    wheel._install(tmp_path, host_compat_layer)
 
     requirements_default = [str(r.name) for r in wheel.requires(set())]
     assert "pluggy" in requirements_default
