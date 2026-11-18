@@ -20,8 +20,12 @@ except ImportError as e:
     ) from e
 
 
-class CompatibilityInPyodide(CompatibilityLayer):
-    """The compatibility layer for the Pyodide runtime."""
+class PyodideCompatibilityLayer(CompatibilityLayer):
+    """
+    The default compatibility layer, used in the Pyodide runtime.
+
+    Subclass it to change part of the default behavior, e.g. ``fetch_bytes``.
+    """
 
     def __init__(self) -> None:
         self.lockfile_info = pyodide_js._api.lockfile_info.to_py()

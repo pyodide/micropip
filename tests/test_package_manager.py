@@ -1,3 +1,4 @@
+import pytest
 from pytest_pyodide import run_in_pyodide
 
 import micropip.package_index as package_index
@@ -28,9 +29,9 @@ def test_list_packages(selenium_standalone_micropip, fake_index):
 
     @run_in_pyodide
     async def run(selenium, wheel_url):
-        from micropip.package_manager import PackageManager
+        from micropip import Client
 
-        manager = PackageManager()
+        manager = Client()
         await manager.install(wheel_url)
 
         pkg_list = manager.list_packages()
@@ -45,9 +46,9 @@ def test_custom_index_url(selenium_standalone_micropip, fake_index):
 
     @run_in_pyodide
     async def run(selenium, index_url):
-        from micropip.package_manager import PackageManager
+        from micropip import Client
 
-        manager = PackageManager()
+        manager = Client()
         manager.set_index_urls([index_url])
         await manager.install("dummy")
 
@@ -61,8 +62,8 @@ def test_custom_resolver_and_installer(selenium_standalone_micropip, fake_index)
 
     @run_in_pyodide
     async def run(selenium, index_url):
+        from micropip import Client
         from micropip.installer import Installer
-        from micropip.package_manager import PackageManager
         from micropip.resolver import Resolver
 
         queried = []
@@ -78,11 +79,11 @@ def test_custom_resolver_and_installer(selenium_standalone_micropip, fake_index)
                 installed.append(wheel.name)
                 await super().install_wheel(wheel, target)
 
-        class MyPackageManager(PackageManager):
+        class MyClient(Client):
             resolver_class = MyResolver
             installer_class = MyInstaller
 
-        manager = MyPackageManager()
+        manager = MyClient()
         manager.set_index_urls([index_url])
         await manager.install("dummy")
 
@@ -91,3 +92,47 @@ def test_custom_resolver_and_installer(selenium_standalone_micropip, fake_index)
         assert "dummy" in manager.list_packages()
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+def test_custom_compatibility_layer(selenium_standalone_micropip, fake_index):
+    wheel = fake_index.add_pkg_version("dummy")
+
+    @run_in_pyodide
+    async def run(selenium, index_url, wheel_url):
+        import micropip
+        from micropip.compat import PyodideCompatibilityLayer
+
+        class CachedCompatibilityLayer(PyodideCompatibilityLayer):
+            def __init__(self, cache):
+                super().__init__()
+                self.cache = cache
+
+            async def fetch_bytes(self, url, kwargs):
+                if url not in self.cache:
+                    self.cache[url] = await super().fetch_bytes(url, kwargs)
+                return self.cache[url]
+
+        cache: dict[str, bytes] = {}
+        client = micropip.Client(compat=CachedCompatibilityLayer(cache))
+        client.set_index_urls([index_url])
+        await client.install("dummy")
+
+        assert wheel_url in cache
+        assert "dummy" in client.list_packages()
+
+    run(selenium_standalone_micropip, fake_index.url, wheel.url)
+
+
+def test_compat_module_outside_pyodide():
+    import micropip
+    import micropip.compat
+    from micropip.package_manager import PackageManager
+
+    assert PackageManager is micropip.Client
+    assert micropip.compat.__all__ == ["CompatibilityLayer"]
+
+    with pytest.raises(ImportError, match="only available in the Pyodide runtime"):
+        from micropip.compat import PyodideCompatibilityLayer  # noqa: F401
+
+    with pytest.raises(RuntimeError, match="not running in Pyodide"):
+        micropip.Client().list_packages()

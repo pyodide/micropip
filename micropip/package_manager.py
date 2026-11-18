@@ -18,12 +18,29 @@ from .package import PackageDict, PackageMetadata
 from .resolver import Resolver
 
 
-class PackageManager:
+class Client:
     """
-    PackageManager provides an extensible interface for customizing micropip's behavior.
+    A micropip client, with its own index URLs, constraints and compatibility layer.
 
-    Each Manager instance holds its own local state that is
-    independent of other instances.
+    The module-level functions (``micropip.install``, ``micropip.list``, ...) use a
+    default client. Create a ``Client`` to use different settings, e.g. a custom
+    compatibility layer:
+
+    .. code-block:: python
+
+        import micropip
+        from micropip.compat import PyodideCompatibilityLayer
+
+        class CachedCompatibilityLayer(PyodideCompatibilityLayer):
+            async def fetch_bytes(self, url, kwargs):
+                if url in cache:
+                    return cache[url]
+                return await super().fetch_bytes(url, kwargs)
+
+        client = micropip.Client(compat=CachedCompatibilityLayer())
+        await client.install("snowballstemmer")
+
+    Each client holds its own local state that is independent of other clients.
 
     Subclasses can replace how packages are resolved and installed by
     overriding ``resolver_class`` and ``installer_class``.
@@ -40,9 +57,9 @@ class PackageManager:
         Parameters
         ----------
         compat
-            The compatibility layer that connects micropip to the runtime
-            (fetching files, installing wheels, the lock file, ...).
-            Defaults to the Pyodide compatibility layer.
+            The :py:class:`~micropip.compat.CompatibilityLayer` that connects
+            micropip to the runtime (fetching files, installing wheels, the lock
+            file, ...). Defaults to the Pyodide compatibility layer.
         """
         self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
         self._compat_layer = compat
@@ -50,7 +67,7 @@ class PackageManager:
 
     @property
     def compat_layer(self) -> CompatibilityLayer:
-        # Resolved on first use, so a PackageManager can be created outside of
+        # Resolved on first use, so a Client can be created outside of
         # Pyodide (e.g. the module-level singleton on ``import micropip``).
         if self._compat_layer is None:
             self._compat_layer = get_default_compatibility_layer()
@@ -498,6 +515,10 @@ class PackageManager:
         """
 
         self.constraints = constraints[:]
+
+
+# The name used before Client was made public.
+PackageManager = Client
 
 
 def search_installed_packages(

@@ -147,3 +147,64 @@ micropip.set_constraints(["other-pkg ==0.1.1"])
 await micropip.install("pkg")                         # uses defaults, if needed
 await micropip.install("another-pkg", constraints=[]) # ignores defaults
 ```
+
+(customizing-micropip)=
+
+## Customizing micropip
+
+The module-level functions like `micropip.install` use a default
+{py:class}`micropip.Client`. You can create your own clients, each with its own
+index URLs, constraints, and compatibility layer:
+
+```python
+client = micropip.Client()
+client.set_index_urls(["https://my.index/simple"])
+await client.install("pkg")
+```
+
+### Using a custom compatibility layer
+
+micropip talks to the runtime (fetching files, installing wheels, reading the
+lock file) only through a {py:class}`~micropip.compat.CompatibilityLayer`.
+To change part of the default behavior, subclass
+{py:class}`~micropip.compat.PyodideCompatibilityLayer` and pass an instance to
+the client. For example, to serve wheels from a cache:
+
+```python
+import micropip
+from micropip.compat import PyodideCompatibilityLayer
+
+class CachedCompatibilityLayer(PyodideCompatibilityLayer):
+    def __init__(self, cache):
+        super().__init__()
+        self.cache = cache
+
+    async def fetch_bytes(self, url, kwargs):
+        if url not in self.cache:
+            self.cache[url] = await super().fetch_bytes(url, kwargs)
+        return self.cache[url]
+
+client = micropip.Client(compat=CachedCompatibilityLayer(cache={}))
+await client.install("snowballstemmer")
+```
+
+### Customizing resolution and installation
+
+A client finds packages with a {py:class}`~micropip.resolver.Resolver` and
+installs them with an {py:class}`~micropip.installer.Installer`. To replace either,
+subclass them and set `resolver_class` or `installer_class` on a subclass of
+{py:class}`micropip.Client`:
+
+```python
+from micropip.resolver import Resolver
+
+class LoggingResolver(Resolver):
+    async def query_package(self, name):
+        print(f"Looking up {name}")
+        return await super().query_package(name)
+
+class MyClient(micropip.Client):
+    resolver_class = LoggingResolver
+
+await MyClient().install("snowballstemmer")
+```

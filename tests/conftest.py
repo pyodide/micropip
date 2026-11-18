@@ -302,8 +302,8 @@ def host_package_manager(host_compat_layer):
     """
     Fixture to provide a package manager for the host environment.
     """
-    from micropip.package_manager import PackageManager
+    from micropip import Client
 
-    package_manager = PackageManager(compat=host_compat_layer)
+    package_manager = Client(compat=host_compat_layer)
 
     yield package_manager

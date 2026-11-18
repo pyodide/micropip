@@ -8,8 +8,11 @@ class CompatibilityLayer(ABC):
 
     micropip talks to the runtime (fetching files, installing wheels, reading the
     lock file, ...) only through an instance of this class, which is passed to
-    ``PackageManager``. Subclasses must set the lock file attributes (e.g. in
-    ``__init__``) and implement all abstract methods.
+    :py:class:`micropip.Client`. Subclasses must set the lock file attributes
+    (e.g. in ``__init__``) and implement all abstract methods.
+
+    To change only part of the default behavior in Pyodide, subclass
+    :py:class:`micropip.compat.PyodideCompatibilityLayer` instead.
     """
 
     lockfile_info: dict[str, str]
