@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `install` now reports a failed wheel download (e.g. HTTP 404) as a fetch error
   instead of an opaque `BadZipFile` error.
+  [#298](https://github.com/pyodide/micropip/pull/298)
 
 ## [0.11.1] - 2026/04/02
 
