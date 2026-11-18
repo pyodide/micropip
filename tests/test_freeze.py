@@ -1,70 +1,52 @@
 import pytest
-from conftest import mock_fetch_cls
 from pytest_pyodide import run_in_pyodide
 
-
-@pytest.mark.asyncio
-async def test_freeze(mock_fetch: mock_fetch_cls, mock_importlib: None) -> None:
-    import micropip
-
-    dummy = "dummy"
-    dep1 = "dep1"
-    dep2 = "dep2"
-    toplevel = [["abc", "def", "geh"], ["c", "h", "i"], ["a12", "b13"]]
-
-    mock_fetch.add_pkg_version(dummy, requirements=[dep1, dep2], top_level=toplevel[0])
-    mock_fetch.add_pkg_version(dep1, top_level=toplevel[1])
-    mock_fetch.add_pkg_version(dep2, top_level=toplevel[2])
-
-    await micropip.install(dummy)
-
-    import json
-
-    lockfile = json.loads(micropip.freeze())
-
-    pkg_metadata = lockfile["packages"][dummy]
-    dep1_metadata = lockfile["packages"][dep1]
-    dep2_metadata = lockfile["packages"][dep2]
-    assert pkg_metadata["depends"] == [dep1, dep2]
-    assert dep1_metadata["depends"] == []
-    assert dep2_metadata["depends"] == []
-    assert pkg_metadata["imports"] == toplevel[0]
-    assert dep1_metadata["imports"] == toplevel[1]
-    assert dep2_metadata["imports"] == toplevel[2]
+FREEZE_TOPLEVEL = {
+    "dummy": ["abc", "def", "geh"],
+    "dep1": ["c", "h", "i"],
+    "dep2": ["a12", "b13"],
+}
 
 
-@pytest.mark.asyncio
-async def test_freeze_fix_depends(
-    mock_fetch: mock_fetch_cls, mock_importlib: None
-) -> None:
-    import micropip
+def _add_freeze_packages(fake_index):
+    fake_index.add_pkg_version(
+        "dummy", requirements=["dep1", "dep2"], top_level=FREEZE_TOPLEVEL["dummy"]
+    )
+    fake_index.add_pkg_version("dep1", top_level=FREEZE_TOPLEVEL["dep1"])
+    fake_index.add_pkg_version("dep2", top_level=FREEZE_TOPLEVEL["dep2"])
 
-    dummy = "dummy"
-    dep1 = "dep1"
-    dep2 = "dep2"
-    toplevel = [["abc", "def", "geh"], ["c", "h", "i"], ["a12", "b13"]]
 
-    mock_fetch.add_pkg_version(dummy, requirements=[dep1, dep2], top_level=toplevel[0])
-    mock_fetch.add_pkg_version(dep1, top_level=toplevel[1])
-    mock_fetch.add_pkg_version(dep2, top_level=toplevel[2])
+@pytest.mark.parametrize("deps", [True, False])
+def test_freeze(selenium_standalone_micropip, fake_index, deps):
+    """
+    freeze() should record dependencies and top-level imports of installed packages.
+    When installed with deps=False, dependencies should still be recorded
+    once all of them are installed.
+    """
+    _add_freeze_packages(fake_index)
 
-    await micropip.install(dummy, deps=False)
-    await micropip.install(dep1, deps=False)
-    await micropip.install(dep2, deps=False)
+    @run_in_pyodide
+    async def run(selenium, index_url, deps, toplevel):
+        import json
 
-    import json
+        import micropip
 
-    lockfile = json.loads(micropip.freeze())
+        if deps:
+            await micropip.install("dummy", index_urls=[index_url])
+        else:
+            for pkg in ("dummy", "dep1", "dep2"):
+                await micropip.install(pkg, index_urls=[index_url], deps=False)
 
-    pkg_metadata = lockfile["packages"][dummy]
-    dep1_metadata = lockfile["packages"][dep1]
-    dep2_metadata = lockfile["packages"][dep2]
-    assert pkg_metadata["depends"] == [dep1, dep2]
-    assert dep1_metadata["depends"] == []
-    assert dep2_metadata["depends"] == []
-    assert pkg_metadata["imports"] == toplevel[0]
-    assert dep1_metadata["imports"] == toplevel[1]
-    assert dep2_metadata["imports"] == toplevel[2]
+        lockfile = json.loads(micropip.freeze())
+
+        packages = lockfile["packages"]
+        assert packages["dummy"]["depends"] == ["dep1", "dep2"]
+        assert packages["dep1"]["depends"] == []
+        assert packages["dep2"]["depends"] == []
+        for name, imports in toplevel.items():
+            assert packages[name]["imports"] == imports
+
+    run(selenium_standalone_micropip, fake_index.url, deps, FREEZE_TOPLEVEL)
 
 
 @pytest.mark.parametrize(

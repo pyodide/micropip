@@ -1,5 +1,4 @@
-import pytest
-from conftest import mock_fetch_cls
+from pytest_pyodide import run_in_pyodide
 
 import micropip.package_index as package_index
 
@@ -24,48 +23,36 @@ def test_set_index_urls(host_package_manager):
         assert manager.index_urls == default_index_urls
 
 
-@pytest.mark.asyncio
-async def test_list_packages(mock_fetch: mock_fetch_cls, host_package_manager):
-    manager = host_package_manager
+def test_list_packages(selenium_standalone_micropip, fake_index):
+    wheel = fake_index.add_pkg_version("dummy")
 
-    dummy = "dummy"
-    mock_fetch.add_pkg_version(dummy)
-    dummy_url = f"https://dummy.com/{dummy}-1.0.0-py3-none-any.whl"
+    @run_in_pyodide
+    async def run(selenium, wheel_url):
+        from micropip._compat import compatibility_layer
+        from micropip.package_manager import PackageManager
 
-    await manager.install(dummy_url)
+        manager = PackageManager(compatibility_layer)
+        await manager.install(wheel_url)
 
-    pkg_list = manager.list_packages()
+        pkg_list = manager.list_packages()
+        assert "dummy" in pkg_list
+        assert pkg_list["dummy"].source.lower() == wheel_url.lower()
 
-    assert dummy in pkg_list
-    assert pkg_list[dummy].source.lower() == dummy_url
+    run(selenium_standalone_micropip, wheel.url)
 
 
-@pytest.mark.asyncio
-async def test_custom_index_url(
-    mock_package_index_json_api, monkeypatch, host_compat_layer, host_package_manager
-):
-    manager = host_package_manager
+def test_custom_index_url(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy")
 
-    mock_server_fake_package = mock_package_index_json_api(
-        pkgs=["fake-pkg-micropip-test"]
-    )
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        from micropip._compat import compatibility_layer
+        from micropip.package_manager import PackageManager
 
-    _wheel_url = ""
+        manager = PackageManager(compatibility_layer)
+        manager.set_index_urls([index_url])
+        await manager.install("dummy")
 
-    async def _mock_fetch_bytes(url, *args):
-        nonlocal _wheel_url
-        _wheel_url = url
-        return b"fake wheel"
+        assert "dummy" in manager.list_packages()
 
-    monkeypatch.setattr(host_compat_layer, "fetch_bytes", _mock_fetch_bytes)
-
-    manager.set_index_urls([mock_server_fake_package])
-
-    try:
-        await manager.install("fake-pkg-micropip-test")
-    except Exception:
-        # We just check that the custom index url was used
-        # install will fail because the package is not real, but it doesn't matter.
-        pass
-
-    assert "fake_pkg_micropip_test-1.0.0-py2.py3-none-any.whl" in _wheel_url
+    run(selenium_standalone_micropip, fake_index.url)
