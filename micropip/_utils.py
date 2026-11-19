@@ -89,7 +89,9 @@ def sys_tags() -> tuple[Tag, ...]:
                 for pyodide_platform_tag in pyodide_platform_tags
             )
         new_tags.append(tag)
-    return tuple(new_tags)
+    # packaging >= 26.2 already yields the PEP 783 ``pyemscripten_*`` platform tag,
+    # so drop duplicates while keeping the priority order.
+    return tuple(dict.fromkeys(new_tags))
 
 
 @functools.cache

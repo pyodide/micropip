@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   explaining that micropip only installs prebuilt wheels.
   [#277](https://github.com/pyodide/micropip/pull/277)
 
+- Updated the vendored `packaging` library from 24.2 to 26.3. This speeds up
+  parsing and comparing versions, filtering versions with specifiers, and
+  parsing requirements and wheel filenames.
+  [#308](https://github.com/pyodide/micropip/pull/308)
+
 ### Fixed
 
 - `install` now reports a failed wheel download (e.g. HTTP 404) as a fetch error
