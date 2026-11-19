@@ -1,11 +1,11 @@
-from .package_manager import PackageManager
+from .package_manager import Client
 
 try:
     from ._version import __version__
 except ImportError:
     pass
 
-_package_manager_singleton = PackageManager()
+_package_manager_singleton = Client()
 
 install = _package_manager_singleton.install
 set_index_urls = _package_manager_singleton.set_index_urls
@@ -18,6 +18,7 @@ remove_mock_package = _package_manager_singleton.remove_mock_package
 uninstall = _package_manager_singleton.uninstall
 
 __all__ = [
+    "Client",
     "install",
     "list",
     "freeze",
