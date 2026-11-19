@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Incompatibility errors for `pyemscripten_*` / `pyodide_*` (PEP 783) platform
+  wheels now report a meaningful Pyodide ABI version mismatch instead of a
+  garbled message such as `Wheel was built with Emscripten vpyemscripten.2026.0`.
+
 ### Changed
 
 - `install` now raises a helpful `ValueError` when given a VCS URL
