@@ -70,9 +70,9 @@ def test_custom_resolver_and_installer(selenium_standalone_micropip, fake_index)
         installed = []
 
         class MyResolver(Resolver):
-            async def query_package(self, name):
+            async def query_package(self, name, index_urls=None):
                 queried.append(name)
-                return await super().query_package(name)
+                return await super().query_package(name, index_urls)
 
         class MyInstaller(Installer):
             async def install_wheel(self, wheel, target):

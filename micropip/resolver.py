@@ -72,7 +72,8 @@ class Resolver:
     reinstall: bool = False
 
     def __post_init__(self) -> None:
-        # If index_urls is None, pyodide-lock.json have to be searched first.
+        # With the default index (PyPI), pyodide-lock.json has to be searched first.
+        # Only used if index_urls does not contain "PYODIDE", see _sources().
         # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
         self.search_pyodide_lock_first = (
             self.index_urls == package_index.DEFAULT_INDEX_URLS
@@ -175,7 +176,7 @@ class Resolver:
                 "or micropip.uninstall(...) to uninstall the package first."
             )
 
-    async def add_requirement_inner(  # noqa: C901
+    async def add_requirement_inner(
         self,
         req: Requirement,
     ) -> None:
@@ -244,31 +245,75 @@ class Resolver:
             return await self.add_requirement_from_url(req.url, extras=req.extras)
 
         try:
-            if self.search_pyodide_lock_first:
-                if await self._add_requirement_from_pyodide_lock(req):
-                    logger.debug("Resolver: package found in lock file: %r", req)
-                    return
-
-                await self._add_requirement_from_package_index(req)
-            else:
-                try:
-                    await self._add_requirement_from_package_index(req)
-                except ValueError:
-                    logger.debug(
-                        "Resolver: package %r not found in index, will search lock file",
-                        req,
-                    )
-
-                    # If the requirement is not found in package index,
-                    # we still have a chance to find it from pyodide lockfile.
-                    if not await self._add_requirement_from_pyodide_lock(req):
-                        logger.debug("Resolver: package %r not found in lock file", req)
-
-                        raise
+            await self._add_requirement_from_sources(req)
         except ValueError:
             self.failed.append(req)
             if not self.keep_going:
                 raise
+
+    def _sources(self) -> list[list[str] | None]:
+        """
+        Split ``index_urls`` into the ordered list of sources to search.
+
+        ``None`` stands for the Pyodide lock file, and a list of URLs for package
+        indexes that are queried together by :meth:`query_package`.
+
+        If ``index_urls`` contains ``"PYODIDE"``, the lock file is searched at that
+        position. Otherwise, the lock file is searched before the default index
+        (PyPI), or after custom indexes as a fallback.
+        """
+        index_urls = (
+            [self.index_urls] if isinstance(self.index_urls, str) else self.index_urls
+        )
+
+        if package_index.PYODIDE not in index_urls:
+            if self.search_pyodide_lock_first:
+                return [None, list(index_urls)]
+            return [list(index_urls), None]
+
+        sources: list[list[str] | None] = []
+        urls: list[str] = []
+        for url in index_urls:
+            if url != package_index.PYODIDE:
+                urls.append(url)
+                continue
+            if urls:
+                sources.append(urls)
+                urls = []
+            sources.append(None)
+        if urls:
+            sources.append(urls)
+        return sources
+
+    async def _add_requirement_from_sources(self, req: Requirement) -> None:
+        """
+        Search the sources from :meth:`_sources` in order and add the requirement
+        from the first one that has a matching package. Raise ``ValueError`` if
+        none of them has it.
+        """
+        error: ValueError | None = None
+        for urls in self._sources():
+            if urls is None:
+                if await self._add_requirement_from_pyodide_lock(req):
+                    logger.debug("Resolver: package found in lock file: %r", req)
+                    return
+                logger.debug("Resolver: package %r not found in lock file", req)
+                continue
+
+            try:
+                await self._add_requirement_from_package_index(req, urls)
+                return
+            except ValueError as e:
+                logger.debug("Resolver: package %r not found in %r", req, urls)
+                error = e
+
+        if error is not None:
+            raise error
+
+        raise ValueError(
+            f"Can't find a package that satisfies '{req}' in the Pyodide lock file. "
+            "Add a package index to index_urls to look for it there as well."
+        )
 
     async def _add_requirement_from_pyodide_lock(self, req: Requirement) -> bool:
         """
@@ -289,12 +334,14 @@ class Resolver:
 
         return False
 
-    async def _add_requirement_from_package_index(self, req: Requirement):
+    async def _add_requirement_from_package_index(
+        self, req: Requirement, index_urls: list[str] | None = None
+    ):
         """Find requirement from package index.
 
         If the requirement is found, add it to the package list.
         """
-        metadata = await self.query_package(req.name)
+        metadata = await self.query_package(req.name, index_urls)
 
         logger.debug("Resolver: got metadata %r for requirement %r", metadata, req)
 
@@ -384,20 +431,26 @@ class Resolver:
 
         self.wheels.append(wheel)
 
-    async def query_package(self, name: str) -> ProjectInfo:
+    async def query_package(
+        self, name: str, index_urls: list[str] | str | None = None
+    ) -> ProjectInfo:
         """
         Query the package indexes in ``index_urls`` for the package ``name``.
 
         The indexes are tried in order, and the first one that has the package
         is used. Raises ``ValueError`` if no index has the package.
+        If ``index_urls`` is not given, :attr:`index_urls` of the resolver is used.
+        The special value ``"PYODIDE"`` (the Pyodide lock file) is skipped.
         """
+        if index_urls is None:
+            index_urls = self.index_urls
         fetch_kwargs = deepcopy(self.fetch_kwargs)
         # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
         fetch_kwargs.setdefault("headers", {}).setdefault(
             "accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
         )
 
-        for url in package_index.project_urls(name, self.index_urls):
+        for url in package_index.project_urls(name, index_urls):
             try:
                 content, headers = await self.compat_layer.fetch_string_and_headers(
                     url, fetch_kwargs
