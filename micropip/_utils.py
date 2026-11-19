@@ -1,7 +1,7 @@
 import functools
 from importlib.metadata import Distribution
 from pathlib import Path
-from sysconfig import get_config_var, get_platform
+from sysconfig import get_platform
 
 from ._vendored.packaging.src.packaging.requirements import (
     InvalidRequirement,
@@ -69,29 +69,15 @@ def get_files_in_distribution(dist: Distribution) -> set[Path]:
 
 @functools.cache
 def sys_tags() -> tuple[Tag, ...]:
+    # packaging yields the PEP 783 ``pyemscripten_*`` platform tag. Also accept
+    # the legacy ``pyodide_*`` tag for backward compatibility.
     new_tags: list[Tag] = []
-
-    abi_version = get_config_var("PYEMSCRIPTEN_PLATFORM_VERSION")
-    if not abi_version:
-        # Fallback to PYODIDE_ABI_VERSION for compatibility
-        abi_version = get_config_var("PYODIDE_ABI_VERSION")
-
-    pyodide_platform_tags = [
-        # PEP 783
-        f"pyemscripten_{abi_version}_wasm32",
-        # for backward compatibility
-        f"pyodide_{abi_version}_wasm32",
-    ]
     for tag in sys_tags_orig():
-        if "emscripten" in tag.platform:
-            new_tags.extend(
-                Tag(tag.interpreter, tag.abi, pyodide_platform_tag)
-                for pyodide_platform_tag in pyodide_platform_tags
-            )
         new_tags.append(tag)
-    # packaging >= 26.2 already yields the PEP 783 ``pyemscripten_*`` platform tag,
-    # so drop duplicates while keeping the priority order.
-    return tuple(dict.fromkeys(new_tags))
+        if tag.platform.startswith("pyemscripten_"):
+            legacy_platform = tag.platform.replace("pyemscripten_", "pyodide_", 1)
+            new_tags.append(Tag(tag.interpreter, tag.abi, legacy_platform))
+    return tuple(new_tags)
 
 
 @functools.cache
