@@ -294,7 +294,7 @@ def host_compat_layer():
     """
     from host_compat import HostCompatibilityLayer
 
-    yield HostCompatibilityLayer
+    yield HostCompatibilityLayer()
 
 
 @pytest.fixture

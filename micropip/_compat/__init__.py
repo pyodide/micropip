@@ -1,18 +1,13 @@
 import sys
+from functools import cache
 
 from .compatibility_layer import CompatibilityLayer
 
 _IN_PYODIDE = "_pyodide_core" in sys.modules
 
-_default_compatibility_layer: type[CompatibilityLayer] | None = None
 
-if _IN_PYODIDE:
-    from ._compat_in_pyodide import CompatibilityInPyodide
-
-    _default_compatibility_layer = CompatibilityInPyodide
-
-
-def get_default_compatibility_layer() -> type[CompatibilityLayer]:
+@cache
+def get_default_compatibility_layer() -> CompatibilityLayer:
     """
     Return the compatibility layer for the current runtime.
 
@@ -21,11 +16,14 @@ def get_default_compatibility_layer() -> type[CompatibilityLayer]:
     anything that needs the runtime raises an error unless a layer is passed to
     ``PackageManager`` explicitly.
     """
-    if _default_compatibility_layer is None:
+    if not _IN_PYODIDE:
         raise RuntimeError(
             "micropip requires the Pyodide runtime, but it is not running in Pyodide."
         )
-    return _default_compatibility_layer
+
+    from ._compat_in_pyodide import CompatibilityInPyodide
+
+    return CompatibilityInPyodide()
 
 
 __all__ = [

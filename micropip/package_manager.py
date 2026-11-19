@@ -29,7 +29,7 @@ class PackageManager:
     independent of other instances.
     """
 
-    def __init__(self, compat: type[CompatibilityLayer] | None = None) -> None:
+    def __init__(self, compat: CompatibilityLayer | None = None) -> None:
         """
         Parameters
         ----------
@@ -43,7 +43,7 @@ class PackageManager:
         self.constraints: list[str] = []
 
     @property
-    def compat_layer(self) -> type[CompatibilityLayer]:
+    def compat_layer(self) -> CompatibilityLayer:
         # Resolved on first use, so a PackageManager can be created outside of
         # Pyodide (e.g. the module-level singleton on ``import micropip``).
         if self._compat_layer is None:
@@ -255,12 +255,8 @@ class PackageManager:
             if pyodide_packages:
                 # Note: branch never happens in out-of-browser testing because in
                 # that case LOCKFILE_PACKAGES is empty.
-                await asyncio.ensure_future(
-                    self.compat_layer.loadPackage(
-                        self.compat_layer.to_js(
-                            [name for [name, _, _] in pyodide_packages]
-                        )
-                    )
+                await self.compat_layer.load_packages(
+                    [name for [name, _, _] in pyodide_packages]
                 )
 
             packages = [
@@ -307,7 +303,7 @@ class PackageManager:
                 source=source,
             )
 
-        for name, pkg_source in self.compat_layer.loadedPackages.to_py().items():
+        for name, pkg_source in self.compat_layer.loaded_packages().items():
             if name in packages:
                 continue
 
@@ -582,9 +578,7 @@ class PackageManager:
                         name,
                     )
 
-            if hasattr(self.compat_layer.loadedPackages, name):
-                delattr(self.compat_layer.loadedPackages, name)
-            else:
+            if not self.compat_layer.remove_loaded_package(name):
                 # This should not happen, but just in case
                 logger.warning("a package '%s' was not found in loadedPackages.", name)
 
