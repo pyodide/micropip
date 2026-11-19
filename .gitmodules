@@ -1,5 +1,5 @@
-# d8e3b31b734926ebbcaff654279f6855a73e052f, for 24.2 release
-# https://github.com/pypa/packaging/releases/tag/24.2
+# 929fd4b1410ac7ef61ef3f45b2f5d7e87711a9b5, for 26.3 release
+# https://github.com/pypa/packaging/releases/tag/26.3
 [submodule "micropip/_vendored/packaging"]
 	path = micropip/_vendored/packaging
 	url = https://github.com/pypa/packaging/
