@@ -1,5 +1,4 @@
 import json
-import logging
 import string
 import sys
 from collections import defaultdict
@@ -9,7 +8,6 @@ from functools import partial
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
-from ._compat import CompatibilityLayer
 from ._utils import is_package_compatible, parse_version
 from ._vendored.mousebender.simple import from_project_details_html
 from ._vendored.packaging.src.packaging.utils import InvalidWheelFilename
@@ -22,8 +20,6 @@ PYPI_URL = "https://pypi.org/simple"
 DEFAULT_INDEX_URLS = [PYPI_URL]
 
 _formatter = string.Formatter()
-
-logger = logging.getLogger("micropip")
 
 
 @dataclass
@@ -267,74 +263,39 @@ def _select_parser(
             raise ValueError(f"Unsupported content type: {content_type}")
 
 
-async def query_package(
-    name: str,
-    index_urls: list[str] | str,
-    *,
-    # TODO: instead of passing this as a parameter, it should be a class attribute
-    compat_layer: CompatibilityLayer,
-    fetch_kwargs: dict[str, Any] | None = None,
-) -> ProjectInfo:
+def project_urls(name: str, index_urls: list[str] | str) -> list[str]:
     """
-    Query for a package from package indexes.
+    Return the URLs of the project page of ``name`` on each index in ``index_urls``.
 
-    Parameters
-    ----------
-    name
-        Name of the package to search for.
-    index_urls
-        A list of URLs or a single URL to use as the package index.
-        If a list of URLs is provided, it will be tried in order until
-        it finds a package. If no package is found, an error will be raised.
-    fetch_kwargs
-        Keyword arguments to pass to the fetch function.
+    If an index URL contains the ``{package_name}`` placeholder, it is replaced
+    with the package name. Otherwise, the package name is appended to the URL.
     """
-
-    _fetch_kwargs = fetch_kwargs.copy() if fetch_kwargs else {}
-
-    if "headers" not in _fetch_kwargs:
-        _fetch_kwargs["headers"] = {}
-
-    # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
-    _fetch_kwargs["headers"].setdefault(
-        "accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
-    )
-
     if isinstance(index_urls, str):
         index_urls = [index_urls]
 
-    index_urls = [PYPI_URL if url == PYPI else url for url in index_urls]
-
+    urls = []
     for url in index_urls:
-        logger.debug("Looping through index urls: %r", url)
+        if url == PYPI:
+            url = PYPI_URL
         if _contain_placeholder(url):
             url = url.format(package_name=name)
-            logger.debug("Formatting url with package name : %r", url)
         else:
             url = f"{url}/{name}/"
-            logger.debug("Url has no placeholder, appending package name : %r", url)
-        try:
-            metadata, headers = await compat_layer.fetch_string_and_headers(
-                url, _fetch_kwargs
-            )
-        except Exception as e:
-            logger.debug(
-                "Error fetching metadata for the package %r from (%r): %r, trying next index.",
-                name,
-                url,
-                e,
-            )
-            continue
+        urls.append(url)
+    return urls
 
-        content_type = headers.get("content-type", "").lower()
-        try:
-            parser = _select_parser(content_type, name, index_base_url=url)
-        except ValueError as e:
-            raise ValueError(f"Error trying to decode url: {url}") from e
-        return parser(metadata)
-    else:
-        raise ValueError(
-            f"Can't fetch metadata for '{name}'. "
-            "Please make sure you have entered a correct package name "
-            "and correctly specified index_urls (if you changed them)."
-        )
+
+def parse_project_info(
+    name: str, url: str, content: str, headers: dict[str, str]
+) -> ProjectInfo:
+    """
+    Parse the project page of ``name`` fetched from ``url``.
+
+    The parser is selected by the ``content-type`` response header.
+    """
+    content_type = headers.get("content-type", "").lower()
+    try:
+        parser = _select_parser(content_type, name, index_base_url=url)
+    except ValueError as e:
+        raise ValueError(f"Error trying to decode url: {url}") from e
+    return parser(content)

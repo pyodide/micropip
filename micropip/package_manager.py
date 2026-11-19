@@ -18,7 +18,7 @@ from .constants import FAQ_URLS
 from .freeze import freeze_lockfile
 from .logging import indent_log, setup_logging
 from .package import PackageDict, PackageMetadata
-from .transaction import Transaction
+from .resolver import Resolver
 
 
 class PackageManager:
@@ -197,8 +197,8 @@ class PackageManager:
 
             wheel_base = Path(getsitepackages()[0])
 
-            transaction = Transaction(
-                _compat_layer=self.compat_layer,
+            resolver = Resolver(
+                compat_layer=self.compat_layer,
                 ctx=ctx,  # type: ignore[arg-type]
                 ctx_extras=[],
                 keep_going=keep_going,
@@ -210,24 +210,22 @@ class PackageManager:
                 constraints=constraints,
                 reinstall=reinstall,
             )
-            await transaction.gather_requirements(requirements)
+            await resolver.gather_requirements(requirements)
 
-            if transaction.failed:
-                failed_requirements = ", ".join(
-                    [f"'{req}'" for req in transaction.failed]
-                )
+            if resolver.failed:
+                failed_requirements = ", ".join([f"'{req}'" for req in resolver.failed])
                 raise ValueError(
                     f"Can't find a pure Python 3 wheel for: {failed_requirements}\n"
                     f"See: {FAQ_URLS['cant_find_wheel']}\n"
                 )
 
-            pyodide_packages, wheels = transaction.pyodide_packages, transaction.wheels
+            pyodide_packages, wheels = resolver.pyodide_packages, resolver.wheels
 
             packages_all = [pkg.name for pkg in wheels + pyodide_packages]
 
             distributions = search_installed_packages(packages_all)
             # This check is redundant because the distributions will always be an empty list when reinstall==False
-            # (no installed packages will be returned from transaction)
+            # (no installed packages will be returned from the resolver)
             # But just in case.
             if reinstall:
                 with indent_log():
@@ -235,8 +233,8 @@ class PackageManager:
 
             logger.debug(
                 "Installing packages %r and wheels %r ",
-                transaction.pyodide_packages,
-                [w.filename for w in transaction.wheels],
+                resolver.pyodide_packages,
+                [w.filename for w in resolver.wheels],
             )
 
             if packages_all:

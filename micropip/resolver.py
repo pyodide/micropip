@@ -3,8 +3,10 @@ import importlib.metadata
 import logging
 import warnings
 from collections.abc import Iterable
+from copy import deepcopy
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
+from typing import Any
 from urllib.parse import urlparse
 
 from . import package_index
@@ -14,6 +16,7 @@ from ._utils import (
     constrain_requirement,
     validate_constraints,
 )
+from ._vendored.packaging.src.packaging.markers import default_environment
 from ._vendored.packaging.src.packaging.requirements import (
     InvalidRequirement,
     Requirement,
@@ -34,16 +37,30 @@ def _looks_like_vcs_url(req: str) -> bool:
 
 
 @dataclass
-class Transaction:
-    _compat_layer: CompatibilityLayer
+class Resolver:
+    """
+    Resolver finds the wheels and lock file packages that satisfy a set of
+    requirements, and downloads the wheels.
 
-    ctx: dict[str, str]
-    ctx_extras: list[dict[str, str]]
-    keep_going: bool
-    deps: bool
-    pre: bool
-    fetch_kwargs: dict[str, str]
-    index_urls: list[str] | str
+    All access to the network goes through ``compat_layer``. Subclasses can
+    override methods such as :meth:`query_package`, :meth:`find_wheel`,
+    :meth:`download_wheel` or :meth:`fetch_bytes` to customize how packages are
+    found and fetched.
+    """
+
+    compat_layer: CompatibilityLayer
+
+    ctx: dict[str, str] = field(
+        default_factory=lambda: dict(default_environment())  # type: ignore[arg-type]
+    )
+    ctx_extras: list[dict[str, str]] = field(default_factory=list)
+    keep_going: bool = False
+    deps: bool = True
+    pre: bool = False
+    fetch_kwargs: dict[str, Any] = field(default_factory=dict)
+    index_urls: list[str] | str = field(
+        default_factory=lambda: package_index.DEFAULT_INDEX_URLS[:]
+    )
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
     wheels: list[WheelInfo] = field(default_factory=list)
@@ -67,7 +84,7 @@ class Transaction:
 
         if self.verbose and messages:
             for constraint, msg in messages.items():
-                logger.info("Transaction: constraint %s discarded: %s", constraint, msg)
+                logger.info("Resolver: constraint %s discarded: %s", constraint, msg)
 
     async def gather_requirements(
         self,
@@ -162,7 +179,7 @@ class Transaction:
         self,
         req: Requirement,
     ) -> None:
-        """Add a requirement to the transaction.
+        """Add a requirement to the resolution.
 
         See PEP 508 for a description of the requirements.
         https://www.python.org/dev/peps/pep-0508
@@ -188,7 +205,7 @@ class Transaction:
             # The req.extras attribute is only set for the primary requirement
             # and hence has to be available during the evaluation of the
             # dependencies. Thus, we use the self.ctx_extras attribute above to
-            # store all the extra values we come across during the transaction and
+            # store all the extra values we come across during the resolution and
             # attempt the marker evaluation for all of these values. If any of the
             # evaluations return true we include the dependency.
 
@@ -200,7 +217,7 @@ class Transaction:
                 return req.marker.evaluate(self.ctx)
 
             self.ctx.update({"extra": ""})
-            # The current package may have been brought into the transaction
+            # The current package may have been brought into the resolution
             # without any of the optional requirement specification, but has
             # another marker, such as implementation_name. In this scenario,
             # self.ctx_extras is empty and hence the eval_marker() function
@@ -229,7 +246,7 @@ class Transaction:
         try:
             if self.search_pyodide_lock_first:
                 if await self._add_requirement_from_pyodide_lock(req):
-                    logger.debug("Transaction: package found in lock file: %r", req)
+                    logger.debug("Resolver: package found in lock file: %r", req)
                     return
 
                 await self._add_requirement_from_package_index(req)
@@ -238,16 +255,14 @@ class Transaction:
                     await self._add_requirement_from_package_index(req)
                 except ValueError:
                     logger.debug(
-                        "Transaction: package %r not found in index, will search lock file",
+                        "Resolver: package %r not found in index, will search lock file",
                         req,
                     )
 
                     # If the requirement is not found in package index,
                     # we still have a chance to find it from pyodide lockfile.
                     if not await self._add_requirement_from_pyodide_lock(req):
-                        logger.debug(
-                            "Transaction: package %r not found in lock file", req
-                        )
+                        logger.debug("Resolver: package %r not found in lock file", req)
 
                         raise
         except ValueError:
@@ -260,9 +275,9 @@ class Transaction:
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        locked_package = self._compat_layer.lockfile_packages.get(req.name)
+        locked_package = self.compat_layer.lockfile_packages.get(req.name)
         if locked_package and req.specifier.contains(
-            self._compat_layer.lockfile_packages[req.name]["version"], prereleases=True
+            locked_package["version"], prereleases=True
         ):
             version = locked_package["version"]
             self.pyodide_packages.append(
@@ -279,18 +294,13 @@ class Transaction:
 
         If the requirement is found, add it to the package list.
         """
-        metadata = await package_index.query_package(
-            req.name,
-            self.index_urls,
-            compat_layer=self._compat_layer,
-            fetch_kwargs=self.fetch_kwargs,
-        )
+        metadata = await self.query_package(req.name)
 
-        logger.debug("Transaction: got metadata %r for requirement %r", metadata, req)
+        logger.debug("Resolver: got metadata %r for requirement %r", metadata, req)
 
-        wheel = find_wheel(metadata, req)
+        wheel = self.find_wheel(metadata, req)
 
-        logger.debug("Transaction: Selected wheel: %r", wheel)
+        logger.debug("Resolver: Selected wheel: %r", wheel)
 
         if wheel.yanked:
             yanked_reason = wheel.yanked_reason if wheel.yanked_reason else "None"
@@ -320,7 +330,7 @@ class Transaction:
         specifier: str = "",
     ) -> None:
         """
-        Download a wheel, and add its dependencies to the transaction.
+        Download a wheel, and add its dependencies to the resolution.
 
         Parameters
         ----------
@@ -346,17 +356,13 @@ class Transaction:
         logger.info("Collecting %s%s", wheel.name, specifier)
         logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
-        wheel_download_task = asyncio.create_task(
-            wheel.download(self.fetch_kwargs, self._compat_layer)
-        )
+        wheel_download_task = asyncio.create_task(self.download_wheel(wheel))
         if self.deps:
             # Case 1) If metadata file is available,
             #         we can gather requirements without waiting for the wheel to be downloaded.
             if wheel.pep658_metadata_available():
                 try:
-                    await wheel.download_pep658_metadata(
-                        self.fetch_kwargs, self._compat_layer
-                    )
+                    await self.download_wheel_metadata(wheel)
                 except OSError:
                     # If something goes wrong while downloading the metadata,
                     # we have to wait for the wheel to be downloaded.
@@ -376,6 +382,84 @@ class Transaction:
             await wheel_download_task
 
         self.wheels.append(wheel)
+
+    async def query_package(self, name: str) -> ProjectInfo:
+        """
+        Query the package indexes in ``index_urls`` for the package ``name``.
+
+        The indexes are tried in order, and the first one that has the package
+        is used. Raises ``ValueError`` if no index has the package.
+        """
+        fetch_kwargs = deepcopy(self.fetch_kwargs)
+        # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
+        fetch_kwargs.setdefault("headers", {}).setdefault(
+            "accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
+        )
+
+        for url in package_index.project_urls(name, self.index_urls):
+            try:
+                content, headers = await self.compat_layer.fetch_string_and_headers(
+                    url, fetch_kwargs
+                )
+            except Exception as e:
+                logger.debug(
+                    "Error fetching metadata for the package %r from (%r): %r, trying next index.",
+                    name,
+                    url,
+                    e,
+                )
+                continue
+
+            return package_index.parse_project_info(name, url, content, headers)
+
+        raise ValueError(
+            f"Can't fetch metadata for '{name}'. "
+            "Please make sure you have entered a correct package name "
+            "and correctly specified index_urls (if you changed them)."
+        )
+
+    def find_wheel(self, metadata: ProjectInfo, req: Requirement) -> WheelInfo:
+        """Select the wheel to install for ``req`` from the project ``metadata``."""
+        return find_wheel(metadata, req)
+
+    async def download_wheel(self, wheel: WheelInfo) -> None:
+        """Download ``wheel`` (and its metadata, if not downloaded yet)."""
+        if wheel.downloaded:
+            return
+
+        wheel.set_data(await self.fetch_bytes(wheel.url, wheel))
+
+    async def download_wheel_metadata(self, wheel: WheelInfo) -> None:
+        """Download the metadata of ``wheel`` separately (PEP 658), if the index provides it."""
+        if not wheel.pep658_metadata_available():
+            return
+
+        wheel.set_pep658_metadata(await self.fetch_bytes(wheel.metadata_url, wheel))
+
+    async def fetch_bytes(self, url: str, wheel: WheelInfo) -> bytes:
+        """Fetch ``url``, a file that belongs to ``wheel``."""
+        parsed_url = wheel.parsed_url
+        if parsed_url.scheme not in ("https", "http", "emfs", "file"):
+            # Don't raise ValueError it gets swallowed
+            raise TypeError(
+                f"Cannot download from a non-remote location: {url!r} ({parsed_url!r})"
+            )
+        try:
+            return await self.compat_layer.fetch_bytes(url, self.fetch_kwargs)
+        except OSError as e:
+            if parsed_url.hostname in [
+                "files.pythonhosted.org",
+                "cdn.jsdelivr.net",
+            ]:
+                raise e
+            if parsed_url.scheme in ("https", "http"):
+                raise ValueError(
+                    f"Can't fetch wheel from {url!r}. "
+                    "One common reason for this is when the server blocks "
+                    "Cross-Origin Resource Sharing (CORS). "
+                    "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
+                ) from e
+            raise e
 
 
 def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:

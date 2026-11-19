@@ -4,7 +4,7 @@ import json
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 from urllib.parse import ParseResult, unquote, urlparse
 
 from ._compat import CompatibilityLayer
@@ -44,7 +44,7 @@ class WheelInfo:
     )
     _best_tag_index: int | None = field(default=None, repr=False, compare=False)
 
-    # Fields below are only available after downloading the wheel, i.e. after calling `download()`.
+    # Fields below are only available after downloading the wheel, i.e. after calling `set_data()`.
 
     _data: bytes | None = field(default=None, repr=False)  # Wheel file contents.
     _metadata: Metadata | None = None  # Wheel metadata.
@@ -132,7 +132,7 @@ class WheelInfo:
         Install the wheel to the target directory.
 
         The installation process is as follows:
-            0. A wheel needs to be downloaded before it can be installed. This is done by calling `download()`.
+            0. A wheel needs to be downloaded before it can be installed (see `set_data()`).
             1. The wheel is validated by comparing its hash with the one provided by the package index.
             2. The wheel is extracted to the target directory.
             3. The wheel's shared libraries are loaded.
@@ -145,18 +145,22 @@ class WheelInfo:
         _validate_sha256_checksum(self._data, self.sha256)
         await self._install(target, compat_layer)
 
-    async def download(
-        self, fetch_kwargs: dict[str, Any], compat_layer: CompatibilityLayer
-    ):
-        if self._data is not None:
-            return
+    @property
+    def downloaded(self) -> bool:
+        """Whether the wheel file has been downloaded (see :meth:`set_data`)."""
+        return self._data is not None
 
-        self._data = await self._fetch_bytes(self.url, fetch_kwargs, compat_layer)
+    def set_data(self, data: bytes) -> None:
+        """
+        Set the contents of the downloaded wheel file.
 
-        # The wheel's metadata might be downloaded separately from the wheel itself.
-        # If it is not downloaded yet or if the metadata is not available, extract it from the wheel.
+        If the wheel's metadata is not set yet (see :meth:`set_pep658_metadata`),
+        it is extracted from the wheel.
+        """
+        self._data = data
+
         if self._metadata is None:
-            with zipfile.ZipFile(io.BytesIO(self._data)) as zf:
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
                 metadata_path = (
                     Path(wheel_dist_info_dir(zf, self.name)) / Metadata.PKG_INFO
                 )
@@ -168,19 +172,12 @@ class WheelInfo:
         """
         return self.core_metadata is not None
 
-    async def download_pep658_metadata(
-        self,
-        fetch_kwargs: dict[str, Any],
-        compat_layer: CompatibilityLayer,
-    ) -> None:
+    def set_pep658_metadata(self, data: bytes) -> None:
         """
-        Download the wheel's metadata. If the metadata is not available, return None.
+        Set the wheel's metadata, downloaded separately from the wheel (PEP 658).
+
+        Raises ``RuntimeError`` if the index provided a checksum that does not match.
         """
-        if self.core_metadata is None:
-            return None
-
-        data = await self._fetch_bytes(self.metadata_url, fetch_kwargs, compat_layer)
-
         match self.core_metadata:
             case {"sha256": checksum}:  # sha256 checksum available
                 _validate_sha256_checksum(data, checksum)
@@ -201,35 +198,6 @@ class WheelInfo:
         requires = self._metadata.requires(extras)
         self._requires = requires
         return requires
-
-    async def _fetch_bytes(
-        self,
-        url: str,
-        fetch_kwargs: dict[str, Any],
-        compat_layer: CompatibilityLayer,
-    ):
-        if self.parsed_url.scheme not in ("https", "http", "emfs", "file"):
-            # Don't raise ValueError it gets swallowed
-            raise TypeError(
-                f"Cannot download from a non-remote location: {url!r} ({self.parsed_url!r})"
-            )
-        try:
-            bytes = await compat_layer.fetch_bytes(url, fetch_kwargs)
-            return bytes
-        except OSError as e:
-            if self.parsed_url.hostname in [
-                "files.pythonhosted.org",
-                "cdn.jsdelivr.net",
-            ]:
-                raise e
-            if self.parsed_url.scheme in ("https", "http"):
-                raise ValueError(
-                    f"Can't fetch wheel from {url!r}. "
-                    "One common reason for this is when the server blocks "
-                    "Cross-Origin Resource Sharing (CORS). "
-                    "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
-                ) from e
-            raise e
 
     async def _install(self, target: Path, compat_layer: CompatibilityLayer) -> None:
         """
