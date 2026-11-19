@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   optional dependencies, so they are read from the metadata (PEP 658) of the same
   version in the package index. If that metadata is not available, the extras
   are ignored with a warning.
-  [#XXX](https://github.com/pyodide/micropip/pull/XXX)
+  [#310](https://github.com/pyodide/micropip/pull/310)
 
 ## [0.11.1] - 2026/04/02
 
