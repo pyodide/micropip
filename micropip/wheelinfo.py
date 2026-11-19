@@ -4,7 +4,6 @@ import json
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
 from urllib.parse import ParseResult, unquote, urlparse
 
 from ._utils import best_compatible_tag_index, parse_wheel_filename
@@ -13,13 +12,6 @@ from ._vendored.packaging.src.packaging.tags import Tag
 from ._vendored.packaging.src.packaging.version import Version
 from .metadata import Metadata, safe_name, wheel_dist_info_dir
 from .types import DistributionMetadata
-
-
-@dataclass
-class PackageData:
-    file_name: str
-    package_type: Literal["shared_library", "package"]
-    shared_library: bool
 
 
 @dataclass
@@ -50,9 +42,6 @@ class WheelInfo:
     _requires: list[Requirement] | None = None  # List of requirements.
 
     def __post_init__(self):
-        assert (
-            self.url.startwith(p) for p in ("http:", "https:", "emfs:", "file:")
-        ), self.url
         self._project_name = safe_name(self.name)
         self.metadata_url = self.url + ".metadata"
         self.yanked = bool(self.yanked_reason)

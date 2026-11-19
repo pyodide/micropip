@@ -391,3 +391,38 @@ def test_index_url_priority(selenium_standalone_micropip, fake_index):
         assert pkg.source.lower() == "pypi"
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        # The same requirement twice
+        ["micropip-test-dep", "micropip-test-dep"],
+        # Two packages that depend on the same package
+        ["micropip-test-a", "micropip-test-b"],
+    ],
+)
+def test_shared_requirement_added_once(
+    selenium_standalone_micropip, fake_index, requirements
+):
+    # Requirements are resolved concurrently, so a package can be found by one
+    # branch while another branch is still querying the index for it. This
+    # runs in Pyodide because fetching is only truly asynchronous there.
+    fake_index.add_pkg_version("micropip-test-a", requirements=["micropip-test-dep"])
+    fake_index.add_pkg_version("micropip-test-b", requirements=["micropip-test-dep"])
+    fake_index.add_pkg_version("micropip-test-dep")
+
+    @run_in_pyodide
+    async def run(selenium, index_url, requirements):
+        from micropip._compat import get_default_compatibility_layer
+        from micropip.resolver import Resolver
+
+        resolver = Resolver(
+            compat_layer=get_default_compatibility_layer(), index_urls=[index_url]
+        )
+        await resolver.gather_requirements(requirements)
+
+        names = [wheel.name for wheel in resolver.wheels]
+        assert names.count("micropip-test-dep") == 1, names
+
+    run(selenium_standalone_micropip, fake_index.url, requirements)

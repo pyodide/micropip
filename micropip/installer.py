@@ -94,7 +94,8 @@ class Installer:
                         # - entry_points
                         # Since we don't support these, we can ignore them (except for data_files (TODO))
                         logger.warning(
-                            "skipping file '%s' that is relative to root",
+                            "skipping file '%s' that is not relative to root",
+                            file,
                         )
                         continue
                     # see PR 130, it is likely that this is never triggered since Python 3.12
