@@ -285,9 +285,77 @@ class Resolver:
             )
             if self.constraints and locked_package["depends"]:
                 await self.gather_requirements(locked_package["depends"])
+            if req.extras and self.deps:
+                await self._add_extra_requirements_from_package_index(
+                    req, str(version), locked_package["depends"]
+                )
             return True
 
         return False
+
+    async def _add_extra_requirements_from_package_index(
+        self, req: Requirement, version: str, depends: list[str]
+    ) -> None:
+        """
+        Add the optional dependencies of a package installed from the lock file.
+
+        The lock file only records the base dependencies of a package, not its
+        extras. To support ``pkg[extra]``, we look up the same version of the
+        package in the package index and read the dependencies of the requested
+        extras from its metadata (PEP 658), without downloading the wheel.
+        If the metadata is not available, the extras are ignored with a warning.
+        """
+        extras = sorted(req.extras)
+
+        try:
+            metadata = await self.query_package(req.name)
+            wheel = self.find_wheel(metadata, Requirement(f"{req.name}=={version}"))
+            if not wheel.pep658_metadata_available():
+                raise ValueError(f"no metadata file (PEP 658) for {wheel.filename}")
+            await self.download_wheel_metadata(wheel)
+        except Exception as e:
+            logger.warning(
+                "%s==%s is installed from the Pyodide lock file, which does not "
+                "record optional dependencies, and its metadata could not be "
+                "fetched from the package index (%s). Ignoring extras: %s. "
+                "Install the optional dependencies explicitly if you need them.",
+                req.name,
+                version,
+                str(e).splitlines()[0] if str(e) else type(e).__name__,
+                ", ".join(extras),
+            )
+            return
+
+        # The base dependencies are loaded together with the package from the
+        # lock file, so only add what the extras bring in on top of them.
+        # Extras may repeat base dependencies with a different marker or specifier,
+        # so compare by name, unless the extra asks for extras of that dependency.
+        base_requirements = set(wheel.requires(set()))
+        base_names = {canonicalize_name(name) for name in depends}
+        base_names.update(canonicalize_name(r.name) for r in base_requirements)
+
+        extra_requirements: dict[Requirement, None] = {}
+        for extra in extras:
+            try:
+                requirements = wheel.requires({extra})
+            except KeyError:
+                logger.warning(
+                    "%s %s does not provide the extra '%s'", req.name, version, extra
+                )
+                continue
+            for r in requirements:
+                if r in base_requirements:
+                    continue
+                if canonicalize_name(r.name) in base_names and not r.extras:
+                    continue
+                extra_requirements[r] = None
+
+        logger.debug(
+            "Resolver: extra requirements of %r from the package index: %r",
+            req,
+            list(extra_requirements),
+        )
+        await self.gather_requirements(list(extra_requirements))
 
     async def _add_requirement_from_package_index(self, req: Requirement):
         """Find requirement from package index.
