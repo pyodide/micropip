@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `deps=False` has a dependency that is not installed.
   [#307](https://github.com/pyodide/micropip/pull/307)
 
+- `install("pkg[extra]")` now installs the optional dependencies of `pkg` when
+  `pkg` is installed from the Pyodide lock file. The lock file does not record
+  optional dependencies, so they are read from the metadata (PEP 658) of the same
+  version in the package index. If that metadata is not available, the extras
+  are ignored with a warning.
+  [#310](https://github.com/pyodide/micropip/pull/310)
+
 ## [0.11.1] - 2026/04/02
 
 ### Fixed
