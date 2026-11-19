@@ -274,16 +274,21 @@ class Resolver:
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        locked_package = self.compat_layer.lockfile.packages.get(req.name)
+        lockfile = self.compat_layer.lockfile
+        if lockfile is None:
+            return False
+
+        locked_package = lockfile.get(req.name)
         if locked_package and req.specifier.contains(
-            locked_package["version"], prereleases=True
+            locked_package.version, prereleases=True
         ):
-            version = locked_package["version"]
             self.pyodide_packages.append(
-                PackageMetadata(name=req.name, version=str(version), source="pyodide")
+                PackageMetadata(
+                    name=req.name, version=locked_package.version, source="pyodide"
+                )
             )
-            if self.constraints and locked_package["depends"]:
-                await self.gather_requirements(locked_package["depends"])
+            if self.constraints and locked_package.depends:
+                await self.gather_requirements(locked_package.depends)
             return True
 
         return False

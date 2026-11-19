@@ -1,11 +1,18 @@
 import logging
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from pyodide.ffi import create_proxy, to_js
 from pyodide.http import pyfetch
 
-from .compatibility_layer import CompatibilityLayer, FetchResponse, LockFile
+from ._pyodide_lock import freeze_lockfile
+from .compatibility_layer import (
+    CompatibilityLayer,
+    FetchResponse,
+    LockedPackage,
+    LockFile,
+)
 
 try:
     import pyodide_js
@@ -28,6 +35,45 @@ _message_callback = create_proxy(logger.info)
 _error_callback = create_proxy(logger.warning)
 
 
+class PyodideLockFile(LockFile):
+    """
+    The ``pyodide-lock.json`` that Pyodide was loaded with.
+
+    Packages are loaded with ``pyodide.loadPackage``.
+    """
+
+    def __init__(self) -> None:
+        self.info: dict[str, Any] = pyodide_js._api.lockfile_info.to_py()
+        self.packages: dict[str, dict[str, Any]] = (
+            pyodide_js._api.lockfile_packages.to_py()
+        )
+        self.base_url: str | None = lockfileBaseUrl
+
+    def get(self, name: str) -> LockedPackage | None:
+        package = self.packages.get(name)
+        if package is None:
+            return None
+        return LockedPackage(
+            name=name,
+            version=str(package["version"]),
+            depends=list(package.get("depends", [])),
+        )
+
+    async def load(self, names: list[str]) -> None:
+        await loadPackage(
+            to_js(names),
+            to_js(
+                {
+                    "messageCallback": _message_callback,
+                    "errorCallback": _error_callback,
+                }
+            ),
+        )
+
+    def freeze(self) -> str:
+        return freeze_lockfile(self.packages, self.info, self.base_url)
+
+
 class PyodideCompatibilityLayer(CompatibilityLayer):
     """
     The default compatibility layer, used in the Pyodide runtime.
@@ -36,11 +82,7 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
     """
 
     def __init__(self) -> None:
-        self.lockfile = LockFile(
-            info=pyodide_js._api.lockfile_info.to_py(),
-            packages=pyodide_js._api.lockfile_packages.to_py(),
-            base_url=lockfileBaseUrl,
-        )
+        self.lockfile: LockFile | None = PyodideLockFile()
 
     async def fetch(
         self,
@@ -102,17 +144,6 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
         metadata: dict[str, str] | None = None,
     ) -> None:
         await install(to_js(data), filename, install_dir, metadata)
-
-    async def load_packages(self, names: list[str]) -> None:
-        await loadPackage(
-            to_js(names),
-            to_js(
-                {
-                    "messageCallback": _message_callback,
-                    "errorCallback": _error_callback,
-                }
-            ),
-        )
 
     # pyodide.loadedPackages is shared with the JS side (pyodide.loadPackage
     # consults it), so the Pyodide layer keeps it in sync instead of holding

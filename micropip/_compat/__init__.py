@@ -1,7 +1,12 @@
 import sys
 from functools import cache
 
-from .compatibility_layer import CompatibilityLayer, FetchResponse, LockFile
+from .compatibility_layer import (
+    CompatibilityLayer,
+    FetchResponse,
+    LockedPackage,
+    LockFile,
+)
 
 _IN_PYODIDE = "_pyodide_core" in sys.modules
 
@@ -30,5 +35,6 @@ __all__ = [
     "CompatibilityLayer",
     "FetchResponse",
     "LockFile",
+    "LockedPackage",
     "get_default_compatibility_layer",
 ]

@@ -11,7 +11,6 @@ from . import _mock_package, package_index
 from ._compat import CompatibilityLayer, get_default_compatibility_layer
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
-from .freeze import freeze_lockfile
 from .installer import Installer
 from .logging import indent_log, setup_logging
 from .package import PackageDict, PackageMetadata
@@ -310,12 +309,14 @@ class Client:
                 source=source,
             )
 
+        lockfile = self.compat_layer.lockfile
         for name, pkg_source in self.compat_layer.loaded_packages().items():
             if name in packages:
                 continue
 
-            if name in self.compat_layer.lockfile.packages:
-                version = self.compat_layer.lockfile.packages[name]["version"]
+            locked_package = lockfile.get(name) if lockfile is not None else None
+            if locked_package is not None:
+                version = locked_package.version
                 source_ = "pyodide"
                 if pkg_source != "default channel":
                     # Pyodide package loaded from a custom URL
@@ -338,8 +339,18 @@ class Client:
 
         You can use your custom lock file by passing an appropriate url to the
         ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
+
+        The output format is that of the compatibility layer's
+        :py:class:`~micropip.compat.LockFile`. Raises ``RuntimeError`` if the
+        compatibility layer has no lock file.
         """
-        return freeze_lockfile(self.compat_layer.lockfile)
+        lockfile = self.compat_layer.lockfile
+        if lockfile is None:
+            raise RuntimeError(
+                "micropip.freeze() needs a lock file, but the compatibility layer "
+                "does not provide one."
+            )
+        return lockfile.freeze()
 
     def add_mock_package(
         self,

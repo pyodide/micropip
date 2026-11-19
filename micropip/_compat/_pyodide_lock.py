@@ -1,3 +1,8 @@
+"""
+micropip.freeze() for Pyodide: write a ``pyodide-lock.json`` that contains the
+packages of the Pyodide lock file and the packages installed with micropip.
+"""
+
 import importlib.metadata
 import json
 from collections.abc import Iterator
@@ -6,27 +11,38 @@ from importlib.metadata import Distribution
 from typing import Any
 from urllib.parse import urljoin
 
-from ._compat import LockFile
-from ._utils import get_dist_info
-from ._vendored.packaging.src.packaging.requirements import Requirement
-from ._vendored.packaging.src.packaging.utils import canonicalize_name
+from .._utils import get_dist_info
+from .._vendored.packaging.src.packaging.requirements import Requirement
+from .._vendored.packaging.src.packaging.utils import canonicalize_name
 
 
-def freeze_lockfile(lockfile: LockFile) -> str:
-    return json.dumps(freeze_data(lockfile))
+def freeze_lockfile(
+    lockfile_packages: dict[str, dict[str, Any]],
+    lockfile_info: dict[str, Any],
+    lockfile_base_url: str | None = None,
+) -> str:
+    """
+    Return a ``pyodide-lock.json`` that contains the packages of the given
+    Pyodide lock file and the packages installed with micropip.
+    """
+    return json.dumps(freeze_data(lockfile_packages, lockfile_info, lockfile_base_url))
 
 
-def freeze_data(lockfile: LockFile) -> dict[str, Any]:
-    packages = deepcopy(lockfile.packages)
-    packages.update(load_pip_packages(lockfile.packages))
-    if lockfile.base_url is not None:
+def freeze_data(
+    lockfile_packages: dict[str, dict[str, Any]],
+    lockfile_info: dict[str, Any],
+    lockfile_base_url: str | None = None,
+) -> dict[str, Any]:
+    packages = deepcopy(lockfile_packages)
+    packages.update(load_pip_packages(lockfile_packages))
+    if lockfile_base_url is not None:
         # Override the base URL for the packages
-        override_base_url(packages, lockfile.base_url)
+        override_base_url(packages, lockfile_base_url)
 
     # Sort
     packages = dict(sorted(packages.items()))
     return {
-        "info": lockfile.info,
+        "info": lockfile_info,
         "packages": packages,
     }
 

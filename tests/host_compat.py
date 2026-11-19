@@ -10,12 +10,11 @@ in Pyodide.
 
 from urllib.request import Request, urlopen
 
-from micropip._compat import CompatibilityLayer, FetchResponse, LockFile
+from micropip._compat import CompatibilityLayer, FetchResponse
 
 
 class HostCompatibilityLayer(CompatibilityLayer):
     def __init__(self) -> None:
-        self.lockfile = LockFile()
         self._loaded_packages: dict[str, str] = {}
 
     async def fetch(
@@ -40,9 +39,6 @@ class HostCompatibilityLayer(CompatibilityLayer):
         metadata: dict[str, str] | None = None,
     ) -> None:
         raise NotImplementedError("Installing packages is only tested in Pyodide.")
-
-    async def load_packages(self, names: list[str]) -> None:
-        raise NotImplementedError("Loading packages is only tested in Pyodide.")
 
     def loaded_packages(self) -> dict[str, str]:
         return dict(self._loaded_packages)

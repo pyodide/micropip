@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
@@ -19,17 +18,40 @@ class FetchResponse:
 
 
 @dataclass
-class LockFile:
-    """The Pyodide lock file (``pyodide-lock.json``) that the runtime was loaded with."""
+class LockedPackage:
+    """A package in a :py:class:`LockFile`."""
 
-    info: dict[str, Any] = field(default_factory=dict)
-    """The ``info`` section of the lock file."""
+    name: str
+    version: str
+    depends: list[str] = field(default_factory=list)
+    """Names of the packages this package depends on."""
 
-    packages: dict[str, dict[str, Any]] = field(default_factory=dict)
-    """The ``packages`` section of the lock file, keyed by package name."""
 
-    base_url: str | None = None
-    """The base URL that relative file names in the lock file are resolved against."""
+class LockFile(ABC):
+    """
+    A set of prebuilt packages that the runtime can load directly, without
+    looking them up on a package index (e.g. Pyodide's ``pyodide-lock.json``).
+
+    A :py:class:`CompatibilityLayer` may provide one as its :py:attr:`~CompatibilityLayer.lockfile`.
+    micropip looks requirements up in it, loads the packages it finds with
+    :py:meth:`load`, and uses :py:meth:`freeze` for ``micropip.freeze()``.
+    The format of the lock file is up to the implementation.
+    """
+
+    @abstractmethod
+    def get(self, name: str) -> LockedPackage | None:
+        """Return the package ``name`` (a canonicalized name), or ``None`` if it is not in the lock file."""
+
+    @abstractmethod
+    async def load(self, names: list[str]) -> None:
+        """Load the packages ``names`` from the lock file into the runtime."""
+
+    @abstractmethod
+    def freeze(self) -> str:
+        """
+        Return a new lock file, in the same format, that also contains the
+        packages installed with micropip.
+        """
 
 
 class CompatibilityLayer(ABC):
@@ -38,15 +60,19 @@ class CompatibilityLayer(ABC):
 
     micropip talks to the runtime (fetching files, installing wheels, reading the
     lock file, ...) only through an instance of this class, which is passed to
-    :py:class:`micropip.Client`. Subclasses must set :py:attr:`lockfile` (e.g. in
-    ``__init__``) and implement all abstract methods.
+    :py:class:`micropip.Client`. Subclasses must implement all abstract methods,
+    and may set :py:attr:`lockfile`.
 
     To change only part of the default behavior in Pyodide, subclass
     :py:class:`micropip.compat.PyodideCompatibilityLayer` instead.
     """
 
-    lockfile: LockFile
-    """The lock file of the runtime. Packages in it can be loaded with :py:meth:`load_packages`."""
+    lockfile: LockFile | None = None
+    """
+    The lock file of the runtime, if it has one. Without a lock file, all
+    packages are looked up on the package indexes, and ``micropip.freeze()``
+    is not available.
+    """
 
     @abstractmethod
     async def fetch(
@@ -87,10 +113,6 @@ class CompatibilityLayer(ABC):
 
         ``metadata`` is written as extra files into the ``.dist-info`` directory.
         """
-
-    @abstractmethod
-    async def load_packages(self, names: list[str]) -> None:
-        """Load packages from the lock file by name."""
 
     @abstractmethod
     def loaded_packages(self) -> dict[str, str]:
