@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of an opaque `BadZipFile` error.
   [#298](https://github.com/pyodide/micropip/pull/298)
 
+- `freeze` no longer fails with `PackageNotFoundError` when a package installed
+  with `deps=False` has a dependency that is not installed.
+  [#307](https://github.com/pyodide/micropip/pull/307)
+
 ## [0.11.1] - 2026/04/02
 
 ### Fixed

@@ -124,7 +124,12 @@ def fix_package_dependencies(
         # don't check things that are in original repository
         return
 
-    dist = Distribution.from_name(package_name)
+    try:
+        dist = Distribution.from_name(package_name)
+    except importlib.metadata.PackageNotFoundError:
+        # The package is not installed (e.g. a dependency skipped with
+        # deps=False), so there is nothing to fix.
+        return
 
     package_requires = dist.requires
     if package_requires is None:
