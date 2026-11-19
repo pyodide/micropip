@@ -9,7 +9,6 @@ from pyodide.http import pyfetch
 from .compatibility_layer import CompatibilityLayer
 
 try:
-    import js
     import pyodide_js
     from pyodide_js import loadedPackages, loadPackage, lockfileBaseUrl
     from pyodide_js._api import (  # type: ignore[import]
@@ -23,16 +22,9 @@ except ImportError as e:
 
 logger = logging.getLogger("micropip")
 
-# Callbacks for pyodide.loadPackage, so that its messages go through micropip's
-# logger and follow ``verbose`` instead of always being printed.
-# - messageCallback gets progress messages ("Loading ...", "Loaded ..."): INFO.
-# - errorCallback gets errors and warnings. loadPackage does not raise when a
-#   package fails to load, so log them as WARNING to keep them visible by default.
-#
-# These proxies are created once and never destroyed: loadPackage swaps the
-# callbacks in globally while it runs and restores the ones it saw on entry
-# afterwards, so with overlapping calls one of our callbacks can be restored as
-# the default and called after the call that passed it has returned.
+# Send pyodide.loadPackage messages to micropip's logger. These proxies are
+# never destroyed, since loadPackage may restore them as its default callbacks
+# when calls overlap.
 _message_callback = create_proxy(logger.info)
 _error_callback = create_proxy(logger.warning)
 
@@ -87,9 +79,7 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
                 {
                     "messageCallback": _message_callback,
                     "errorCallback": _error_callback,
-                    "checkIntegrity": True,
-                },
-                dict_converter=js.Object.fromEntries,
+                }
             ),
         )
 

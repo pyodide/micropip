@@ -407,8 +407,6 @@ def test_logging(selenium_standalone_micropip, wheel_catalog):
 
 
 def test_load_package_messages_silent(selenium_standalone_micropip):
-    # Packages from the lock file are loaded with pyodide.loadPackage, whose
-    # progress messages should be silent unless verbose is set.
     selenium = selenium_standalone_micropip
 
     @run_in_pyodide
@@ -459,7 +457,6 @@ def test_load_package_messages_verbose(selenium_standalone_micropip):
 
 
 def test_load_package_errors_logged(selenium_standalone_micropip):
-    # Errors from pyodide.loadPackage are shown even without verbose.
     selenium = selenium_standalone_micropip
 
     @run_in_pyodide
@@ -470,7 +467,6 @@ def test_load_package_errors_logged(selenium_standalone_micropip):
 
         import micropip
 
-        # Point the lock file entry to a missing file so that loading fails.
         pyodide_js._api.lockfile_packages.regex.file_name = "/nonexistent/regex.whl"
 
         records = []
