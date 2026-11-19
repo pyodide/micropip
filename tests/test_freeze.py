@@ -168,8 +168,8 @@ def test_url_after_freeze_pyodide(selenium_standalone_micropip):
 # ---------------------------------------------------------------------------
 # Validate micropip.freeze() output against the pyodide-lock spec.
 #
-# The output of micropip.freeze() is meant to be used as a pyodide-lock.json
-# (e.g. by pyodide-pack), so the tests below parse it on the host with
+# The output of micropip.freeze() is meant to be used as a pyodide-lock.json,
+# so the tests below parse it on the host with
 # pyodide_lock.PyodideLockSpec and check that the result is a consistent
 # lockfile. See https://github.com/pyodide/micropip/issues/88
 # ---------------------------------------------------------------------------
