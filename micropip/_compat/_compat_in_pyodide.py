@@ -1,8 +1,9 @@
+import logging
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from pyodide.ffi import to_js
+from pyodide.ffi import create_proxy, to_js
 from pyodide.http import pyfetch
 
 from .compatibility_layer import CompatibilityLayer
@@ -18,6 +19,14 @@ except ImportError as e:
     raise ImportError(
         "Failed to import pyodide modules, please report this issue to Pyodide team."
     ) from e
+
+logger = logging.getLogger("micropip")
+
+# Send pyodide.loadPackage messages to micropip's logger. These proxies are
+# never destroyed, since loadPackage may restore them as its default callbacks
+# when calls overlap.
+_message_callback = create_proxy(logger.info)
+_error_callback = create_proxy(logger.warning)
 
 
 class PyodideCompatibilityLayer(CompatibilityLayer):
@@ -64,7 +73,15 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
         await install(to_js(data), filename, install_dir, metadata)
 
     async def load_packages(self, names: list[str]) -> None:
-        await loadPackage(to_js(names))
+        await loadPackage(
+            to_js(names),
+            to_js(
+                {
+                    "messageCallback": _message_callback,
+                    "errorCallback": _error_callback,
+                }
+            ),
+        )
 
     # pyodide.loadedPackages is shared with the JS side (pyodide.loadPackage
     # consults it), so the Pyodide layer keeps it in sync instead of holding

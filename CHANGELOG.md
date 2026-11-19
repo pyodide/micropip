@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Messages from `pyodide.loadPackage` when installing packages from the Pyodide
+  lock file now go through micropip's logger instead of always being printed.
+  "Loading ..."/"Loaded ..." are shown only with `verbose=True`, and load errors
+  are logged as warnings.
+  [#309](https://github.com/pyodide/micropip/pull/309)
+
 - `install` now reports a failed wheel download (e.g. HTTP 404) as a fetch error
   instead of an opaque `BadZipFile` error.
   [#298](https://github.com/pyodide/micropip/pull/298)
