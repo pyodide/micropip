@@ -22,7 +22,7 @@ test = [
   "pytest-cov",
   "pytest",
   "build",
-  "pyodide-lock",
+  "pyodide-lock>=0.2.0",
 ]
 
 [project.urls]
