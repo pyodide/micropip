@@ -8,33 +8,29 @@ Installing packages is not supported: tests that install packages should run
 in Pyodide.
 """
 
-from typing import Any
 from urllib.request import Request, urlopen
-from urllib.response import addinfourl
 
-from micropip._compat import CompatibilityLayer
+from micropip._compat import CompatibilityLayer, FetchResponse, LockFile
 
 
 class HostCompatibilityLayer(CompatibilityLayer):
     def __init__(self) -> None:
-        self.lockfile_info: dict[str, str] = {}
-        self.lockfile_packages: dict[str, dict[str, Any]] = {}
-        self.lockfile_base_url = None
+        self.lockfile = LockFile()
         self._loaded_packages: dict[str, str] = {}
 
-    @staticmethod
-    def _fetch(url: str, kwargs: dict[str, Any]) -> addinfourl:
-        return urlopen(Request(url, **kwargs))
-
-    async def fetch_bytes(self, url: str, kwargs: dict[str, Any]) -> bytes:
-        return self._fetch(url, kwargs=kwargs).read()
-
-    async def fetch_string_and_headers(
-        self, url: str, kwargs: dict[str, Any]
-    ) -> tuple[str, dict[str, str]]:
-        response = self._fetch(url, kwargs=kwargs)
-        headers = {k.lower(): v for k, v in response.headers.items()}
-        return response.read().decode(), headers
+    async def fetch(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        credentials: str | None = None,
+    ) -> FetchResponse:
+        # credentials is a browser fetch() option, which urllib doesn't have
+        with urlopen(Request(url, headers=headers or {})) as response:
+            return FetchResponse(
+                response.read(),
+                {k.lower(): v for k, v in response.headers.items()},
+            )
 
     async def install(
         self,

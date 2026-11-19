@@ -18,7 +18,7 @@ async def _query(selenium, index_url, header_accept, packages):
 
     resolver = Resolver(
         get_default_compatibility_layer(),
-        fetch_kwargs={"headers": {"accept": header_accept}},
+        headers={"accept": header_accept},
         index_urls=[index_url],
     )
     for package in packages:

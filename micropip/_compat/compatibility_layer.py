@@ -1,5 +1,35 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
+
+
+@dataclass
+class FetchResponse:
+    """The result of :py:meth:`CompatibilityLayer.fetch`."""
+
+    content: bytes
+    """The response body."""
+
+    headers: dict[str, str] = field(default_factory=dict)
+    """The response headers, with lower-case names."""
+
+    def text(self) -> str:
+        """The response body decoded as UTF-8."""
+        return self.content.decode("utf-8", errors="replace")
+
+
+@dataclass
+class LockFile:
+    """The Pyodide lock file (``pyodide-lock.json``) that the runtime was loaded with."""
+
+    info: dict[str, Any] = field(default_factory=dict)
+    """The ``info`` section of the lock file."""
+
+    packages: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """The ``packages`` section of the lock file, keyed by package name."""
+
+    base_url: str | None = None
+    """The base URL that relative file names in the lock file are resolved against."""
 
 
 class CompatibilityLayer(ABC):
@@ -8,31 +38,42 @@ class CompatibilityLayer(ABC):
 
     micropip talks to the runtime (fetching files, installing wheels, reading the
     lock file, ...) only through an instance of this class, which is passed to
-    :py:class:`micropip.Client`. Subclasses must set the lock file attributes
-    (e.g. in ``__init__``) and implement all abstract methods.
+    :py:class:`micropip.Client`. Subclasses must set :py:attr:`lockfile` (e.g. in
+    ``__init__``) and implement all abstract methods.
 
     To change only part of the default behavior in Pyodide, subclass
     :py:class:`micropip.compat.PyodideCompatibilityLayer` instead.
     """
 
-    lockfile_info: dict[str, str]
-    """The ``info`` section of the lock file."""
-
-    lockfile_packages: dict[str, dict[str, Any]]
-    """The ``packages`` section of the lock file."""
-
-    lockfile_base_url: str | None = None
-    """The base URL that relative file names in the lock file are resolved against."""
+    lockfile: LockFile
+    """The lock file of the runtime. Packages in it can be loaded with :py:meth:`load_packages`."""
 
     @abstractmethod
-    async def fetch_bytes(self, url: str, kwargs: dict[str, Any]) -> bytes:
-        """Fetch ``url`` and return the response body."""
+    async def fetch(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        credentials: str | None = None,
+    ) -> FetchResponse:
+        """Fetch ``url``.
 
-    @abstractmethod
-    async def fetch_string_and_headers(
-        self, url: str, kwargs: dict[str, Any]
-    ) -> tuple[str, dict[str, str]]:
-        """Fetch ``url`` and return the decoded response body and the response headers."""
+        Used both for package index pages and for wheel files.
+
+        Parameters
+        ----------
+        url
+            The URL to fetch.
+        headers
+            Request headers to send.
+        credentials
+            The ``credentials`` option of the
+            `fetch() <https://developer.mozilla.org/en-US/docs/Web/API/fetch>`__
+            API, if the user passed one to ``micropip.install``.
+
+        Raises an exception if the request fails, including for HTTP error
+        statuses.
+        """
 
     @abstractmethod
     async def install(

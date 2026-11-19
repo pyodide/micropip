@@ -32,10 +32,10 @@ class Client:
         from micropip.compat import PyodideCompatibilityLayer
 
         class CachedCompatibilityLayer(PyodideCompatibilityLayer):
-            async def fetch_bytes(self, url, kwargs):
-                if url in cache:
-                    return cache[url]
-                return await super().fetch_bytes(url, kwargs)
+            async def fetch(self, url, **kwargs):
+                if url not in cache:
+                    cache[url] = await super().fetch(url, **kwargs)
+                return cache[url]
 
         client = micropip.Client(compat=CachedCompatibilityLayer())
         await client.install("snowballstemmer")
@@ -211,11 +211,6 @@ class Client:
             if isinstance(requirements, str):
                 requirements = [requirements]
 
-            fetch_kwargs = {}
-
-            if credentials:
-                fetch_kwargs["credentials"] = credentials
-
             # Note: getsitepackages is not available in a virtual environment...
             # See https://github.com/pypa/virtualenv/issues/228 (issue is closed but
             # problem is not fixed)
@@ -230,7 +225,7 @@ class Client:
                 keep_going=keep_going,
                 deps=deps,
                 pre=pre,
-                fetch_kwargs=fetch_kwargs,
+                credentials=credentials,
                 verbose=verbose,
                 index_urls=index_urls,
                 constraints=constraints,
@@ -319,8 +314,8 @@ class Client:
             if name in packages:
                 continue
 
-            if name in self.compat_layer.lockfile_packages:
-                version = self.compat_layer.lockfile_packages[name]["version"]
+            if name in self.compat_layer.lockfile.packages:
+                version = self.compat_layer.lockfile.packages[name]["version"]
                 source_ = "pyodide"
                 if pkg_source != "default channel":
                     # Pyodide package loaded from a custom URL
@@ -344,11 +339,7 @@ class Client:
         You can use your custom lock file by passing an appropriate url to the
         ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
         """
-        return freeze_lockfile(
-            self.compat_layer.lockfile_packages,
-            self.compat_layer.lockfile_info,
-            self.compat_layer.lockfile_base_url,
-        )
+        return freeze_lockfile(self.compat_layer.lockfile)
 
     def add_mock_package(
         self,

@@ -9,11 +9,11 @@ default layer, and can only be imported in Pyodide.
 
 from typing import Any
 
-from ._compat import _IN_PYODIDE, CompatibilityLayer
+from ._compat import _IN_PYODIDE, CompatibilityLayer, FetchResponse, LockFile
 
 # PyodideCompatibilityLayer is not in __all__ so that
 # ``from micropip.compat import *`` works outside of Pyodide.
-__all__ = ["CompatibilityLayer"]
+__all__ = ["CompatibilityLayer", "FetchResponse", "LockFile"]
 
 
 def __getattr__(name: str) -> Any:

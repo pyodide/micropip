@@ -158,16 +158,19 @@ async def test_add_requirement_vcs_url_helpful_error(url, host_compat_layer):
     )
 
 
-@pytest.mark.asyncio
-async def test_fetch_bytes_unexpected_url_scheme(host_compat_layer):
-    from micropip.resolver import Resolver
-    from micropip.wheelinfo import WheelInfo
+def test_fetch_unexpected_url_scheme(selenium_standalone_micropip):
+    @run_in_pyodide
+    async def run(selenium, url):
+        import pytest
 
-    url = f"ftp://example.com/{SNOWBALL_WHEEL}"
-    wheel = WheelInfo.from_url(url)
-    resolver = Resolver(host_compat_layer)
-    with pytest.raises(TypeError, match="Unexpected URL scheme 'ftp'"):
-        await resolver.fetch_bytes(url, wheel)
+        import micropip
+
+        # TypeError, not ValueError: ValueError would be treated as
+        # "package not found" and swallowed
+        with pytest.raises(TypeError, match="Unexpected URL scheme 'ftp'"):
+            await micropip.install(url)
+
+    run(selenium_standalone_micropip, f"ftp://example.com/{SNOWBALL_WHEEL}")
 
 
 def _pypi_metadata(package, versions_to_tags):
@@ -354,7 +357,6 @@ def test_search_pyodide_lock_first(host_compat_layer):
         keep_going=True,
         deps=True,
         pre=True,
-        fetch_kwargs={},
         verbose=False,
         index_urls=package_index.DEFAULT_INDEX_URLS,
     )
@@ -367,7 +369,6 @@ def test_search_pyodide_lock_first(host_compat_layer):
         keep_going=True,
         deps=True,
         pre=True,
-        fetch_kwargs={},
         verbose=False,
         index_urls=["https://my.custom.index.com"],
     )
