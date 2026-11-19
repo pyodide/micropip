@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The error raised for a wheel URL with an unsupported scheme now says
   "Unexpected URL scheme" and lists the supported schemes, instead of
   "Cannot download from a non-remote location".
-  [#XXX](https://github.com/pyodide/micropip/pull/XXX)
+  [#312](https://github.com/pyodide/micropip/pull/312)
 
 - Messages from `pyodide.loadPackage` when installing packages from the Pyodide
   lock file now go through micropip's logger instead of always being printed.
