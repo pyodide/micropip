@@ -406,6 +406,100 @@ def test_logging(selenium_standalone_micropip, wheel_catalog):
     run_test(selenium_standalone_micropip, wheel_url, name, version)
 
 
+def test_load_package_messages_silent(selenium_standalone_micropip):
+    # Packages from the lock file are loaded with pyodide.loadPackage, whose
+    # progress messages should be silent unless verbose is set.
+    selenium = selenium_standalone_micropip
+
+    @run_in_pyodide
+    async def run(selenium):
+        import micropip
+
+        await micropip.install("regex")
+        import regex  # noqa: F401
+
+    selenium.clean_logs()
+    run(selenium)
+    logs = selenium.logs
+    assert "Loading regex" not in logs
+    assert "Loaded regex" not in logs
+
+
+def test_load_package_messages_verbose(selenium_standalone_micropip):
+    selenium = selenium_standalone_micropip
+
+    @run_in_pyodide
+    async def run(selenium):
+        import logging
+
+        import micropip
+
+        records = []
+
+        class ListHandler(logging.Handler):
+            def emit(self, record):
+                records.append((record.levelno, record.getMessage()))
+
+        handler = ListHandler()
+        logger = logging.getLogger("micropip")
+        logger.addHandler(handler)
+        try:
+            await micropip.install("regex", verbose=True)
+        finally:
+            logger.removeHandler(handler)
+
+        assert (logging.INFO, "Loading regex") in records
+        assert (logging.INFO, "Loaded regex") in records
+
+    selenium.clean_logs()
+    run(selenium)
+    logs = selenium.logs
+    assert "Loading regex" in logs
+    assert "Loaded regex" in logs
+
+
+def test_load_package_errors_logged(selenium_standalone_micropip):
+    # Errors from pyodide.loadPackage are shown even without verbose.
+    selenium = selenium_standalone_micropip
+
+    @run_in_pyodide
+    async def run(selenium):
+        import logging
+
+        import pyodide_js
+
+        import micropip
+
+        # Point the lock file entry to a missing file so that loading fails.
+        pyodide_js._api.lockfile_packages.regex.file_name = "/nonexistent/regex.whl"
+
+        records = []
+
+        class ListHandler(logging.Handler):
+            def emit(self, record):
+                records.append((record.levelno, record.getMessage()))
+
+        handler = ListHandler()
+        logger = logging.getLogger("micropip")
+        logger.addHandler(handler)
+        try:
+            await micropip.install("regex")
+        finally:
+            logger.removeHandler(handler)
+
+        assert (
+            logging.WARNING,
+            "The following error occurred while loading regex:",
+        ) in records
+        assert all(levelno >= logging.WARNING for levelno, _ in records)
+
+    selenium.clean_logs()
+    run(selenium)
+    logs = selenium.logs
+    assert "WARNING: The following error occurred while loading regex:" in logs
+    assert "Loading regex" not in logs
+
+
 def test_custom_index_urls(selenium_standalone_micropip, fake_index, httpserver):
     from fake_index import FakePackageIndex
 

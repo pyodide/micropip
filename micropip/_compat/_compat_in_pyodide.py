@@ -1,13 +1,15 @@
+import logging
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from pyodide.ffi import to_js
+from pyodide.ffi import create_proxy, to_js
 from pyodide.http import pyfetch
 
 from .compatibility_layer import CompatibilityLayer
 
 try:
+    import js
     import pyodide_js
     from pyodide_js import loadedPackages, loadPackage, lockfileBaseUrl
     from pyodide_js._api import (  # type: ignore[import]
@@ -18,6 +20,21 @@ except ImportError as e:
     raise ImportError(
         "Failed to import pyodide modules, please report this issue to Pyodide team."
     ) from e
+
+logger = logging.getLogger("micropip")
+
+# Callbacks for pyodide.loadPackage, so that its messages go through micropip's
+# logger and follow ``verbose`` instead of always being printed.
+# - messageCallback gets progress messages ("Loading ...", "Loaded ..."): INFO.
+# - errorCallback gets errors and warnings. loadPackage does not raise when a
+#   package fails to load, so log them as WARNING to keep them visible by default.
+#
+# These proxies are created once and never destroyed: loadPackage swaps the
+# callbacks in globally while it runs and restores the ones it saw on entry
+# afterwards, so with overlapping calls one of our callbacks can be restored as
+# the default and called after the call that passed it has returned.
+_message_callback = create_proxy(logger.info)
+_error_callback = create_proxy(logger.warning)
 
 
 class PyodideCompatibilityLayer(CompatibilityLayer):
@@ -64,7 +81,17 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
         await install(to_js(data), filename, install_dir, metadata)
 
     async def load_packages(self, names: list[str]) -> None:
-        await loadPackage(to_js(names))
+        await loadPackage(
+            to_js(names),
+            to_js(
+                {
+                    "messageCallback": _message_callback,
+                    "errorCallback": _error_callback,
+                    "checkIntegrity": True,
+                },
+                dict_converter=js.Object.fromEntries,
+            ),
+        )
 
     # pyodide.loadedPackages is shared with the JS side (pyodide.loadPackage
     # consults it), so the Pyodide layer keeps it in sync instead of holding
