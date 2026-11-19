@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lock file, then the custom index, then PyPI. Without `"PYODIDE"`, the lock file
   is searched first with the default index, and after custom indexes otherwise,
   as before.
-  [#XXX](https://github.com/pyodide/micropip/pull/XXX)
+  [#314](https://github.com/pyodide/micropip/pull/314)
 
 ### Changed
 
