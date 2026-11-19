@@ -54,3 +54,40 @@ def test_custom_index_url(selenium_standalone_micropip, fake_index):
         assert "dummy" in manager.list_packages()
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+def test_custom_resolver_and_installer(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        from micropip.installer import Installer
+        from micropip.package_manager import PackageManager
+        from micropip.resolver import Resolver
+
+        queried = []
+        installed = []
+
+        class MyResolver(Resolver):
+            async def query_package(self, name):
+                queried.append(name)
+                return await super().query_package(name)
+
+        class MyInstaller(Installer):
+            async def install_wheel(self, wheel, target):
+                installed.append(wheel.name)
+                await super().install_wheel(wheel, target)
+
+        class MyPackageManager(PackageManager):
+            resolver_class = MyResolver
+            installer_class = MyInstaller
+
+        manager = MyPackageManager()
+        manager.set_index_urls([index_url])
+        await manager.install("dummy")
+
+        assert queried == ["dummy"]
+        assert installed == ["dummy"]
+        assert "dummy" in manager.list_packages()
+
+    run(selenium_standalone_micropip, fake_index.url)

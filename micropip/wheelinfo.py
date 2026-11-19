@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import ParseResult, unquote, urlparse
 
-from ._compat import CompatibilityLayer
 from ._utils import best_compatible_tag_index, parse_wheel_filename
 from ._vendored.packaging.src.packaging.requirements import Requirement
 from ._vendored.packaging.src.packaging.tags import Tag
@@ -127,23 +126,48 @@ class WheelInfo:
             _best_tag_index=best_tag_index,
         )
 
-    async def install(self, target: Path, compat_layer: CompatibilityLayer) -> None:
-        """
-        Install the wheel to the target directory.
-
-        The installation process is as follows:
-            0. A wheel needs to be downloaded before it can be installed (see `set_data()`).
-            1. The wheel is validated by comparing its hash with the one provided by the package index.
-            2. The wheel is extracted to the target directory.
-            3. The wheel's shared libraries are loaded.
-            4. The wheel's metadata is set.
-        """
-        if not self._data:
+    @property
+    def data(self) -> bytes:
+        """The contents of the wheel file. Only available after :meth:`set_data`."""
+        if self._data is None:
             raise RuntimeError(
-                "Micropip internal error: attempted to install wheel before downloading it?"
+                "Micropip internal error: attempted to use a wheel before downloading it?"
             )
-        _validate_sha256_checksum(self._data, self.sha256)
-        await self._install(target, compat_layer)
+        return self._data
+
+    @property
+    def project_name(self) -> str:
+        """The project name, in the form used for ``.dist-info`` directories."""
+        return self._project_name
+
+    @property
+    def source(self) -> str:
+        """Where the wheel was installed from, as reported by ``micropip.list()``."""
+        return "pypi" if self.sha256 is not None else self.url
+
+    def validate_checksum(self) -> None:
+        """
+        Compare the hash of the wheel file with the one provided by the package index.
+
+        Raises ``RuntimeError`` if they do not match.
+        """
+        _validate_sha256_checksum(self.data, self.sha256)
+
+    def install_metadata(self) -> dict[str, str]:
+        """The extra files to write into the ``.dist-info`` directory on install."""
+        metadata = {
+            "PYODIDE_SOURCE": self.source,
+            "PYODIDE_URL": self.url,
+            "PYODIDE_SHA256": _generate_package_hash(self.data),
+            "INSTALLER": "micropip",
+        }
+
+        if self._requires:
+            metadata["PYODIDE_REQUIRES"] = json.dumps(
+                sorted(x.name for x in self._requires)
+            )
+
+        return metadata
 
     @property
     def downloaded(self) -> bool:
@@ -198,34 +222,6 @@ class WheelInfo:
         requires = self._metadata.requires(extras)
         self._requires = requires
         return requires
-
-    async def _install(self, target: Path, compat_layer: CompatibilityLayer) -> None:
-        """
-        Install the wheel to the target directory.
-        """
-        assert self._data
-
-        wheel_source = "pypi" if self.sha256 is not None else self.url
-        metadata = {
-            "PYODIDE_SOURCE": wheel_source,
-            "PYODIDE_URL": self.url,
-            "PYODIDE_SHA256": _generate_package_hash(self._data),
-            "INSTALLER": "micropip",
-        }
-
-        if self._requires:
-            metadata["PYODIDE_REQUIRES"] = json.dumps(
-                sorted(x.name for x in self._requires)
-            )
-
-        await compat_layer.install(
-            self._data,
-            self.filename,
-            str(target),
-            metadata,
-        )
-
-        compat_layer.add_loaded_package(self._project_name, wheel_source)
 
 
 def _validate_sha256_checksum(data: bytes, expected: str | None = None) -> None:
