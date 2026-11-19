@@ -442,7 +442,8 @@ class Resolver:
         if parsed_url.scheme not in ("https", "http", "emfs", "file"):
             # Don't raise ValueError it gets swallowed
             raise TypeError(
-                f"Cannot download from a non-remote location: {url!r} ({parsed_url!r})"
+                f"Unexpected URL scheme {parsed_url.scheme!r} in {url!r}. "
+                "Supported schemes are 'https', 'http', 'emfs' and 'file'."
             )
         try:
             return await self.compat_layer.fetch_bytes(url, self.fetch_kwargs)

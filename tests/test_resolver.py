@@ -158,6 +158,18 @@ async def test_add_requirement_vcs_url_helpful_error(url, host_compat_layer):
     )
 
 
+@pytest.mark.asyncio
+async def test_fetch_bytes_unexpected_url_scheme(host_compat_layer):
+    from micropip.resolver import Resolver
+    from micropip.wheelinfo import WheelInfo
+
+    url = f"ftp://example.com/{SNOWBALL_WHEEL}"
+    wheel = WheelInfo.from_url(url)
+    resolver = Resolver(host_compat_layer)
+    with pytest.raises(TypeError, match="Unexpected URL scheme 'ftp'"):
+        await resolver.fetch_bytes(url, wheel)
+
+
 def _pypi_metadata(package, versions_to_tags):
     # Build package release metadata as would be returned from
     # https://pypi.org/pypi/{pkgname}/json
