@@ -312,13 +312,14 @@ class Resolver:
                 yanked_reason,
             )
 
-        # Maybe while we were downloading pypi_json some other branch
-        # installed the wheel?
+        # Maybe while we were querying the index some other branch
+        # added the wheel?
         satisfied, ver = self.check_version_satisfied(
             req, allow_reinstall=self.reinstall
         )
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
+            return
 
         await self.add_wheel(wheel, req.extras, specifier=str(req.specifier))
 
