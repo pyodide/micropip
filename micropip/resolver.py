@@ -55,10 +55,8 @@ class Resolver:
     keep_going: bool = False
     deps: bool = True
     pre: bool = False
-    index_fetch_options: FetchOptions = field(default_factory=FetchOptions)
-    """Fetch options for package index pages."""
-    file_fetch_options: FetchOptions = field(default_factory=FetchOptions)
-    """Fetch options for wheel files and their metadata files."""
+    fetch_options: FetchOptions = field(default_factory=FetchOptions)
+    """Fetch options for all requests (package index pages, wheels and their metadata)."""
     index_urls: list[str] | str = field(
         default_factory=lambda: package_index.DEFAULT_INDEX_URLS[:]
     )
@@ -452,10 +450,10 @@ class Resolver:
             index_urls = self.index_urls
         # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
         options = replace(
-            self.index_fetch_options,
+            self.fetch_options,
             headers={
                 "accept": "application/vnd.pypi.simple.v1+json, */*;q=0.01",
-                **self.index_fetch_options.headers,
+                **self.fetch_options.headers,
             },
         )
 
@@ -501,7 +499,7 @@ class Resolver:
 
     async def fetch_bytes(self, url: str, wheel: WheelInfo) -> bytes:
         """Fetch ``url``, a file that belongs to ``wheel``."""
-        response = await self.compat_layer.fetch(url, self.file_fetch_options)
+        response = await self.compat_layer.fetch(url, self.fetch_options)
         return response.content
 
 
