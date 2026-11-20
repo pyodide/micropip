@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The error for a wheel built for another platform now links to the Pyodide docs
   on building packages.
-  [#XXX](https://github.com/pyodide/micropip/pull/XXX)
+  [#316](https://github.com/pyodide/micropip/pull/316)
 
 - `install` now raises a helpful `ValueError` when given a VCS URL
   (`git+`, `hg+`, `svn+`, `bzr+`) instead of an opaque parser error,
