@@ -15,6 +15,7 @@ from .installer import Installer
 from .logging import indent_log, setup_logging
 from .package import PackageDict, PackageMetadata
 from .resolver import Resolver
+from .sources import Source
 
 
 class Client:
@@ -60,7 +61,9 @@ class Client:
             micropip to the runtime (fetching files, installing wheels, the lock
             file, ...). Defaults to the Pyodide compatibility layer.
         """
-        self.index_urls = package_index.DEFAULT_INDEX_URLS[:]
+        self.index_urls: builtins.list[str | Source] = list[str | Source](
+            package_index.DEFAULT_INDEX_URLS
+        )
         self._compat_layer = compat
         self.constraints: list[str] = []
 
@@ -82,7 +85,7 @@ class Client:
         deps: bool = True,
         credentials: str | None = None,
         pre: bool = False,
-        index_urls: list[str] | str | None = None,
+        index_urls: "builtins.list[str | Source] | str | None" = None,
         *,
         constraints: list[str] | None = None,
         reinstall: bool = False,
@@ -181,6 +184,9 @@ class Client:
             - If ``"PYODIDE"`` is not in the list, the lock file is searched first \
             when the index URLs are left at the default, and after the given \
             index URLs otherwise.
+
+            - Entries can also be :py:class:`micropip.sources.Source` objects, \
+            to look up packages somewhere other than a package index.
 
         constraints:
 
@@ -492,7 +498,7 @@ class Client:
 
             importlib.invalidate_caches()
 
-    def set_index_urls(self, urls: List[str] | str):  # noqa: UP006
+    def set_index_urls(self, urls: "List[str | Source] | str"):  # noqa: UP006
         """
         Set the index URLs to use when looking up packages.
 
@@ -519,10 +525,13 @@ class Client:
             the index URLs are left at the default, and after the given index URLs
             otherwise.
 
+        - Entries can also be :py:class:`micropip.sources.Source` objects, to look
+            up packages somewhere other than a package index.
+
         Parameters
         ----------
         urls
-            A list of URLs or a single URL to use as the package index.
+            A list of URLs (or sources), or a single URL, to use as the package index.
 
         Examples
         --------

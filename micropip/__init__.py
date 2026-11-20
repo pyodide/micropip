@@ -5,20 +5,29 @@ try:
 except ImportError:
     pass
 
-_package_manager_singleton = Client()
+default_client = Client()
+"""
+The :py:class:`Client` used by the module-level functions (``micropip.install``,
+``micropip.set_index_urls``, ...). Use it to share their settings, e.g. to
+change ``default_client.index_urls`` or swap its ``resolver_class``.
+"""
 
-install = _package_manager_singleton.install
-set_index_urls = _package_manager_singleton.set_index_urls
-list = _package_manager_singleton.list_packages
-set_constraints = _package_manager_singleton.set_constraints
-freeze = _package_manager_singleton.freeze
-add_mock_package = _package_manager_singleton.add_mock_package
-list_mock_packages = _package_manager_singleton.list_mock_packages
-remove_mock_package = _package_manager_singleton.remove_mock_package
-uninstall = _package_manager_singleton.uninstall
+# The name used before default_client was public. Kept for downstream projects.
+_package_manager_singleton = default_client
+
+install = default_client.install
+set_index_urls = default_client.set_index_urls
+list = default_client.list_packages
+set_constraints = default_client.set_constraints
+freeze = default_client.freeze
+add_mock_package = default_client.add_mock_package
+list_mock_packages = default_client.list_mock_packages
+remove_mock_package = default_client.remove_mock_package
+uninstall = default_client.uninstall
 
 __all__ = [
     "Client",
+    "default_client",
     "install",
     "list",
     "freeze",

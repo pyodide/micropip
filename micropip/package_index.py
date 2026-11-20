@@ -2,9 +2,8 @@ import json
 import string
 import sys
 from collections import defaultdict
-from collections.abc import Callable, Generator
-from dataclasses import dataclass
-from functools import partial
+from collections.abc import Generator
+from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -27,11 +26,149 @@ _formatter = string.Formatter()
 
 
 @dataclass
+class ProjectFile:
+    """
+    A file of a project on a package index, as in the Simple JSON API (PEP 691).
+
+    Files are not filtered: a :py:class:`ProjectPage` lists every file, whether or
+    not it is compatible with the current platform.
+    """
+
+    filename: str
+    url: str
+    """Absolute URL of the file."""
+    hashes: dict[str, str] = field(default_factory=dict)
+    """Hashes of the file, keyed by algorithm (e.g. ``{"sha256": "..."}``)."""
+    core_metadata: DistributionMetadata = None
+    """Whether the metadata of the file is available separately (PEP 658 / PEP 714), and its hashes."""
+    yanked: bool | str = False
+    """Whether the file is yanked (PEP 592), or the reason if one is given."""
+    requires_python: str | None = None
+    size: int | None = None
+    """Size of the file in bytes, if known (PEP 700)."""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], base_url: str = "") -> "ProjectFile":
+        """
+        Create a file from a Simple JSON API (``hashes``) or JSON API (``digests``)
+        file entry. A relative ``url`` is resolved against ``base_url``.
+        """
+        url = data["url"]
+        if not urlparse(url).netloc:
+            url = urljoin(base_url, url)
+        return cls(
+            filename=data["filename"],
+            url=url,
+            hashes=dict(data.get("hashes") or data.get("digests") or {}),
+            core_metadata=data.get("core-metadata")
+            or data.get("data-dist-info-metadata"),
+            yanked=data.get("yanked", False),
+            requires_python=data.get("requires-python") or data.get("requires_python"),
+            size=data.get("size"),
+        )
+
+
+@dataclass
+class ProjectPage:
+    """
+    All files of a project on a package index, as in the Simple JSON API (PEP 691).
+
+    This is what a :py:class:`micropip.sources.Source` returns. It is not
+    filtered by platform compatibility, so resolvers can apply their own rules.
+    """
+
+    name: str
+    files: list[ProjectFile] = field(default_factory=list)
+    versions: list[str] = field(default_factory=list)
+    """All versions of the project, including ones without files (PEP 700), if known."""
+
+    @classmethod
+    def from_simple_json_api(
+        cls, data: str | bytes | dict[str, Any], base_url: str = ""
+    ) -> "ProjectPage":
+        """
+        Parse a Simple JSON API response (PEP 691).
+
+        https://peps.python.org/pep-0691/
+        """
+        data_dict = json.loads(data) if isinstance(data, str | bytes) else data
+        return cls(
+            name=data_dict["name"],
+            files=[ProjectFile.from_dict(f, base_url) for f in data_dict["files"]],
+            versions=list(data_dict.get("versions", [])),
+        )
+
+    @classmethod
+    def from_simple_html_api(cls, data: str, name: str, base_url: str) -> "ProjectPage":
+        """
+        Parse a Simple HTML API response (PEP 503).
+
+        https://peps.python.org/pep-0503
+        """
+        project_detail: dict[str, Any] = from_project_details_html(data, name)  # type: ignore[assignment]
+        return cls.from_simple_json_api(project_detail, base_url)
+
+    @classmethod
+    def from_json_api(
+        cls,
+        data: str | bytes | dict[str, Any],
+        base_url: str = "",
+        name: str | None = None,
+    ) -> "ProjectPage":
+        """
+        Parse a JSON API response (``https://pypi.org/pypi/<name>/json``).
+
+        ``name`` is used if the response has no ``info.name``. A relative file
+        ``url`` is resolved against ``base_url``.
+
+        https://warehouse.pypa.io/api-reference/json.html
+        """
+        data_dict = json.loads(data) if isinstance(data, str | bytes) else data
+
+        project_name: str = data_dict.get("info", {}).get("name") or name or "UNKNOWN"
+        files: list[ProjectFile] = []
+        versions: list[str] = []
+        for version_str, release_files in data_dict["releases"].items():
+            # Skip empty releases
+            if not release_files:
+                continue
+            versions.append(version_str)
+            files.extend(ProjectFile.from_dict(f, base_url) for f in release_files)
+
+        return cls(name=project_name, files=files, versions=versions)
+
+    @classmethod
+    def from_response(
+        cls, name: str, url: str, content: str, headers: dict[str, str]
+    ) -> "ProjectPage":
+        """
+        Parse the project page of ``name`` fetched from ``url``.
+
+        The format is selected by the ``content-type`` response header.
+        """
+        content_type = headers.get("content-type", "").lower()
+        main_content_type = content_type.split(";")[0].strip()
+
+        match main_content_type:
+            case "application/vnd.pypi.simple.v1+json":
+                return cls.from_simple_json_api(content, base_url=url)
+            case "application/json":
+                return cls.from_json_api(content, base_url=url, name=name)
+            case "application/vnd.pypi.simple.v1+html" | "text/html":
+                return cls.from_simple_html_api(content, name=name, base_url=url)
+            case _:
+                raise ValueError(
+                    f"Error trying to decode url: {url}: "
+                    f"unsupported content type: {content_type}"
+                )
+
+
+@dataclass
 class ProjectInfo:
     """
-    This class stores common metadata that can be obtained from different APIs (JSON, Simple)
-    provided by PyPI. Responses received from PyPI or other package indexes that support the
-    same APIs must be converted to this class before being processed by micropip.
+    The releases of a project, with only the wheels that are compatible with the
+    current platform. This is what micropip's resolver works with; it is built
+    from a :py:class:`ProjectPage`.
     """
 
     name: str  # Name of the package
@@ -41,148 +178,75 @@ class ProjectInfo:
     # If no such wheel is available, the list is empty.
     releases: dict[Version, Generator[WheelInfo, None, None]]
 
-    @staticmethod
-    def from_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
-        """
-        Parse JSON API response
-
-        https://warehouse.pypa.io/api-reference/json.html
-        """
-
-        data_dict = json.loads(data) if isinstance(data, str | bytes) else data
-
-        name: str = data_dict.get("info", {}).get("name", "UNKNOWN")
-        releases_raw: dict[str, list[Any]] = data_dict["releases"]
-
-        # Filter out non PEP 440 compliant versions
-        releases: dict[Version, list[Any]] = {}
-        for version_str, fileinfo in releases_raw.items():
-            version, ok = _is_valid_pep440_version(version_str)
-            if not ok or not version:
-                continue
-
-            # Skip empty releases
-            if not fileinfo:
-                continue
-
-            releases[version] = fileinfo
-
-        return ProjectInfo._compatible_only(name, releases)
-
-    @staticmethod
-    def from_simple_json_api(data: str | bytes | dict[str, Any]) -> "ProjectInfo":
-        """
-        Parse Simple JSON API response
-
-        https://peps.python.org/pep-0691/
-        """
-
-        data_dict = json.loads(data) if isinstance(data, str | bytes) else data
-        name, releases = ProjectInfo._parse_pep691_response(
-            data_dict, index_base_url=""
-        )
-        return ProjectInfo._compatible_only(name, releases)
-
-    @staticmethod
-    def from_simple_html_api(
-        data: str, pkgname: str, index_base_url: str
-    ) -> "ProjectInfo":
-        """
-        Parse Simple HTML API response
-
-        https://peps.python.org/pep-0503
-        """
-        project_detail = from_project_details_html(data, pkgname)
-        name, releases = ProjectInfo._parse_pep691_response(project_detail, index_base_url)  # type: ignore[arg-type]
-        return ProjectInfo._compatible_only(name, releases)
-
-    @staticmethod
-    def _parse_pep691_response(
-        resp: dict[str, Any], index_base_url: str
-    ) -> tuple[str, dict[Version, list[Any]]]:
-        name = resp["name"]
+    @classmethod
+    def from_project_page(cls, page: ProjectPage) -> "ProjectInfo":
+        """Group the files of ``page`` by version, keeping only compatible wheels."""
+        releases: dict[Version, list[ProjectFile]] = defaultdict(list)
 
         # List of versions (PEP 700), this key is not critical to find packages
         # but it is required to ensure that the same class instance is returned
         # from JSON and Simple JSON APIs.
-        # Note that Simple HTML API does not have this key.
-        versions = resp.get("versions", [])
-
-        # Group files by version
-        releases: dict[Version, list[Any]] = defaultdict(list)
-
-        for version_str in versions:
+        for version_str in page.versions:
             version, ok = _is_valid_pep440_version(version_str)
-            if not ok or not version:
-                continue
+            if ok and version:
+                releases[version] = []
 
-            releases[version] = []
-
-        for file in resp["files"]:
-            filename = file["filename"]
-
-            if not _fast_check_incompatibility(filename):
+        for file in page.files:
+            if not _fast_check_incompatibility(file.filename):
                 # parsing a wheel filename is expensive, so we do a quick check first
                 continue
 
             try:
-                version = parse_version(filename)
+                version = parse_version(file.filename)
             except (InvalidVersion, InvalidWheelFilename):
                 continue
 
-            is_absolute_url = bool(urlparse(file["url"]).netloc)
-            if not is_absolute_url:
-                file["url"] = urljoin(index_base_url, file["url"])
-
             releases[version].append(file)
 
-        return name, releases
+        return cls._compatible_only(page.name, releases)
+
+    @classmethod
+    def from_json_api(cls, data: str | bytes | dict[str, Any]) -> "ProjectInfo":
+        return cls.from_project_page(ProjectPage.from_json_api(data))
+
+    @classmethod
+    def from_simple_json_api(cls, data: str | bytes | dict[str, Any]) -> "ProjectInfo":
+        return cls.from_project_page(ProjectPage.from_simple_json_api(data))
+
+    @classmethod
+    def from_simple_html_api(
+        cls, data: str, pkgname: str, index_base_url: str
+    ) -> "ProjectInfo":
+        return cls.from_project_page(
+            ProjectPage.from_simple_html_api(data, pkgname, index_base_url)
+        )
 
     @classmethod
     def _compatible_wheels(
-        cls, files: list[dict[str, Any]], version: Version, name: str
+        cls, files: list[ProjectFile], version: Version, name: str
     ) -> Generator[WheelInfo, None, None]:
         for file in files:
-            filename = file["filename"]
-
             # Checking compatibility takes a bit of time,
             # so we use a generator to avoid doing it for all files.
-            compatible, tag_index = is_package_compatible(filename)
+            compatible, tag_index = is_package_compatible(file.filename)
             if not compatible:
                 continue
 
-            # JSON API has a "digests" key, while Simple API has a "hashes" key.
-            hashes = file["digests"] if "digests" in file else file["hashes"]
-            sha256 = hashes.get("sha256")
-
-            # Check if the metadata file is available (PEP 658 / PEP-714)
-            core_metadata: DistributionMetadata = file.get("core-metadata") or file.get(
-                "data-dist-info-metadata"
-            )
-
-            # Size of the file in bytes, if available (PEP 700)
-            # This key is not available in the Simple API HTML response, so this field may be None
-            size = file.get("size")
-
-            # PEP-592:
-            # yanked can be an arbitrary string (reason) or bool.
-            yanked_reason = file.get("yanked", False)
-
             yield WheelInfo.from_package_index(
                 name=name,
-                filename=filename,
-                url=file["url"],
+                filename=file.filename,
+                url=file.url,
                 version=version,
-                sha256=sha256,
-                size=size,
-                core_metadata=core_metadata,
-                yanked_reason=yanked_reason,
+                sha256=file.hashes.get("sha256"),
+                size=file.size,
+                core_metadata=file.core_metadata,
+                yanked_reason=file.yanked,
                 best_tag_index=tag_index,
             )
 
     @classmethod
     def _compatible_only(
-        cls, name: str, releases: dict[Version, list[dict[str, Any]]]
+        cls, name: str, releases: dict[Version, list[ProjectFile]]
     ) -> "ProjectInfo":
         """
         Return a generator of wheels compatible with the current platform.
@@ -244,29 +308,6 @@ def _contain_placeholder(url: str, placeholder: str = "package_name") -> bool:
     return placeholder in fields
 
 
-def _select_parser(
-    content_type: str, pkgname: str, index_base_url: str
-) -> Callable[[str], ProjectInfo]:
-    """
-    Select the function to parse the response based on the content type.
-    """
-    main_content_type = content_type.split(";")[0].strip()
-
-    match main_content_type:
-        case "application/vnd.pypi.simple.v1+json":
-            return ProjectInfo.from_simple_json_api
-        case "application/json":
-            return ProjectInfo.from_json_api
-        case "application/vnd.pypi.simple.v1+html" | "text/html":
-            return partial(
-                ProjectInfo.from_simple_html_api,
-                pkgname=pkgname,
-                index_base_url=index_base_url,
-            )
-        case _:
-            raise ValueError(f"Unsupported content type: {content_type}")
-
-
 def project_urls(name: str, index_urls: list[str] | str) -> list[str]:
     """
     Return the URLs of the project page of ``name`` on each index in ``index_urls``.
@@ -290,19 +331,3 @@ def project_urls(name: str, index_urls: list[str] | str) -> list[str]:
             url = f"{url}/{name}/"
         urls.append(url)
     return urls
-
-
-def parse_project_info(
-    name: str, url: str, content: str, headers: dict[str, str]
-) -> ProjectInfo:
-    """
-    Parse the project page of ``name`` fetched from ``url``.
-
-    The parser is selected by the ``content-type`` response header.
-    """
-    content_type = headers.get("content-type", "").lower()
-    try:
-        parser = _select_parser(content_type, name, index_base_url=url)
-    except ValueError as e:
-        raise ValueError(f"Error trying to decode url: {url}") from e
-    return parser(content)
