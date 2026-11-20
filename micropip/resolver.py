@@ -8,7 +8,7 @@ from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
 from . import package_index
-from ._compat import CompatibilityLayer, FetchOptions
+from ._compat import CompatibilityLayer, FetchOptions, FetchResponse
 from ._utils import (
     check_compatible,
     constrain_requirement,
@@ -23,6 +23,7 @@ from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .constants import FAQ_URLS, YANKED_WARNING_MESSAGE
 from .package import PackageMetadata
 from .package_index import ProjectInfo
+from .sources import LockFileSource, Source, to_source
 from .wheelinfo import WheelInfo
 
 logger = logging.getLogger("micropip")
@@ -32,6 +33,10 @@ _VCS_URL_PREFIXES = ("git+", "hg+", "svn+", "bzr+")
 
 def _looks_like_vcs_url(req: str) -> bool:
     return req.startswith(_VCS_URL_PREFIXES)
+
+
+def _is_lockfile_entry(entry: "str | Source") -> bool:
+    return entry == package_index.PYODIDE or isinstance(entry, LockFileSource)
 
 
 @dataclass
@@ -57,9 +62,10 @@ class Resolver:
     pre: bool = False
     fetch_options: FetchOptions = field(default_factory=FetchOptions)
     """Fetch options for all requests (package index pages, wheels and their metadata)."""
-    index_urls: list[str] | str = field(
-        default_factory=lambda: package_index.DEFAULT_INDEX_URLS[:]
+    index_urls: "list[str | Source] | str" = field(
+        default_factory=lambda: list[str | Source](package_index.DEFAULT_INDEX_URLS)
     )
+    """Index URLs and :py:class:`~micropip.sources.Source` objects, searched in order."""
 
     locked: dict[str, PackageMetadata] = field(default_factory=dict)
     wheels: list[WheelInfo] = field(default_factory=list)
@@ -250,38 +256,40 @@ class Resolver:
             if not self.keep_going:
                 raise
 
-    def _sources(self) -> list[list[str] | None]:
+    def _sources(self) -> "list[list[str | Source] | None]":
         """
         Split ``index_urls`` into the ordered list of sources to search.
 
-        ``None`` stands for the Pyodide lock file, and a list of URLs for package
-        indexes that are queried together by :meth:`query_package`.
+        ``None`` stands for the lock file, and a list of entries (URLs or
+        :py:class:`~micropip.sources.Source` objects) for sources that are
+        queried together by :meth:`query_package`.
 
-        If ``index_urls`` contains ``"PYODIDE"``, the lock file is searched at that
-        position. Otherwise, the lock file is searched before the default index
-        (PyPI), or after custom indexes as a fallback.
+        If ``index_urls`` contains ``"PYODIDE"`` (or a ``LockFileSource``), the
+        lock file is searched at that position. Otherwise, the lock file is
+        searched before the default index (PyPI), or after custom indexes as a
+        fallback.
         """
         index_urls = (
             [self.index_urls] if isinstance(self.index_urls, str) else self.index_urls
         )
 
-        if package_index.PYODIDE not in index_urls:
+        if not any(_is_lockfile_entry(entry) for entry in index_urls):
             if self.search_pyodide_lock_first:
                 return [None, list(index_urls)]
             return [list(index_urls), None]
 
-        sources: list[list[str] | None] = []
-        urls: list[str] = []
-        for url in index_urls:
-            if url != package_index.PYODIDE:
-                urls.append(url)
+        sources: list[list[str | Source] | None] = []
+        entries: list[str | Source] = []
+        for entry in index_urls:
+            if not _is_lockfile_entry(entry):
+                entries.append(entry)
                 continue
-            if urls:
-                sources.append(urls)
-                urls = []
+            if entries:
+                sources.append(entries)
+                entries = []
             sources.append(None)
-        if urls:
-            sources.append(urls)
+        if entries:
+            sources.append(entries)
         return sources
 
     async def _add_requirement_from_sources(self, req: Requirement) -> None:
@@ -339,7 +347,7 @@ class Resolver:
         return False
 
     async def _add_requirement_from_package_index(
-        self, req: Requirement, index_urls: list[str] | None = None
+        self, req: Requirement, index_urls: "list[str | Source] | None" = None
     ):
         """Find requirement from package index.
 
@@ -436,48 +444,53 @@ class Resolver:
         self.wheels.append(wheel)
 
     async def query_package(
-        self, name: str, index_urls: list[str] | str | None = None
+        self, name: str, index_urls: "list[str | Source] | str | None" = None
     ) -> ProjectInfo:
         """
-        Query the package indexes in ``index_urls`` for the package ``name``.
+        Look up the package ``name`` in the sources in ``index_urls``.
 
-        The indexes are tried in order, and the first one that has the package
-        is used. Raises ``ValueError`` if no index has the package.
+        The sources are tried in order, and the first one that has the package
+        is used. Raises ``ValueError`` if no source has the package.
         If ``index_urls`` is not given, :attr:`index_urls` of the resolver is used.
-        The special value ``"PYODIDE"`` (the Pyodide lock file) is skipped.
+        The lock file (``"PYODIDE"``) is skipped.
         """
         if index_urls is None:
             index_urls = self.index_urls
-        # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
-        options = replace(
-            self.fetch_options,
-            headers={
-                "accept": "application/vnd.pypi.simple.v1+json, */*;q=0.01",
-                **self.fetch_options.headers,
-            },
-        )
+        if isinstance(index_urls, str):
+            index_urls = [index_urls]
 
-        for url in package_index.project_urls(name, index_urls):
-            try:
-                response = await self.compat_layer.fetch(url, options)
-            except Exception as e:
+        for entry in index_urls:
+            if _is_lockfile_entry(entry):
+                continue
+            source = to_source(entry)
+            page = await source.get_project(name, self.fetch)
+            if page is None:
                 logger.debug(
-                    "Error fetching metadata for the package %r from (%r): %r, trying next index.",
-                    name,
-                    url,
-                    e,
+                    "Package %r not found in %r, trying the next source.", name, source
                 )
                 continue
-
-            return package_index.parse_project_info(
-                name, url, response.text(), response.headers
-            )
+            return ProjectInfo.from_project_page(page)
 
         raise ValueError(
             f"Can't fetch metadata for '{name}'. "
             "Please make sure you have entered a correct package name "
             "and correctly specified index_urls (if you changed them)."
         )
+
+    async def fetch(
+        self, url: str, headers: dict[str, str] | None = None
+    ) -> FetchResponse:
+        """
+        Fetch ``url`` through the compatibility layer with :attr:`fetch_options`.
+
+        ``headers`` are added to the request; headers in :attr:`fetch_options`
+        take precedence. Passed to :py:meth:`~micropip.sources.Source.get_project`.
+        """
+        options = replace(
+            self.fetch_options,
+            headers={**(headers or {}), **self.fetch_options.headers},
+        )
+        return await self.compat_layer.fetch(url, options)
 
     def find_wheel(self, metadata: ProjectInfo, req: Requirement) -> WheelInfo:
         """Select the wheel to install for ``req`` from the project ``metadata``."""
