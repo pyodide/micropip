@@ -154,7 +154,7 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
                 "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
             ) from e
 
-        return FetchResponse(content, dict(response.headers))
+        return FetchResponse(content, dict(response.headers), response.status)
 
     async def install(
         self,
