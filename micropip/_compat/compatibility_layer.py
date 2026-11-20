@@ -36,6 +36,13 @@ class FetchResponse:
     headers: dict[str, str] = field(default_factory=dict)
     """The response headers, with lower-case names."""
 
+    status: int = 200
+    """
+    The HTTP status code. :py:meth:`CompatibilityLayer.fetch` raises for error
+    statuses, so this is a success status, e.g. ``206`` for a range request.
+    Responses that don't come from HTTP (e.g. local files) use ``200``.
+    """
+
     def text(self) -> str:
         """The response body decoded as UTF-8."""
         return self.content.decode("utf-8", errors="replace")
