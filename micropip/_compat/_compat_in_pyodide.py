@@ -58,7 +58,8 @@ class PyodideLockFile(LockFile):
         return LockedPackage(
             name=name,
             version=str(package["version"]),
-            depends=list(package.get("depends", [])),
+            # pyodide-lock.json only records the names of dependencies
+            requires=list(package.get("depends", [])),
         )
 
     async def load(self, names: list[str]) -> list[str]:
