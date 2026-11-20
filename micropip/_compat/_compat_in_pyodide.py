@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from pyodide.ffi import create_proxy, to_js
 from pyodide.http import pyfetch
 
+from .._vendored.packaging.src.packaging.utils import canonicalize_name
 from ._pyodide_lock import freeze_lockfile
 from .compatibility_layer import (
     CompatibilityLayer,
@@ -60,7 +61,7 @@ class PyodideLockFile(LockFile):
             depends=list(package.get("depends", [])),
         )
 
-    async def load(self, names: list[str]) -> None:
+    async def load(self, names: list[str]) -> list[str]:
         await loadPackage(
             to_js(names),
             to_js(
@@ -70,6 +71,11 @@ class PyodideLockFile(LockFile):
                 }
             ),
         )
+        # loadPackage doesn't raise if a package fails to load, so check what
+        # is loaded now. (Its return value only lists packages it loaded in this
+        # call, not the ones that were already loaded.)
+        loaded = {canonicalize_name(name) for name in loadedPackages.to_py()}
+        return [name for name in names if canonicalize_name(name) in loaded]
 
     def freeze(self) -> str:
         return freeze_lockfile(self.packages, self.info, self.base_url)

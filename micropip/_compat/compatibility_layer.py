@@ -67,8 +67,14 @@ class LockFile(ABC):
         """Return the package ``name`` (a canonicalized name), or ``None`` if it is not in the lock file."""
 
     @abstractmethod
-    async def load(self, names: list[str]) -> None:
-        """Load the packages ``names`` from the lock file into the runtime."""
+    async def load(self, names: list[str]) -> list[str]:
+        """
+        Load the packages ``names`` from the lock file into the runtime.
+
+        Return the names (of those in ``names``) that are loaded after the call,
+        including ones that were already loaded. A name that is missing failed
+        to load.
+        """
 
     @abstractmethod
     def freeze(self) -> str:

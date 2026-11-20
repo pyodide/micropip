@@ -1,12 +1,15 @@
 import asyncio
 import logging
-from collections.abc import Iterable
+from collections.abc import AsyncGenerator, Iterable
+from contextlib import aclosing
 from importlib.metadata import Distribution
 from pathlib import Path
 
 from ._compat import CompatibilityLayer
 from ._utils import get_files_in_distribution, get_root
+from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .package import PackageMetadata
+from .resolution import InstallResult
 from .wheelinfo import WheelInfo
 
 logger = logging.getLogger("micropip")
@@ -30,11 +33,66 @@ class Installer:
         pyodide_packages: list[PackageMetadata],
         target: Path,
     ) -> None:
-        """Install downloaded ``wheels`` into ``target``, and load ``pyodide_packages``."""
-        await asyncio.gather(*(self.install_wheel(wheel, target) for wheel in wheels))
+        """
+        Install downloaded ``wheels`` into ``target``, and load ``pyodide_packages``.
 
-        if pyodide_packages:
-            await self.install_pyodide_packages(pyodide_packages)
+        Raises the first error. Wheels that are already being installed keep
+        going, but the lock file packages are not loaded after a wheel fails.
+        """
+        async with aclosing(
+            self.install_iter(wheels, pyodide_packages, target)
+        ) as results:
+            async for result in results:
+                if result.error is not None:
+                    raise result.error
+
+    async def install_iter(
+        self,
+        wheels: list[WheelInfo],
+        pyodide_packages: list[PackageMetadata],
+        target: Path,
+    ) -> AsyncGenerator[InstallResult, None]:
+        """
+        Like :meth:`install`, but yield the result of each package as soon as it
+        is known, instead of raising. Wheels are installed concurrently and
+        yielded as they finish; then the lock file packages are loaded together.
+        """
+
+        async def install_one(wheel: WheelInfo) -> InstallResult:
+            result = InstallResult(
+                name=wheel.name, version=str(wheel.version), source=wheel.source
+            )
+            try:
+                await self.install_wheel(wheel, target)
+            except Exception as e:
+                result.error = e
+            return result
+
+        tasks = [asyncio.ensure_future(install_one(wheel)) for wheel in wheels]
+        for task in asyncio.as_completed(tasks):
+            yield await task
+
+        if not pyodide_packages:
+            return
+
+        try:
+            loaded = {
+                canonicalize_name(name)
+                for name in await self.install_pyodide_packages(pyodide_packages)
+            }
+        except Exception as e:
+            for pkg in pyodide_packages:
+                yield InstallResult(pkg.name, pkg.version, pkg.source, error=e)
+            return
+
+        for pkg in pyodide_packages:
+            error = None
+            if canonicalize_name(pkg.name) not in loaded:
+                error = RuntimeError(
+                    f"Failed to load '{pkg.name}' from the lock file. "
+                    "See the log above for details."
+                )
+            yield InstallResult(pkg.name, pkg.version, pkg.source, error=error)
 
     async def install_wheel(self, wheel: WheelInfo, target: Path) -> None:
         """
@@ -58,15 +116,15 @@ class Installer:
 
     async def install_pyodide_packages(
         self, pyodide_packages: list[PackageMetadata]
-    ) -> None:
-        """Load packages from the lock file."""
+    ) -> list[str]:
+        """Load packages from the lock file. Return the names that are loaded."""
         lockfile = self.compat_layer.lockfile
         if lockfile is None:
             # The resolver only picks packages from the lock file if there is one
             raise RuntimeError(
                 "Micropip internal error: attempted to load packages without a lock file"
             )
-        await lockfile.load([pkg.name for pkg in pyodide_packages])
+        return await lockfile.load([pkg.name for pkg in pyodide_packages])
 
     def uninstall(self, distributions: Iterable[Distribution]) -> None:
         """
