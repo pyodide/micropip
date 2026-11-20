@@ -101,15 +101,17 @@ def test_to_source():
 @pytest.mark.parametrize(
     ("index_urls", "expected"),
     [
-        ([LockFileSource(), "a"], [None, ["a"]]),
-        (["a", LockFileSource(), "b"], [["a"], None, ["b"]]),
+        ([LockFileSource(), "a"], [LockFileSource(), [IndexSource("a")]]),
+        (
+            ["a", LockFileSource(), "b"],
+            [[IndexSource("a")], LockFileSource(), [IndexSource("b")]],
+        ),
     ],
 )
-def test_sources_with_lockfile_source(host_compat_layer, index_urls, expected):
-    from micropip.resolver import Resolver
+def test_ordered_sources_with_lockfile_source(index_urls, expected):
+    from micropip.sources import ordered_sources
 
-    resolver = Resolver(host_compat_layer, ResolveRequest(index_urls=index_urls))
-    assert resolver._sources() == expected
+    assert ordered_sources(index_urls) == expected
 
 
 class InMemorySource(Source):
