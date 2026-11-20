@@ -3,12 +3,13 @@ import importlib.metadata
 import logging
 import warnings
 from collections.abc import Iterable
-from dataclasses import dataclass, field, replace
+from contextvars import ContextVar
+from dataclasses import replace
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
 from . import package_index
-from ._compat import CompatibilityLayer, FetchOptions, FetchResponse
+from ._compat import CompatibilityLayer, FetchResponse
 from ._utils import (
     check_compatible,
     constrain_requirement,
@@ -23,6 +24,7 @@ from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .constants import FAQ_URLS, YANKED_WARNING_MESSAGE
 from .package import PackageMetadata
 from .package_index import ProjectInfo
+from .resolution import Resolution, ResolveRequest
 from .sources import LockFileSource, Source, to_source
 from .wheelinfo import WheelInfo
 
@@ -39,11 +41,23 @@ def _is_lockfile_entry(entry: "str | Source") -> bool:
     return entry == package_index.PYODIDE or isinstance(entry, LockFileSource)
 
 
-@dataclass
+# The top-level requirement (as passed to resolve()) that the requirement
+# being resolved comes from. Set per top-level requirement in resolve(); the
+# tasks spawned while resolving it inherit it.
+_current_root: ContextVar[str | None] = ContextVar("_current_root", default=None)
+
+
 class Resolver:
     """
-    Resolver finds the wheels and lock file packages that satisfy a set of
-    requirements, and downloads the wheels.
+    Resolver finds the wheels and lock file packages that satisfy a
+    :py:class:`~micropip.resolution.ResolveRequest`, and downloads the wheels.
+
+    A resolver is created for each request, and :meth:`resolve` is called once::
+
+        resolution = await Resolver(compat_layer, request).resolve()
+
+    To use a different resolver, set :py:attr:`micropip.Client.resolver_class`
+    to a class with the same constructor and :meth:`resolve`.
 
     All access to the network goes through ``compat_layer``. Subclasses can
     override methods such as :meth:`query_package`, :meth:`find_wheel`,
@@ -51,32 +65,39 @@ class Resolver:
     found and fetched.
     """
 
-    compat_layer: CompatibilityLayer
+    def __init__(
+        self,
+        compat_layer: CompatibilityLayer,
+        request: ResolveRequest | None = None,
+    ) -> None:
+        if request is None:
+            request = ResolveRequest()
+        self.compat_layer = compat_layer
+        self.request = request
 
-    ctx: dict[str, str] = field(
-        default_factory=lambda: dict(default_environment())  # type: ignore[arg-type]
-    )
-    ctx_extras: list[dict[str, str]] = field(default_factory=list)
-    keep_going: bool = False
-    deps: bool = True
-    pre: bool = False
-    fetch_options: FetchOptions = field(default_factory=FetchOptions)
-    """Fetch options for all requests (package index pages, wheels and their metadata)."""
-    index_urls: "list[str | Source] | str" = field(
-        default_factory=lambda: list[str | Source](package_index.DEFAULT_INDEX_URLS)
-    )
-    """Index URLs and :py:class:`~micropip.sources.Source` objects, searched in order."""
+        # Options, from the request
+        self.ctx: dict[str, str] = dict(
+            request.environment
+            if request.environment is not None
+            else default_environment()  # type: ignore[arg-type]
+        )
+        self.keep_going = request.keep_going
+        self.deps = request.deps
+        self.pre = request.pre
+        self.reinstall = request.reinstall
+        self.fetch_options = request.fetch_options
+        self.index_urls = request.index_urls
+        self.constraints = request.constraints
+        self.verbose = request.verbose
 
-    locked: dict[str, PackageMetadata] = field(default_factory=dict)
-    wheels: list[WheelInfo] = field(default_factory=list)
-    pyodide_packages: list[PackageMetadata] = field(default_factory=list)
-    failed: list[Requirement] = field(default_factory=list)
+        # State, filled while resolving
+        self.ctx_extras: list[dict[str, str]] = []
+        self.locked: dict[str, PackageMetadata] = {}
+        self.wheels: list[WheelInfo] = []
+        self.pyodide_packages: list[PackageMetadata] = []
+        self.failed: list[Requirement] = []
+        self.requested_by: dict[str, list[str]] = {}
 
-    verbose: bool | int | None = None
-    constraints: list[str] | None = None
-    reinstall: bool = False
-
-    def __post_init__(self) -> None:
         # With the default index (PyPI), pyodide-lock.json has to be searched first.
         # Only used if index_urls does not contain "PYODIDE", see _sources().
         # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
@@ -91,6 +112,46 @@ class Resolver:
         if self.verbose and messages:
             for constraint, msg in messages.items():
                 logger.info("Resolver: constraint %s discarded: %s", constraint, msg)
+
+    async def resolve(self) -> Resolution:
+        """
+        Resolve the requirements of the request.
+
+        With ``keep_going=False`` (the default), raises ``ValueError`` for the
+        first requirement that can't be resolved. With ``keep_going=True``, such
+        requirements are listed in :py:attr:`Resolution.failed
+        <micropip.resolution.Resolution.failed>`.
+        """
+
+        async def resolve_root(requirement: str) -> None:
+            _current_root.set(requirement)
+            await self.add_requirement(requirement)
+
+        await asyncio.gather(*(resolve_root(r) for r in self.request.requirements))
+
+        names = {canonicalize_name(w.name) for w in self.wheels} | {
+            canonicalize_name(p.name) for p in self.pyodide_packages
+        }
+        return Resolution(
+            wheels=self.wheels,
+            lockfile_packages=self.pyodide_packages,
+            failed=self.failed,
+            reinstall=self.reinstall,
+            requested_by={
+                name: roots
+                for name, roots in self.requested_by.items()
+                if name in names
+            },
+        )
+
+    def _record_requested_by(self, name: str) -> None:
+        """Record that ``name`` is needed by the current top-level requirement."""
+        root = _current_root.get()
+        if root is None:
+            return
+        roots = self.requested_by.setdefault(canonicalize_name(name), [])
+        if root not in roots:
+            roots.append(root)
 
     async def gather_requirements(
         self,
@@ -235,6 +296,7 @@ class Resolver:
 
         # Is some version of this package is already installed?
         req.name = canonicalize_name(req.name)
+        self._record_requested_by(req.name)
 
         satisfied, ver = self.check_version_satisfied(
             req, allow_reinstall=self.reinstall
@@ -408,6 +470,7 @@ class Resolver:
             will pass `>=1.0.0,!=2.0.0` as the specifier argument.
         """
         normalized_name = canonicalize_name(wheel.name)
+        self._record_requested_by(normalized_name)
         self.locked[normalized_name] = PackageMetadata(
             name=wheel.name,
             version=str(wheel.version),

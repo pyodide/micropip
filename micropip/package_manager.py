@@ -11,12 +11,11 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 
 from . import _mock_package, package_index
 from ._compat import CompatibilityLayer, FetchOptions, get_default_compatibility_layer
-from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
 from .installer import Installer
 from .logging import indent_log, setup_logging
 from .package import PackageDict, PackageMetadata
-from .resolution import InstallResult, Resolution
+from .resolution import InstallResult, Resolution, ResolveRequest
 from .resolver import Resolver
 from .sources import Source
 
@@ -297,27 +296,18 @@ class Client:
             if isinstance(requirements, str):
                 requirements = [requirements]
 
-            resolver = self.resolver_class(
-                compat_layer=self.compat_layer,
-                ctx=default_environment(),  # type: ignore[arg-type]
-                ctx_extras=[],
+            request = ResolveRequest(
+                requirements=requirements,
+                index_urls=index_urls,
+                constraints=constraints,
                 keep_going=keep_going,
                 deps=deps,
                 pre=pre,
+                reinstall=reinstall,
                 fetch_options=FetchOptions(credentials=credentials),
                 verbose=verbose,
-                index_urls=index_urls,
-                constraints=constraints,
-                reinstall=reinstall,
             )
-            await resolver.gather_requirements(requirements)
-
-            return Resolution(
-                wheels=resolver.wheels,
-                lockfile_packages=resolver.pyodide_packages,
-                failed=resolver.failed,
-                reinstall=reinstall,
-            )
+            return await self.resolver_class(self.compat_layer, request).resolve()
 
     async def install_resolution(
         self, resolution: Resolution, *, verbose: bool | int | None = None
