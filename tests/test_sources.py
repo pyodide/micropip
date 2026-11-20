@@ -218,6 +218,6 @@ def test_default_client(selenium_standalone_micropip):
 
         micropip.set_index_urls(["PYODIDE", "PYPI"])
         assert micropip.default_client.index_urls == ["PYODIDE", "PYPI"]
-        assert micropip._package_manager_singleton is micropip.default_client
+        assert micropip.install.__self__ is micropip.default_client
 
     run(selenium_standalone_micropip)
