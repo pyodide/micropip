@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- The special value `"PYODIDE"` can be used in `index_urls` (in `install`,
+  `set_index_urls` and `Client`) to search the Pyodide lock file at that position.
+  For example, `["PYODIDE", "https://example.com/simple", "PYPI"]` searches the
+  lock file, then the custom index, then PyPI. Without `"PYODIDE"`, the lock file
+  is searched first with the default index, and after custom indexes otherwise,
+  as before.
+  [#314](https://github.com/pyodide/micropip/pull/314)
+
 ### Changed
 
 - `install` now raises a helpful `ValueError` when given a VCS URL

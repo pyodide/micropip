@@ -159,7 +159,8 @@ class Client:
         index_urls:
 
             A list of URLs or a single URL to use as the package index when looking
-            up packages. If None, *https://pypi.org/simple* is used.
+            up packages. If None, the index URLs set with :py:meth:`set_index_urls`
+            are used (by default, *https://pypi.org/simple*).
 
             - The index URL should support the \
             `Simple repository API <https://packaging.python.org/en/latest/specifications/simple-repository-api/>`__ .
@@ -168,6 +169,19 @@ class Client:
             it finds a package. If no package is found, an error will be raised.
 
             - The index URL must support CORS when used in a web browser.
+
+            - The special value ``"PYPI"`` is replaced with *https://pypi.org/simple*.
+
+            - The special value ``"PYODIDE"`` stands for the Pyodide lock file: \
+            micropip looks for the package in the lock file at that position, \
+            and moves on to the next index if the lock file does not have a \
+            version that satisfies the requirement. For example, \
+            ``["PYODIDE", "https://example.com/simple", "PYPI"]`` searches the \
+            lock file, then *example.com*, then PyPI.
+
+            - If ``"PYODIDE"`` is not in the list, the lock file is searched first \
+            when the index URLs are left at the default, and after the given \
+            index URLs otherwise.
 
         constraints:
 
@@ -492,10 +506,29 @@ class Client:
 
         - The index URL must support CORS when used in a web browser.
 
+        - The special value ``"PYPI"`` is replaced with https://pypi.org/simple.
+
+        - The special value ``"PYODIDE"`` stands for the Pyodide lock file:
+            micropip looks for the package in the lock file at that position, and
+            moves on to the next index if the lock file does not have a version
+            that satisfies the requirement.
+
+        - If ``"PYODIDE"`` is not in the list, the lock file is searched first when
+            the index URLs are left at the default, and after the given index URLs
+            otherwise.
+
         Parameters
         ----------
         urls
             A list of URLs or a single URL to use as the package index.
+
+        Examples
+        --------
+        Prefer the packages that come with Pyodide, then a custom index, then PyPI:
+
+        .. code-block:: python
+
+            micropip.set_index_urls(["PYODIDE", "https://example.com/simple", "PYPI"])
         """
 
         if isinstance(urls, str):

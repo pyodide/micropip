@@ -426,3 +426,199 @@ def test_shared_requirement_added_once(
         assert names.count("micropip-test-dep") == 1, names
 
     run(selenium_standalone_micropip, fake_index.url, requirements)
+
+
+# Tests for the "PYODIDE" special value in index_urls
+# https://github.com/pyodide/micropip/issues/147
+
+
+@pytest.mark.parametrize(
+    "index_urls,search_lock_first,expected",
+    [
+        # without "PYODIDE": lock file first with the default index,
+        # and as a fallback after custom indexes
+        (["https://pypi.org/simple"], True, [None, ["https://pypi.org/simple"]]),
+        (["A", "B"], False, [["A", "B"], None]),
+        ("A", False, [["A"], None]),
+        ([], False, [[], None]),
+        # with "PYODIDE": the lock file is searched at that position
+        (["PYODIDE"], False, [None]),
+        ("PYODIDE", False, [None]),
+        (["PYODIDE", "A", "PYPI"], False, [None, ["A", "PYPI"]]),
+        (["A", "PYODIDE"], False, [["A"], None]),
+        (["A", "PYODIDE", "B", "C"], False, [["A"], None, ["B", "C"]]),
+    ],
+)
+def test_sources(host_compat_layer, index_urls, search_lock_first, expected):
+    from micropip.resolver import Resolver
+
+    resolver = Resolver(host_compat_layer, index_urls=index_urls)
+    assert resolver.search_pyodide_lock_first is search_lock_first
+    assert resolver._sources() == expected
+
+
+def test_project_urls_skips_pyodide():
+    from micropip import package_index
+
+    urls = package_index.project_urls("pkg", ["PYODIDE", "https://a/simple", "PYPI"])
+    assert urls == ["https://a/simple/pkg/", "https://pypi.org/simple/pkg/"]
+    assert package_index.project_urls("pkg", "PYODIDE") == []
+
+
+def _resolver_with_lockfile(compat_layer, index_urls, **kwargs):
+    from micropip.resolver import Resolver
+
+    compat_layer.lockfile_packages = {
+        "pkg": {"name": "pkg", "version": "1.0.0", "depends": []},
+        "lockonly": {"name": "lockonly", "version": "1.0.0", "depends": []},
+    }
+    return Resolver(compat_layer, index_urls=index_urls, **kwargs)
+
+
+def _sources_of(resolver):
+    """Map each resolved package to "pyodide" (lock file) or its wheel version."""
+    sources = {p.name: "pyodide" for p in resolver.pyodide_packages}
+    sources.update({w.name: str(w.version) for w in resolver.wheels})
+    return sources
+
+
+@pytest.mark.asyncio
+async def test_pyodide_index_first(host_compat_layer, fake_index):
+    fake_index.add_pkg_version("pkg", "2.0.0")
+    fake_index.add_pkg_version("indexonly")
+
+    resolver = _resolver_with_lockfile(host_compat_layer, ["PYODIDE", fake_index.url])
+    await resolver.gather_requirements(["pkg", "indexonly", "lockonly"])
+
+    assert _sources_of(resolver) == {
+        "pkg": "pyodide",
+        "lockonly": "pyodide",
+        "indexonly": "1.0.0",
+    }
+
+
+@pytest.mark.asyncio
+async def test_pyodide_index_version_not_satisfied(host_compat_layer, fake_index):
+    # The lock file is skipped if its version doesn't satisfy the requirement.
+    fake_index.add_pkg_version("pkg", "2.0.0")
+
+    resolver = _resolver_with_lockfile(host_compat_layer, ["PYODIDE", fake_index.url])
+    await resolver.add_requirement("pkg>=2")
+
+    assert _sources_of(resolver) == {"pkg": "2.0.0"}
+
+
+@pytest.mark.asyncio
+async def test_pyodide_index_last(host_compat_layer, fake_index):
+    fake_index.add_pkg_version("pkg", "2.0.0")
+
+    resolver = _resolver_with_lockfile(host_compat_layer, [fake_index.url, "PYODIDE"])
+    await resolver.gather_requirements(["pkg", "lockonly"])
+
+    assert _sources_of(resolver) == {"pkg": "2.0.0", "lockonly": "pyodide"}
+
+
+@pytest.mark.asyncio
+async def test_pyodide_index_in_the_middle(host_compat_layer, httpserver):
+    from fake_index import FakePackageIndex
+
+    first = FakePackageIndex(httpserver)
+    last = FakePackageIndex(httpserver)
+    first.add_pkg_version("firstonly", "1.0.0")
+    for name in ("pkg", "firstonly", "lastonly"):
+        last.add_pkg_version(name, "3.0.0")
+
+    resolver = _resolver_with_lockfile(
+        host_compat_layer, [first.url, "PYODIDE", last.url]
+    )
+    await resolver.gather_requirements(["pkg", "firstonly", "lastonly"])
+
+    assert _sources_of(resolver) == {
+        "firstonly": "1.0.0",
+        "pkg": "pyodide",
+        "lastonly": "3.0.0",
+    }
+
+
+@pytest.mark.asyncio
+async def test_pyodide_index_only(host_compat_layer):
+    # Without any other index, packages that are not in the lock file fail.
+    resolver = _resolver_with_lockfile(host_compat_layer, ["PYODIDE"])
+    await resolver.add_requirement("lockonly")
+    assert _sources_of(resolver) == {"lockonly": "pyodide"}
+
+    with pytest.raises(ValueError, match="'pkg>=2' in the Pyodide lock file"):
+        await resolver.add_requirement("pkg>=2")
+    with pytest.raises(ValueError, match="'indexonly' in the Pyodide lock file"):
+        await resolver.add_requirement("indexonly")
+    assert [str(r) for r in resolver.failed] == ["pkg>=2", "indexonly"]
+
+
+@pytest.mark.asyncio
+async def test_pyodide_index_not_found(host_compat_layer, fake_index):
+    # If no source has the package, the error from the index is raised.
+    fake_index.add_pkg_version("nowheel", tag="cp313-cp313-invalid")
+
+    resolver = _resolver_with_lockfile(host_compat_layer, ["PYODIDE", fake_index.url])
+    with pytest.raises(ValueError, match="Can't fetch metadata for 'missing'"):
+        await resolver.add_requirement("missing")
+    with pytest.raises(ValueError, match="Can't find a pure Python 3 wheel"):
+        await resolver.add_requirement("nowheel")
+
+
+@pytest.mark.asyncio
+async def test_pyodide_index_keep_going(host_compat_layer, fake_index):
+    fake_index.add_pkg_version("indexonly")
+
+    resolver = _resolver_with_lockfile(
+        host_compat_layer, ["PYODIDE", fake_index.url], keep_going=True
+    )
+    await resolver.gather_requirements(["missing", "pkg", "indexonly", "other"])
+
+    assert sorted(str(r) for r in resolver.failed) == ["missing", "other"]
+    assert _sources_of(resolver) == {"pkg": "pyodide", "indexonly": "1.0.0"}
+
+
+def _lockfile_version(request, name):
+    import json
+
+    lockfile = request.config.option.dist_dir / "pyodide-lock.json"
+    return json.loads(lockfile.read_text())["packages"][name]["version"]
+
+
+def test_pyodide_index_selenium(selenium_standalone_micropip, fake_index, request):
+    # "tomli" is in the Pyodide lock file (and not preloaded by pytest-pyodide).
+    version = _lockfile_version(request, "tomli")
+    fake_index.add_pkg_version("tomli", "9999.0.0")
+    fake_index.add_pkg_version("fakepkg", top_level=["fakepkg"])
+
+    @run_in_pyodide
+    async def run(selenium, index_url, version):
+        import micropip
+
+        micropip.set_index_urls(["PYODIDE", index_url])
+        await micropip.install(["tomli", "fakepkg"])
+
+        pkg_list = micropip.list()
+        assert pkg_list["tomli"].source.lower() == "pyodide"
+        assert pkg_list["tomli"].version == version
+        assert pkg_list["fakepkg"].source.lower() != "pyodide"
+        assert pkg_list["fakepkg"].version == "1.0.0"
+
+    run(selenium_standalone_micropip, fake_index.url, version)
+
+
+def test_pyodide_index_last_selenium(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("tomli", "9999.0.0")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
+
+        await micropip.install("tomli", index_urls=[index_url, "PYODIDE"])
+
+        pkg = micropip.list()["tomli"]
+        assert pkg.source.lower() != "pyodide"
+        assert pkg.version == "9999.0.0"
+
+    run(selenium_standalone_micropip, fake_index.url)
