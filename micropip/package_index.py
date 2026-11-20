@@ -287,19 +287,28 @@ def _is_valid_pep440_version(version_str: str) -> tuple[Version | None, bool]:
 
 def _fast_check_incompatibility(filename: str) -> bool:
     """
-    This function returns True is the package is incompatible with the current platform.
-    It can be used to quickly filter out incompatible packages before running heavy checks.
+    Quickly check whether ``filename`` may be a wheel for the current platform.
 
-    Note that this function may return False for some packages that are actually incompatible.
-    So it should only be used as a quick check.
+    Returns ``False`` for files that are certainly not usable, so that the more
+    expensive compatibility check (parsing the wheel tags) can be skipped for
+    them. ``True`` doesn't mean that the wheel is compatible.
     """
     if not filename.endswith(".whl"):
         return False
 
-    if filename.endswith("wasm32.whl") and sys.platform == "emscripten":
+    # A plain str, so that type checkers don't treat the Pyodide branch as
+    # unreachable when they check for another platform.
+    platform: str = sys.platform
+    if platform != "emscripten":
+        # Outside Pyodide (e.g. micropip's unit tests on the host), platform
+        # names in wheel tags don't match sys.platform (e.g. "macosx" vs
+        # "darwin"), so leave it to the full compatibility check.
         return True
 
-    if sys.platform not in filename and not filename.endswith("-none-any.whl"):
+    if filename.endswith("wasm32.whl"):
+        return True
+
+    if platform not in filename and not filename.endswith("-none-any.whl"):
         return False
 
     return True
