@@ -58,7 +58,12 @@ class Resolution:
     """
 
     wheels: list[WheelInfo] = field(default_factory=list)
-    """Wheels to install. ``name``, ``version``, ``filename`` and ``url`` are stable."""
+    """
+    Wheels to install. ``name``, ``version``, ``filename`` and ``url`` are
+    stable. They are not necessarily downloaded yet: wheels are downloaded when
+    they are installed, unless the resolver had to download one to read its
+    metadata.
+    """
 
     lockfile_packages: list[PackageMetadata] = field(default_factory=list)
     """Packages to load from the lock file of the compatibility layer."""
@@ -71,6 +76,9 @@ class Resolution:
 
     reinstall: bool = False
     """Whether installed versions of these packages are uninstalled first."""
+
+    fetch_options: FetchOptions = field(default_factory=FetchOptions)
+    """Fetch options to download the wheels with (from the request)."""
 
     requested_by: dict[str, list[str]] = field(default_factory=dict)
     """

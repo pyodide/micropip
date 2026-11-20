@@ -272,7 +272,8 @@ class Client:
         in :py:attr:`Resolution.failed <micropip.resolution.Resolution.failed>`
         instead of raising, and the other packages can still be installed.
 
-        Wheels are downloaded while resolving.
+        Only metadata is fetched while resolving when the index provides it
+        (PEP 658); wheels are downloaded by :py:meth:`install_resolution`.
 
         Examples
         --------
@@ -358,7 +359,10 @@ class Client:
             installed = []
             try:
                 async for result in installer.install(
-                    resolution.wheels, resolution.lockfile_packages, wheel_base
+                    resolution.wheels,
+                    resolution.lockfile_packages,
+                    wheel_base,
+                    resolution.fetch_options,
                 ):
                     if result.ok:
                         installed.append(f"{result.name}-{result.version}")

@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator, Iterable
 from importlib.metadata import Distribution
 from pathlib import Path
 
-from ._compat import CompatibilityLayer
+from ._compat import CompatibilityLayer, FetchOptions
 from ._utils import get_files_in_distribution, get_root
 from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .package import PackageMetadata
@@ -31,10 +31,12 @@ class Installer:
         wheels: list[WheelInfo],
         pyodide_packages: list[PackageMetadata],
         target: Path,
+        fetch_options: FetchOptions | None = None,
     ) -> AsyncGenerator[InstallResult, None]:
         """
-        Install downloaded ``wheels`` into ``target``, and load ``pyodide_packages``
-        from the lock file.
+        Download (if needed) and install ``wheels`` into ``target``, and load
+        ``pyodide_packages`` from the lock file. ``fetch_options`` are used to
+        download the wheels.
 
         Yield the result of each package as soon as it is known; failures are
         reported in the results, not raised. Wheels are installed concurrently
@@ -47,6 +49,7 @@ class Installer:
                 name=wheel.name, version=str(wheel.version), source=wheel.source
             )
             try:
+                await self.download_wheel(wheel, fetch_options or FetchOptions())
                 await self.install_wheel(wheel, target)
             except Exception as e:
                 result.error = e
@@ -77,6 +80,16 @@ class Installer:
                     "See the log above for details."
                 )
             yield InstallResult(pkg.name, pkg.version, pkg.source, error=error)
+
+    async def download_wheel(
+        self, wheel: WheelInfo, fetch_options: FetchOptions
+    ) -> None:
+        """Download ``wheel``, unless it is already downloaded (e.g. by the resolver)."""
+        if wheel.downloaded:
+            return
+        logger.info("  Downloading %s", wheel.filename)
+        response = await self.compat_layer.fetch(wheel.url, fetch_options)
+        wheel.set_data(response.content)
 
     async def install_wheel(self, wheel: WheelInfo, target: Path) -> None:
         """
