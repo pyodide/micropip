@@ -1,5 +1,29 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class FetchOptions:
+    """Options for :py:meth:`CompatibilityLayer.fetch`.
+
+    New fields may be added over time, always with a default value.
+    """
+
+    headers: dict[str, str] = field(default_factory=dict)
+    """Request headers to send."""
+
+    credentials: str | None = None
+    """
+    The ``credentials`` option of the
+    `fetch() <https://developer.mozilla.org/en-US/docs/Web/API/fetch>`__ API.
+    """
+
+    extra: dict[str, Any] = field(default_factory=dict)
+    """
+    Runtime-specific options, passed to the runtime's fetch function as they are
+    (e.g. ``{"cache": "no-store"}`` for ``pyfetch`` in Pyodide).
+    """
 
 
 @dataclass
@@ -75,27 +99,13 @@ class CompatibilityLayer(ABC):
     """
 
     @abstractmethod
-    async def fetch(
-        self,
-        url: str,
-        *,
-        headers: dict[str, str] | None = None,
-        credentials: str | None = None,
-    ) -> FetchResponse:
+    async def fetch(self, url: str, options: FetchOptions) -> FetchResponse:
         """Fetch ``url``.
 
         Used both for package index pages and for wheel files.
 
-        Parameters
-        ----------
-        url
-            The URL to fetch.
-        headers
-            Request headers to send.
-        credentials
-            The ``credentials`` option of the
-            `fetch() <https://developer.mozilla.org/en-US/docs/Web/API/fetch>`__
-            API, if the user passed one to ``micropip.install``.
+        Implementations should ignore fields of ``options`` that they don't
+        support, so that new fields can be added without breaking them.
 
         Raises an exception if the request fails, including for HTTP error
         statuses.

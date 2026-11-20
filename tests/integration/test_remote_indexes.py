@@ -13,12 +13,12 @@ from pytest_pyodide import run_in_pyodide
 
 @run_in_pyodide
 async def _query(selenium, index_url, header_accept, packages):
-    from micropip._compat import get_default_compatibility_layer
+    from micropip._compat import FetchOptions, get_default_compatibility_layer
     from micropip.resolver import Resolver
 
     resolver = Resolver(
         get_default_compatibility_layer(),
-        headers={"accept": header_accept},
+        index_fetch_options=FetchOptions(headers={"accept": header_accept}),
         index_urls=[index_url],
     )
     for package in packages:

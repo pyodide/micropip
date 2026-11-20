@@ -107,9 +107,9 @@ def test_custom_compatibility_layer(selenium_standalone_micropip, fake_index):
                 super().__init__()
                 self.cache = cache
 
-            async def fetch(self, url, **kwargs):
+            async def fetch(self, url, options):
                 if url not in self.cache:
-                    self.cache[url] = await super().fetch(url, **kwargs)
+                    self.cache[url] = await super().fetch(url, options)
                 return self.cache[url]
 
         cache: dict[str, bytes] = {}
@@ -199,6 +199,7 @@ def test_compat_module_outside_pyodide():
     assert PackageManager is micropip.Client
     assert micropip.compat.__all__ == [
         "CompatibilityLayer",
+        "FetchOptions",
         "FetchResponse",
         "LockFile",
         "LockedPackage",

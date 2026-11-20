@@ -12,6 +12,7 @@ from typing import Any
 from ._compat import (
     _IN_PYODIDE,
     CompatibilityLayer,
+    FetchOptions,
     FetchResponse,
     LockedPackage,
     LockFile,
@@ -19,7 +20,13 @@ from ._compat import (
 
 # PyodideCompatibilityLayer is not in __all__ so that
 # ``from micropip.compat import *`` works outside of Pyodide.
-__all__ = ["CompatibilityLayer", "FetchResponse", "LockFile", "LockedPackage"]
+__all__ = [
+    "CompatibilityLayer",
+    "FetchOptions",
+    "FetchResponse",
+    "LockFile",
+    "LockedPackage",
+]
 
 
 def __getattr__(name: str) -> Any:

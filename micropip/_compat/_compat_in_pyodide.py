@@ -9,6 +9,7 @@ from pyodide.http import pyfetch
 from ._pyodide_lock import freeze_lockfile
 from .compatibility_layer import (
     CompatibilityLayer,
+    FetchOptions,
     FetchResponse,
     LockedPackage,
     LockFile,
@@ -84,13 +85,7 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
     def __init__(self) -> None:
         self.lockfile: LockFile | None = PyodideLockFile()
 
-    async def fetch(
-        self,
-        url: str,
-        *,
-        headers: dict[str, str] | None = None,
-        credentials: str | None = None,
-    ) -> FetchResponse:
+    async def fetch(self, url: str, options: FetchOptions) -> FetchResponse:
         parsed_url = urlparse(url)
         match parsed_url.scheme:
             case "emfs":
@@ -109,11 +104,11 @@ class PyodideCompatibilityLayer(CompatibilityLayer):
                     "Supported schemes are 'https', 'http', 'emfs' and 'file'."
                 )
 
-        kwargs: dict[str, object] = {}
-        if headers:
-            kwargs["headers"] = headers
-        if credentials:
-            kwargs["credentials"] = credentials
+        kwargs: dict[str, Any] = dict(options.extra)
+        if options.headers:
+            kwargs["headers"] = options.headers
+        if options.credentials:
+            kwargs["credentials"] = options.credentials
 
         try:
             response = await pyfetch(url, **kwargs)

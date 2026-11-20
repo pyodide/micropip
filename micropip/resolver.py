@@ -3,12 +3,12 @@ import importlib.metadata
 import logging
 import warnings
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from importlib.metadata import PackageNotFoundError
 from urllib.parse import urlparse
 
 from . import package_index
-from ._compat import CompatibilityLayer
+from ._compat import CompatibilityLayer, FetchOptions
 from ._utils import (
     check_compatible,
     constrain_requirement,
@@ -55,8 +55,10 @@ class Resolver:
     keep_going: bool = False
     deps: bool = True
     pre: bool = False
-    credentials: str | None = None
-    headers: dict[str, str] = field(default_factory=dict)
+    index_fetch_options: FetchOptions = field(default_factory=FetchOptions)
+    """Fetch options for package index pages."""
+    file_fetch_options: FetchOptions = field(default_factory=FetchOptions)
+    """Fetch options for wheel files and their metadata files."""
     index_urls: list[str] | str = field(
         default_factory=lambda: package_index.DEFAULT_INDEX_URLS[:]
     )
@@ -395,16 +397,17 @@ class Resolver:
         is used. Raises ``ValueError`` if no index has the package.
         """
         # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
-        headers = {
-            "accept": "application/vnd.pypi.simple.v1+json, */*;q=0.01",
-            **self.headers,
-        }
+        options = replace(
+            self.index_fetch_options,
+            headers={
+                "accept": "application/vnd.pypi.simple.v1+json, */*;q=0.01",
+                **self.index_fetch_options.headers,
+            },
+        )
 
         for url in package_index.project_urls(name, self.index_urls):
             try:
-                response = await self.compat_layer.fetch(
-                    url, headers=headers, credentials=self.credentials
-                )
+                response = await self.compat_layer.fetch(url, options)
             except Exception as e:
                 logger.debug(
                     "Error fetching metadata for the package %r from (%r): %r, trying next index.",
@@ -444,9 +447,7 @@ class Resolver:
 
     async def fetch_bytes(self, url: str, wheel: WheelInfo) -> bytes:
         """Fetch ``url``, a file that belongs to ``wheel``."""
-        response = await self.compat_layer.fetch(
-            url, headers=self.headers or None, credentials=self.credentials
-        )
+        response = await self.compat_layer.fetch(url, self.file_fetch_options)
         return response.content
 
 

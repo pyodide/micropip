@@ -3,6 +3,7 @@ from functools import cache
 
 from .compatibility_layer import (
     CompatibilityLayer,
+    FetchOptions,
     FetchResponse,
     LockedPackage,
     LockFile,
@@ -33,6 +34,7 @@ def get_default_compatibility_layer() -> CompatibilityLayer:
 
 __all__ = [
     "CompatibilityLayer",
+    "FetchOptions",
     "FetchResponse",
     "LockFile",
     "LockedPackage",

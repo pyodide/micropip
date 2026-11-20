@@ -8,7 +8,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 )
 
 from . import _mock_package, package_index
-from ._compat import CompatibilityLayer, get_default_compatibility_layer
+from ._compat import CompatibilityLayer, FetchOptions, get_default_compatibility_layer
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
 from .installer import Installer
@@ -31,9 +31,9 @@ class Client:
         from micropip.compat import PyodideCompatibilityLayer
 
         class CachedCompatibilityLayer(PyodideCompatibilityLayer):
-            async def fetch(self, url, **kwargs):
+            async def fetch(self, url, options):
                 if url not in cache:
-                    cache[url] = await super().fetch(url, **kwargs)
+                    cache[url] = await super().fetch(url, options)
                 return cache[url]
 
         client = micropip.Client(compat=CachedCompatibilityLayer())
@@ -224,7 +224,8 @@ class Client:
                 keep_going=keep_going,
                 deps=deps,
                 pre=pre,
-                credentials=credentials,
+                index_fetch_options=FetchOptions(credentials=credentials),
+                file_fetch_options=FetchOptions(credentials=credentials),
                 verbose=verbose,
                 index_urls=index_urls,
                 constraints=constraints,

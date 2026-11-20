@@ -10,22 +10,17 @@ in Pyodide.
 
 from urllib.request import Request, urlopen
 
-from micropip._compat import CompatibilityLayer, FetchResponse
+from micropip._compat import CompatibilityLayer, FetchOptions, FetchResponse
 
 
 class HostCompatibilityLayer(CompatibilityLayer):
     def __init__(self) -> None:
         self._loaded_packages: dict[str, str] = {}
 
-    async def fetch(
-        self,
-        url: str,
-        *,
-        headers: dict[str, str] | None = None,
-        credentials: str | None = None,
-    ) -> FetchResponse:
-        # credentials is a browser fetch() option, which urllib doesn't have
-        with urlopen(Request(url, headers=headers or {})) as response:
+    async def fetch(self, url: str, options: FetchOptions) -> FetchResponse:
+        # Only headers apply to urllib; credentials and extra are browser
+        # fetch() options.
+        with urlopen(Request(url, headers=options.headers)) as response:
             return FetchResponse(
                 response.read(),
                 {k.lower(): v for k, v in response.headers.items()},
