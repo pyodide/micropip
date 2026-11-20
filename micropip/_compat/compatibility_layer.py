@@ -1,5 +1,81 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
+
+
+@dataclass
+class FetchOptions:
+    """Options for :py:meth:`CompatibilityLayer.fetch`.
+
+    New fields may be added over time, always with a default value.
+    """
+
+    headers: dict[str, str] = field(default_factory=dict)
+    """Request headers to send."""
+
+    credentials: str | None = None
+    """
+    The ``credentials`` option of the
+    `fetch() <https://developer.mozilla.org/en-US/docs/Web/API/fetch>`__ API.
+    """
+
+    extra: dict[str, Any] = field(default_factory=dict)
+    """
+    Runtime-specific options, passed to the runtime's fetch function as they are
+    (e.g. ``{"cache": "no-store"}`` for ``pyfetch`` in Pyodide).
+    """
+
+
+@dataclass
+class FetchResponse:
+    """The result of :py:meth:`CompatibilityLayer.fetch`."""
+
+    content: bytes
+    """The response body."""
+
+    headers: dict[str, str] = field(default_factory=dict)
+    """The response headers, with lower-case names."""
+
+    def text(self) -> str:
+        """The response body decoded as UTF-8."""
+        return self.content.decode("utf-8", errors="replace")
+
+
+@dataclass
+class LockedPackage:
+    """A package in a :py:class:`LockFile`."""
+
+    name: str
+    version: str
+    depends: list[str] = field(default_factory=list)
+    """Names of the packages this package depends on."""
+
+
+class LockFile(ABC):
+    """
+    A set of prebuilt packages that the runtime can load directly, without
+    looking them up on a package index (e.g. Pyodide's ``pyodide-lock.json``).
+
+    A :py:class:`CompatibilityLayer` may provide one as its :py:attr:`~CompatibilityLayer.lockfile`.
+    micropip looks requirements up in it, loads the packages it finds with
+    :py:meth:`load`, and uses :py:meth:`freeze` for ``micropip.freeze()``.
+    The format of the lock file is up to the implementation.
+    """
+
+    @abstractmethod
+    def get(self, name: str) -> LockedPackage | None:
+        """Return the package ``name`` (a canonicalized name), or ``None`` if it is not in the lock file."""
+
+    @abstractmethod
+    async def load(self, names: list[str]) -> None:
+        """Load the packages ``names`` from the lock file into the runtime."""
+
+    @abstractmethod
+    def freeze(self) -> str:
+        """
+        Return a new lock file, in the same format, that also contains the
+        packages installed with micropip.
+        """
 
 
 class CompatibilityLayer(ABC):
@@ -8,31 +84,32 @@ class CompatibilityLayer(ABC):
 
     micropip talks to the runtime (fetching files, installing wheels, reading the
     lock file, ...) only through an instance of this class, which is passed to
-    :py:class:`micropip.Client`. Subclasses must set the lock file attributes
-    (e.g. in ``__init__``) and implement all abstract methods.
+    :py:class:`micropip.Client`. Subclasses must implement all abstract methods,
+    and may set :py:attr:`lockfile`.
 
     To change only part of the default behavior in Pyodide, subclass
     :py:class:`micropip.compat.PyodideCompatibilityLayer` instead.
     """
 
-    lockfile_info: dict[str, str]
-    """The ``info`` section of the lock file."""
-
-    lockfile_packages: dict[str, dict[str, Any]]
-    """The ``packages`` section of the lock file."""
-
-    lockfile_base_url: str | None = None
-    """The base URL that relative file names in the lock file are resolved against."""
+    lockfile: LockFile | None = None
+    """
+    The lock file of the runtime, if it has one. Without a lock file, all
+    packages are looked up on the package indexes, and ``micropip.freeze()``
+    is not available.
+    """
 
     @abstractmethod
-    async def fetch_bytes(self, url: str, kwargs: dict[str, Any]) -> bytes:
-        """Fetch ``url`` and return the response body."""
+    async def fetch(self, url: str, options: FetchOptions) -> FetchResponse:
+        """Fetch ``url``.
 
-    @abstractmethod
-    async def fetch_string_and_headers(
-        self, url: str, kwargs: dict[str, Any]
-    ) -> tuple[str, dict[str, str]]:
-        """Fetch ``url`` and return the decoded response body and the response headers."""
+        Used both for package index pages and for wheel files.
+
+        Implementations should ignore fields of ``options`` that they don't
+        support, so that new fields can be added without breaking them.
+
+        Raises an exception if the request fails, including for HTTP error
+        statuses.
+        """
 
     @abstractmethod
     async def install(
@@ -46,10 +123,6 @@ class CompatibilityLayer(ABC):
 
         ``metadata`` is written as extra files into the ``.dist-info`` directory.
         """
-
-    @abstractmethod
-    async def load_packages(self, names: list[str]) -> None:
-        """Load packages from the lock file by name."""
 
     @abstractmethod
     def loaded_packages(self) -> dict[str, str]:

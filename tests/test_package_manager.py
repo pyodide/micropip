@@ -107,9 +107,9 @@ def test_custom_compatibility_layer(selenium_standalone_micropip, fake_index):
                 super().__init__()
                 self.cache = cache
 
-            async def fetch_bytes(self, url, kwargs):
+            async def fetch(self, url, options):
                 if url not in self.cache:
-                    self.cache[url] = await super().fetch_bytes(url, kwargs)
+                    self.cache[url] = await super().fetch(url, options)
                 return self.cache[url]
 
         cache: dict[str, bytes] = {}
@@ -123,13 +123,87 @@ def test_custom_compatibility_layer(selenium_standalone_micropip, fake_index):
     run(selenium_standalone_micropip, fake_index.url, wheel.url)
 
 
+def test_compatibility_layer_without_lockfile(selenium_standalone_micropip, fake_index):
+    fake_index.add_pkg_version("dummy")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import pytest
+
+        import micropip
+        from micropip.compat import PyodideCompatibilityLayer
+
+        class NoLockFileLayer(PyodideCompatibilityLayer):
+            def __init__(self):
+                super().__init__()
+                self.lockfile = None
+
+        client = micropip.Client(compat=NoLockFileLayer())
+        client.set_index_urls([index_url])
+
+        await client.install("dummy")
+        assert "dummy" in client.list_packages()
+
+        # "regex" is in Pyodide's lock file, but not on the index
+        with pytest.raises(ValueError, match="Can't fetch metadata for 'regex'"):
+            await client.install("regex")
+
+        with pytest.raises(RuntimeError, match="needs a lock file"):
+            client.freeze()
+
+    run(selenium_standalone_micropip, fake_index.url)
+
+
+def test_custom_lockfile(selenium_standalone_micropip):
+    @run_in_pyodide
+    async def run(selenium):
+        import micropip
+        from micropip.compat import LockedPackage, LockFile, PyodideCompatibilityLayer
+
+        class InMemoryLockFile(LockFile):
+            def __init__(self):
+                self.loaded = []
+
+            def get(self, name):
+                if name == "fake-locked-pkg":
+                    return LockedPackage(name=name, version="1.0.0")
+                return None
+
+            async def load(self, names):
+                self.loaded.extend(names)
+
+            def freeze(self):
+                return "custom lock file"
+
+        lockfile = InMemoryLockFile()
+
+        class CustomLockFileLayer(PyodideCompatibilityLayer):
+            def __init__(self):
+                super().__init__()
+                self.lockfile = lockfile
+
+        client = micropip.Client(compat=CustomLockFileLayer())
+        await client.install("fake-locked-pkg")
+
+        assert lockfile.loaded == ["fake-locked-pkg"]
+        assert client.freeze() == "custom lock file"
+
+    run(selenium_standalone_micropip)
+
+
 def test_compat_module_outside_pyodide():
     import micropip
     import micropip.compat
     from micropip.package_manager import PackageManager
 
     assert PackageManager is micropip.Client
-    assert micropip.compat.__all__ == ["CompatibilityLayer"]
+    assert micropip.compat.__all__ == [
+        "CompatibilityLayer",
+        "FetchOptions",
+        "FetchResponse",
+        "LockFile",
+        "LockedPackage",
+    ]
 
     with pytest.raises(ImportError, match="only available in the Pyodide runtime"):
         from micropip.compat import PyodideCompatibilityLayer  # noqa: F401

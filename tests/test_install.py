@@ -279,36 +279,36 @@ def test_fetch_wheel_fail(selenium_standalone_micropip, fake_index):
     run(selenium_standalone_micropip, url)
 
 
-@pytest.mark.skip_refcount_check
-@run_in_pyodide(packages=["micropip"])
-async def test_install_with_credentials(selenium_standalone_micropip):
-    import json
-    from unittest.mock import MagicMock, patch
+def test_install_with_credentials(selenium_standalone_micropip, fake_index):
+    wheel = fake_index.add_pkg_version("dummy")
 
-    import micropip
+    @run_in_pyodide
+    async def run(selenium, index_url, wheel_url):
+        import micropip
+        from micropip.compat import PyodideCompatibilityLayer
 
-    fetch_response_mock = MagicMock()
+        class RecordingLayer(PyodideCompatibilityLayer):
+            def __init__(self):
+                super().__init__()
+                self.requests = {}
 
-    async def myfunc():
-        return json.dumps({})
+            async def fetch(self, url, options):
+                self.requests[url] = options
+                return await super().fetch(url, options)
 
-    fetch_response_mock.string.side_effect = myfunc
+        layer = RecordingLayer()
+        client = micropip.Client(compat=layer)
+        await client.install("dummy", credentials="include", index_urls=[index_url])
 
-    @patch(
-        "micropip._compat._compat_in_pyodide.pyfetch", return_value=fetch_response_mock
-    )
-    async def call_micropip_install(pyfetch_mock):
-        try:
-            await micropip.install("pyodide-micropip-test", credentials="include")
-        except BaseException:
-            # The above will raise an exception as the mock data is garbage
-            # but it is sufficient for this test
-            pass
+        index_options = layer.requests[f"{index_url}/dummy/"]
+        file_options = layer.requests[wheel_url]
+        assert index_options.credentials == "include"
+        assert file_options.credentials == "include"
+        # Only index requests ask for the Simple JSON API
+        assert "vnd.pypi.simple.v1+json" in index_options.headers["accept"]
+        assert "accept" not in file_options.headers
 
-        call_args = pyfetch_mock.call_args.kwargs
-        assert call_args["credentials"] == "include"
-
-    await call_micropip_install()
+    run(selenium_standalone_micropip, fake_index.url, wheel.url)
 
 
 def test_load_binary_wheel1(selenium_standalone_micropip, fake_index):

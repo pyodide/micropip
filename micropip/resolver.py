@@ -3,14 +3,12 @@ import importlib.metadata
 import logging
 import warnings
 from collections.abc import Iterable
-from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from importlib.metadata import PackageNotFoundError
-from typing import Any
 from urllib.parse import urlparse
 
 from . import package_index
-from ._compat import CompatibilityLayer
+from ._compat import CompatibilityLayer, FetchOptions
 from ._utils import (
     check_compatible,
     constrain_requirement,
@@ -57,7 +55,8 @@ class Resolver:
     keep_going: bool = False
     deps: bool = True
     pre: bool = False
-    fetch_kwargs: dict[str, Any] = field(default_factory=dict)
+    fetch_options: FetchOptions = field(default_factory=FetchOptions)
+    """Fetch options for all requests (package index pages, wheels and their metadata)."""
     index_urls: list[str] | str = field(
         default_factory=lambda: package_index.DEFAULT_INDEX_URLS[:]
     )
@@ -320,16 +319,21 @@ class Resolver:
         Find requirement from pyodide-lock.json. If the requirement is found,
         add it to the package list and return True. Otherwise, return False.
         """
-        locked_package = self.compat_layer.lockfile_packages.get(req.name)
+        lockfile = self.compat_layer.lockfile
+        if lockfile is None:
+            return False
+
+        locked_package = lockfile.get(req.name)
         if locked_package and req.specifier.contains(
-            locked_package["version"], prereleases=True
+            locked_package.version, prereleases=True
         ):
-            version = locked_package["version"]
             self.pyodide_packages.append(
-                PackageMetadata(name=req.name, version=str(version), source="pyodide")
+                PackageMetadata(
+                    name=req.name, version=locked_package.version, source="pyodide"
+                )
             )
-            if self.constraints and locked_package["depends"]:
-                await self.gather_requirements(locked_package["depends"])
+            if self.constraints and locked_package.depends:
+                await self.gather_requirements(locked_package.depends)
             return True
 
         return False
@@ -444,17 +448,18 @@ class Resolver:
         """
         if index_urls is None:
             index_urls = self.index_urls
-        fetch_kwargs = deepcopy(self.fetch_kwargs)
         # If not specified, prefer Simple JSON API over Simple HTML API or JSON API
-        fetch_kwargs.setdefault("headers", {}).setdefault(
-            "accept", "application/vnd.pypi.simple.v1+json, */*;q=0.01"
+        options = replace(
+            self.fetch_options,
+            headers={
+                "accept": "application/vnd.pypi.simple.v1+json, */*;q=0.01",
+                **self.fetch_options.headers,
+            },
         )
 
         for url in package_index.project_urls(name, index_urls):
             try:
-                content, headers = await self.compat_layer.fetch_string_and_headers(
-                    url, fetch_kwargs
-                )
+                response = await self.compat_layer.fetch(url, options)
             except Exception as e:
                 logger.debug(
                     "Error fetching metadata for the package %r from (%r): %r, trying next index.",
@@ -464,7 +469,9 @@ class Resolver:
                 )
                 continue
 
-            return package_index.parse_project_info(name, url, content, headers)
+            return package_index.parse_project_info(
+                name, url, response.text(), response.headers
+            )
 
         raise ValueError(
             f"Can't fetch metadata for '{name}'. "
@@ -492,29 +499,8 @@ class Resolver:
 
     async def fetch_bytes(self, url: str, wheel: WheelInfo) -> bytes:
         """Fetch ``url``, a file that belongs to ``wheel``."""
-        parsed_url = wheel.parsed_url
-        if parsed_url.scheme not in ("https", "http", "emfs", "file"):
-            # Don't raise ValueError it gets swallowed
-            raise TypeError(
-                f"Unexpected URL scheme {parsed_url.scheme!r} in {url!r}. "
-                "Supported schemes are 'https', 'http', 'emfs' and 'file'."
-            )
-        try:
-            return await self.compat_layer.fetch_bytes(url, self.fetch_kwargs)
-        except OSError as e:
-            if parsed_url.hostname in [
-                "files.pythonhosted.org",
-                "cdn.jsdelivr.net",
-            ]:
-                raise e
-            if parsed_url.scheme in ("https", "http"):
-                raise ValueError(
-                    f"Can't fetch wheel from {url!r}. "
-                    "One common reason for this is when the server blocks "
-                    "Cross-Origin Resource Sharing (CORS). "
-                    "Check if the server is sending the correct 'Access-Control-Allow-Origin' header."
-                ) from e
-            raise e
+        response = await self.compat_layer.fetch(url, self.fetch_options)
+        return response.content
 
 
 def find_wheel(metadata: ProjectInfo, req: Requirement) -> WheelInfo:

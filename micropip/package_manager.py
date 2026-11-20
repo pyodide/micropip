@@ -8,10 +8,9 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 )
 
 from . import _mock_package, package_index
-from ._compat import CompatibilityLayer, get_default_compatibility_layer
+from ._compat import CompatibilityLayer, FetchOptions, get_default_compatibility_layer
 from ._vendored.packaging.src.packaging.markers import default_environment
 from .constants import FAQ_URLS
-from .freeze import freeze_lockfile
 from .installer import Installer
 from .logging import indent_log, setup_logging
 from .package import PackageDict, PackageMetadata
@@ -32,10 +31,10 @@ class Client:
         from micropip.compat import PyodideCompatibilityLayer
 
         class CachedCompatibilityLayer(PyodideCompatibilityLayer):
-            async def fetch_bytes(self, url, kwargs):
-                if url in cache:
-                    return cache[url]
-                return await super().fetch_bytes(url, kwargs)
+            async def fetch(self, url, options):
+                if url not in cache:
+                    cache[url] = await super().fetch(url, options)
+                return cache[url]
 
         client = micropip.Client(compat=CachedCompatibilityLayer())
         await client.install("snowballstemmer")
@@ -225,11 +224,6 @@ class Client:
             if isinstance(requirements, str):
                 requirements = [requirements]
 
-            fetch_kwargs = {}
-
-            if credentials:
-                fetch_kwargs["credentials"] = credentials
-
             # Note: getsitepackages is not available in a virtual environment...
             # See https://github.com/pypa/virtualenv/issues/228 (issue is closed but
             # problem is not fixed)
@@ -244,7 +238,7 @@ class Client:
                 keep_going=keep_going,
                 deps=deps,
                 pre=pre,
-                fetch_kwargs=fetch_kwargs,
+                fetch_options=FetchOptions(credentials=credentials),
                 verbose=verbose,
                 index_urls=index_urls,
                 constraints=constraints,
@@ -329,12 +323,14 @@ class Client:
                 source=source,
             )
 
+        lockfile = self.compat_layer.lockfile
         for name, pkg_source in self.compat_layer.loaded_packages().items():
             if name in packages:
                 continue
 
-            if name in self.compat_layer.lockfile_packages:
-                version = self.compat_layer.lockfile_packages[name]["version"]
+            locked_package = lockfile.get(name) if lockfile is not None else None
+            if locked_package is not None:
+                version = locked_package.version
                 source_ = "pyodide"
                 if pkg_source != "default channel":
                     # Pyodide package loaded from a custom URL
@@ -357,12 +353,18 @@ class Client:
 
         You can use your custom lock file by passing an appropriate url to the
         ``lockFileURL`` of :js:func:`~globalThis.loadPyodide`.
+
+        The output format is that of the compatibility layer's
+        :py:class:`~micropip.compat.LockFile`. Raises ``RuntimeError`` if the
+        compatibility layer has no lock file.
         """
-        return freeze_lockfile(
-            self.compat_layer.lockfile_packages,
-            self.compat_layer.lockfile_info,
-            self.compat_layer.lockfile_base_url,
-        )
+        lockfile = self.compat_layer.lockfile
+        if lockfile is None:
+            raise RuntimeError(
+                "micropip.freeze() needs a lock file, but the compatibility layer "
+                "does not provide one."
+            )
+        return lockfile.freeze()
 
     def add_mock_package(
         self,

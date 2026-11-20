@@ -60,7 +60,13 @@ class Installer:
         self, pyodide_packages: list[PackageMetadata]
     ) -> None:
         """Load packages from the lock file."""
-        await self.compat_layer.load_packages([pkg.name for pkg in pyodide_packages])
+        lockfile = self.compat_layer.lockfile
+        if lockfile is None:
+            # The resolver only picks packages from the lock file if there is one
+            raise RuntimeError(
+                "Micropip internal error: attempted to load packages without a lock file"
+            )
+        await lockfile.load([pkg.name for pkg in pyodide_packages])
 
     def uninstall(self, distributions: Iterable[Distribution]) -> None:
         """

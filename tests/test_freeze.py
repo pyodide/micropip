@@ -96,7 +96,7 @@ def test_freeze_lockfile_compat(
 
 
 def test_override_base_url():
-    from micropip.freeze import override_base_url
+    from micropip._compat._pyodide_lock import override_base_url
 
     lockfile_packages = {
         "pkg1": {"file_name": "pkg1-1.0.0-py3-none-any.whl"},

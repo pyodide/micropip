@@ -20,7 +20,23 @@ from dataclasses import dataclass, field
 from pytest_httpserver import HTTPServer
 from werkzeug import Request, Response
 
-CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
+
+def cors_headers(request: Request) -> dict[str, str]:
+    """
+    CORS headers that allow the request from any origin, including requests
+    with ``credentials: "include"``. Browsers reject ``Access-Control-Allow-Origin: *``
+    for those, so the request's origin is echoed back instead.
+    """
+    origin = request.headers.get("Origin")
+    if origin is None:
+        return {"Access-Control-Allow-Origin": "*"}
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Vary": "Origin",
+    }
+
+
 SIMPLE_JSON_CONTENT_TYPE = "application/vnd.pypi.simple.v1+json"
 
 
@@ -214,25 +230,26 @@ class FakePackageIndex:
         ).encode()
 
     def _handle(self, request: Request) -> Response:
+        headers = cors_headers(request)
         path = request.path.removeprefix(self._prefix)
 
         if path.startswith("/files/"):
             data = self._files.get(path.removeprefix("/files/"))
             if data is None:
-                return Response("Not found", status=404, headers=CORS_HEADERS)
+                return Response("Not found", status=404, headers=headers)
             return Response(
-                data, content_type="application/octet-stream", headers=CORS_HEADERS
+                data, content_type="application/octet-stream", headers=headers
             )
 
         if path.startswith("/simple/"):
             name = path.removeprefix("/simple/").strip("/")
             project = self._projects.get(canonicalize_name(name))
             if project is None:
-                return Response("Not found", status=404, headers=CORS_HEADERS)
+                return Response("Not found", status=404, headers=headers)
             return Response(
                 self._project_page(project),
                 content_type=SIMPLE_JSON_CONTENT_TYPE,
-                headers=CORS_HEADERS,
+                headers=headers,
             )
 
-        return Response("Not found", status=404, headers=CORS_HEADERS)
+        return Response("Not found", status=404, headers=headers)

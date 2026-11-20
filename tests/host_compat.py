@@ -8,33 +8,45 @@ Installing packages is not supported: tests that install packages should run
 in Pyodide.
 """
 
-from typing import Any
 from urllib.request import Request, urlopen
-from urllib.response import addinfourl
 
-from micropip._compat import CompatibilityLayer
+from micropip._compat import (
+    CompatibilityLayer,
+    FetchOptions,
+    FetchResponse,
+    LockedPackage,
+    LockFile,
+)
+
+
+class DictLockFile(LockFile):
+    """A lock file for host tests, backed by a dict of ``LockedPackage``."""
+
+    def __init__(self, packages: dict[str, LockedPackage]) -> None:
+        self.packages = packages
+
+    def get(self, name: str) -> LockedPackage | None:
+        return self.packages.get(name)
+
+    async def load(self, names: list[str]) -> None:
+        raise NotImplementedError("Loading packages is only tested in Pyodide.")
+
+    def freeze(self) -> str:
+        raise NotImplementedError("Freezing is only tested in Pyodide.")
 
 
 class HostCompatibilityLayer(CompatibilityLayer):
     def __init__(self) -> None:
-        self.lockfile_info: dict[str, str] = {}
-        self.lockfile_packages: dict[str, dict[str, Any]] = {}
-        self.lockfile_base_url = None
         self._loaded_packages: dict[str, str] = {}
 
-    @staticmethod
-    def _fetch(url: str, kwargs: dict[str, Any]) -> addinfourl:
-        return urlopen(Request(url, **kwargs))
-
-    async def fetch_bytes(self, url: str, kwargs: dict[str, Any]) -> bytes:
-        return self._fetch(url, kwargs=kwargs).read()
-
-    async def fetch_string_and_headers(
-        self, url: str, kwargs: dict[str, Any]
-    ) -> tuple[str, dict[str, str]]:
-        response = self._fetch(url, kwargs=kwargs)
-        headers = {k.lower(): v for k, v in response.headers.items()}
-        return response.read().decode(), headers
+    async def fetch(self, url: str, options: FetchOptions) -> FetchResponse:
+        # Only headers apply to urllib; credentials and extra are browser
+        # fetch() options.
+        with urlopen(Request(url, headers=options.headers)) as response:
+            return FetchResponse(
+                response.read(),
+                {k.lower(): v for k, v in response.headers.items()},
+            )
 
     async def install(
         self,
@@ -44,9 +56,6 @@ class HostCompatibilityLayer(CompatibilityLayer):
         metadata: dict[str, str] | None = None,
     ) -> None:
         raise NotImplementedError("Installing packages is only tested in Pyodide.")
-
-    async def load_packages(self, names: list[str]) -> None:
-        raise NotImplementedError("Loading packages is only tested in Pyodide.")
 
     def loaded_packages(self) -> dict[str, str]:
         return dict(self._loaded_packages)
