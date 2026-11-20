@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The error for a wheel built for another platform now links to the Pyodide docs
+  on building packages.
+  [#316](https://github.com/pyodide/micropip/pull/316)
+
 - `install` now raises a helpful `ValueError` when given a VCS URL
   (`git+`, `hg+`, `svn+`, `bzr+`) instead of an opaque parser error,
   explaining that micropip only installs prebuilt wheels.

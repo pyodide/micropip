@@ -126,13 +126,15 @@ def test_add_requirement_query_url(selenium_standalone_micropip, fake_index):
 
 @pytest.mark.asyncio
 async def test_install_non_pure_python_wheel(host_compat_layer):
+    from micropip.constants import FAQ_URLS
     from micropip.resolver import Resolver
 
     msg = "Wheel platform 'macosx_10_9_intel' is not compatible with Pyodide's platform"
-    with pytest.raises(ValueError, match=msg):
+    with pytest.raises(ValueError, match=msg) as exc_info:
         url = "http://a/scikit_learn-0.22.2.post1-cp35-cp35m-macosx_10_9_intel.whl"
         resolver = Resolver(host_compat_layer, keep_going=True)
         await resolver.add_requirement(url)
+    assert FAQ_URLS["building_packages"] in str(exc_info.value)
 
 
 @pytest.mark.parametrize(
