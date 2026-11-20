@@ -75,20 +75,13 @@ class Resolver:
         self.compat_layer = compat_layer
         self.request = request
 
-        # Options, from the request
+        # Environment markers to evaluate requirements with. A copy, since
+        # evaluating markers with extras updates it.
         self.ctx: dict[str, str] = dict(
             request.environment
             if request.environment is not None
             else default_environment()  # type: ignore[arg-type]
         )
-        self.keep_going = request.keep_going
-        self.deps = request.deps
-        self.pre = request.pre
-        self.reinstall = request.reinstall
-        self.fetch_options = request.fetch_options
-        self.index_urls = request.index_urls
-        self.constraints = request.constraints
-        self.verbose = request.verbose
 
         # State, filled while resolving
         self.ctx_extras: list[dict[str, str]] = []
@@ -102,14 +95,14 @@ class Resolver:
         # Only used if index_urls does not contain "PYODIDE", see _sources().
         # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
         self.search_pyodide_lock_first = (
-            self.index_urls == package_index.DEFAULT_INDEX_URLS
+            self.request.index_urls == package_index.DEFAULT_INDEX_URLS
         )
 
         self.constrained_reqs, messages = validate_constraints(
-            self.constraints, self.ctx
+            self.request.constraints, self.ctx
         )
 
-        if self.verbose and messages:
+        if self.request.verbose and messages:
             for constraint, msg in messages.items():
                 logger.info("Resolver: constraint %s discarded: %s", constraint, msg)
 
@@ -136,7 +129,7 @@ class Resolver:
             wheels=self.wheels,
             lockfile_packages=self.pyodide_packages,
             failed=self.failed,
-            reinstall=self.reinstall,
+            reinstall=self.request.reinstall,
             requested_by={
                 name: roots
                 for name, roots in self.requested_by.items()
@@ -257,7 +250,7 @@ class Resolver:
 
         req = constrain_requirement(req, self.constrained_reqs)
 
-        if self.pre:
+        if self.request.pre:
             req.specifier.prereleases = True
 
         if req.marker:
@@ -299,7 +292,7 @@ class Resolver:
         self._record_requested_by(req.name)
 
         satisfied, ver = self.check_version_satisfied(
-            req, allow_reinstall=self.reinstall
+            req, allow_reinstall=self.request.reinstall
         )
 
         if satisfied:
@@ -315,7 +308,7 @@ class Resolver:
             await self._add_requirement_from_sources(req)
         except ValueError:
             self.failed.append(req)
-            if not self.keep_going:
+            if not self.request.keep_going:
                 raise
 
     def _sources(self) -> "list[list[str | Source] | None]":
@@ -332,7 +325,9 @@ class Resolver:
         fallback.
         """
         index_urls = (
-            [self.index_urls] if isinstance(self.index_urls, str) else self.index_urls
+            [self.request.index_urls]
+            if isinstance(self.request.index_urls, str)
+            else self.request.index_urls
         )
 
         if not any(_is_lockfile_entry(entry) for entry in index_urls):
@@ -402,7 +397,7 @@ class Resolver:
                     name=req.name, version=locked_package.version, source="pyodide"
                 )
             )
-            if self.constraints and locked_package.depends:
+            if self.request.constraints and locked_package.depends:
                 await self.gather_requirements(locked_package.depends)
             return True
 
@@ -436,7 +431,7 @@ class Resolver:
         # Maybe while we were querying the index some other branch
         # added the wheel?
         satisfied, ver = self.check_version_satisfied(
-            req, allow_reinstall=self.reinstall
+            req, allow_reinstall=self.request.reinstall
         )
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
@@ -480,7 +475,7 @@ class Resolver:
         logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
         wheel_download_task = asyncio.create_task(self.download_wheel(wheel))
-        if self.deps:
+        if self.request.deps:
             # Case 1) If metadata file is available,
             #         we can gather requirements without waiting for the wheel to be downloaded.
             if wheel.pep658_metadata_available():
@@ -514,11 +509,11 @@ class Resolver:
 
         The sources are tried in order, and the first one that has the package
         is used. Raises ``ValueError`` if no source has the package.
-        If ``index_urls`` is not given, :attr:`index_urls` of the resolver is used.
+        If ``index_urls`` is not given, ``request.index_urls`` is used.
         The lock file (``"PYODIDE"``) is skipped.
         """
         if index_urls is None:
-            index_urls = self.index_urls
+            index_urls = self.request.index_urls
         if isinstance(index_urls, str):
             index_urls = [index_urls]
 
@@ -544,14 +539,14 @@ class Resolver:
         self, url: str, headers: dict[str, str] | None = None
     ) -> FetchResponse:
         """
-        Fetch ``url`` through the compatibility layer with :attr:`fetch_options`.
+        Fetch ``url`` through the compatibility layer with ``request.fetch_options``.
 
-        ``headers`` are added to the request; headers in :attr:`fetch_options`
+        ``headers`` are added to the request; headers in ``request.fetch_options``
         take precedence. Passed to :py:meth:`~micropip.sources.Source.get_project`.
         """
         options = replace(
-            self.fetch_options,
-            headers={**(headers or {}), **self.fetch_options.headers},
+            self.request.fetch_options,
+            headers={**(headers or {}), **self.request.fetch_options.headers},
         )
         return await self.compat_layer.fetch(url, options)
 
@@ -575,7 +570,7 @@ class Resolver:
 
     async def fetch_bytes(self, url: str, wheel: WheelInfo) -> bytes:
         """Fetch ``url``, a file that belongs to ``wheel``."""
-        response = await self.compat_layer.fetch(url, self.fetch_options)
+        response = await self.compat_layer.fetch(url, self.request.fetch_options)
         return response.content
 
 
