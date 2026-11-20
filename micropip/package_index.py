@@ -131,8 +131,9 @@ class ProjectPage:
         files: list[ProjectFile] = []
         versions: list[str] = []
         for version_str, release_files in data_dict["releases"].items():
-            # Skip empty releases
-            if not release_files:
+            # Skip empty releases, and releases whose version is not PEP 440
+            # compliant (even if their files have valid versions)
+            if not release_files or not _is_valid_pep440_version(version_str)[1]:
                 continue
             versions.append(version_str)
             files.extend(ProjectFile.from_dict(f, base_url) for f in release_files)

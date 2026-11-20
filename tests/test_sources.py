@@ -59,6 +59,27 @@ def test_project_page_from_json_api_relative_urls_and_name():
     ]
 
 
+def test_project_page_from_json_api_skips_invalid_release_versions():
+    # A release with a non-PEP 440 version is skipped as a whole,
+    # even if the version in its file names is valid.
+    data = {
+        "releases": {
+            "not-a-version": [
+                {
+                    "filename": "pkg-1.0.0-py3-none-any.whl",
+                    "url": "https://example.com/pkg-1.0.0-py3-none-any.whl",
+                    "digests": {"sha256": "abc"},
+                }
+            ],
+        }
+    }
+
+    page = ProjectPage.from_json_api(data, name="pkg")
+
+    assert page.versions == []
+    assert page.files == []
+
+
 def test_project_page_from_response_unsupported_content_type():
     with pytest.raises(ValueError, match="unsupported content type: text/plain"):
         ProjectPage.from_response(
