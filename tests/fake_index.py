@@ -124,6 +124,7 @@ class FakeWheel:
     content: bytes
     metadata: bytes
     yanked: bool | str = False
+    pep658: bool = True
 
 
 @dataclass
@@ -172,6 +173,7 @@ class FakePackageIndex:
         top_level: list[str] | None = None,
         files: dict[str, str] | None = None,
         yanked: bool | str = False,
+        pep658: bool = True,
     ) -> FakeWheel:
         """
         Build a wheel and publish it on the index.
@@ -197,6 +199,7 @@ class FakePackageIndex:
             content=content,
             metadata=metadata,
             yanked=yanked,
+            pep658=pep658,
         )
 
         project = self._projects.setdefault(
@@ -204,7 +207,8 @@ class FakePackageIndex:
         )
         project.wheels[filename] = wheel
         self._files[filename] = content
-        self._files[f"{filename}.metadata"] = metadata
+        if pep658:
+            self._files[f"{filename}.metadata"] = metadata
         return wheel
 
     def _project_page(self, project: FakeProject) -> bytes:
@@ -213,7 +217,9 @@ class FakePackageIndex:
                 "filename": wheel.filename,
                 "url": wheel.url,
                 "hashes": {"sha256": _sha256(wheel.content)},
-                "core-metadata": {"sha256": _sha256(wheel.metadata)},
+                "core-metadata": (
+                    {"sha256": _sha256(wheel.metadata)} if wheel.pep658 else False
+                ),
                 "size": len(wheel.content),
                 "yanked": wheel.yanked,
             }

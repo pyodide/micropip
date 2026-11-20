@@ -123,6 +123,7 @@ class Resolver:
             lockfile_packages=self.pyodide_packages,
             failed=self.failed,
             reinstall=self.request.reinstall,
+            fetch_options=self.request.fetch_options,
             requested_by={
                 name: roots
                 for name, roots in self.requested_by.items()
@@ -402,7 +403,12 @@ class Resolver:
         specifier: str = "",
     ) -> None:
         """
-        Download a wheel, and add its dependencies to the resolution.
+        Add a wheel and its dependencies to the resolution.
+
+        Only the wheel's metadata is fetched (PEP 658) when the index provides
+        it. Otherwise the wheel itself is downloaded to read its metadata, and
+        kept, so it isn't downloaded again when it is installed. With
+        ``deps=False``, nothing is downloaded here.
 
         Parameters
         ----------
@@ -427,32 +433,25 @@ class Resolver:
         )
 
         logger.info("Collecting %s%s", wheel.name, specifier)
-        logger.info("  Downloading %s", wheel.url.split("/")[-1])
 
-        wheel_download_task = asyncio.create_task(self.download_wheel(wheel))
         if self.request.deps:
-            # Case 1) If metadata file is available,
-            #         we can gather requirements without waiting for the wheel to be downloaded.
+            metadata_fetched = False
             if wheel.pep658_metadata_available():
                 try:
                     await self.download_wheel_metadata(wheel)
-                except OSError:
-                    # If something goes wrong while downloading the metadata,
-                    # we have to wait for the wheel to be downloaded.
-                    await wheel_download_task
+                    metadata_fetched = True
+                except (OSError, ValueError) as e:
+                    # The compatibility layer raises ValueError for most fetch
+                    # errors (with a hint about CORS). Fall back to the wheel.
+                    logger.debug(
+                        "Couldn't fetch the metadata of %s, downloading the wheel: %r",
+                        wheel.filename,
+                        e,
+                    )
+            if not metadata_fetched:
+                await self.download_wheel(wheel)
 
-                await asyncio.gather(
-                    self.gather_requirements(wheel.requires(extras)),
-                    wheel_download_task,
-                )
-
-            # Case 2) If metadata file is not available,
-            #         we have to wait for the wheel to be downloaded.
-            else:
-                await wheel_download_task
-                await self.gather_requirements(wheel.requires(extras))
-        else:
-            await wheel_download_task
+            await self.gather_requirements(wheel.requires(extras))
 
         self.wheels.append(wheel)
 
@@ -514,6 +513,7 @@ class Resolver:
         if wheel.downloaded:
             return
 
+        logger.info("  Downloading %s", wheel.filename)
         wheel.set_data(await self.fetch_bytes(wheel.url, wheel))
 
     async def download_wheel_metadata(self, wheel: WheelInfo) -> None:
