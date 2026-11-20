@@ -25,7 +25,7 @@ from .constants import FAQ_URLS, YANKED_WARNING_MESSAGE
 from .package import PackageMetadata
 from .package_index import ProjectInfo
 from .resolution import Resolution, ResolveRequest
-from .sources import LockFileSource, Source, to_source
+from .sources import LockFileSource, Source, ordered_sources, to_source
 from .wheelinfo import WheelInfo
 
 logger = logging.getLogger("micropip")
@@ -90,13 +90,6 @@ class Resolver:
         self.pyodide_packages: list[PackageMetadata] = []
         self.failed: list[Requirement] = []
         self.requested_by: dict[str, list[str]] = {}
-
-        # With the default index (PyPI), pyodide-lock.json has to be searched first.
-        # Only used if index_urls does not contain "PYODIDE", see _sources().
-        # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
-        self.search_pyodide_lock_first = (
-            self.request.index_urls == package_index.DEFAULT_INDEX_URLS
-        )
 
         self.constrained_reqs, messages = validate_constraints(
             self.request.constraints, self.ctx
@@ -311,53 +304,15 @@ class Resolver:
             if not self.request.keep_going:
                 raise
 
-    def _sources(self) -> "list[list[str | Source] | None]":
-        """
-        Split ``index_urls`` into the ordered list of sources to search.
-
-        ``None`` stands for the lock file, and a list of entries (URLs or
-        :py:class:`~micropip.sources.Source` objects) for sources that are
-        queried together by :meth:`query_package`.
-
-        If ``index_urls`` contains ``"PYODIDE"`` (or a ``LockFileSource``), the
-        lock file is searched at that position. Otherwise, the lock file is
-        searched before the default index (PyPI), or after custom indexes as a
-        fallback.
-        """
-        index_urls = (
-            [self.request.index_urls]
-            if isinstance(self.request.index_urls, str)
-            else self.request.index_urls
-        )
-
-        if not any(_is_lockfile_entry(entry) for entry in index_urls):
-            if self.search_pyodide_lock_first:
-                return [None, list(index_urls)]
-            return [list(index_urls), None]
-
-        sources: list[list[str | Source] | None] = []
-        entries: list[str | Source] = []
-        for entry in index_urls:
-            if not _is_lockfile_entry(entry):
-                entries.append(entry)
-                continue
-            if entries:
-                sources.append(entries)
-                entries = []
-            sources.append(None)
-        if entries:
-            sources.append(entries)
-        return sources
-
     async def _add_requirement_from_sources(self, req: Requirement) -> None:
         """
-        Search the sources from :meth:`_sources` in order and add the requirement
-        from the first one that has a matching package. Raise ``ValueError`` if
-        none of them has it.
+        Search the sources from :py:func:`~micropip.sources.ordered_sources` in
+        order and add the requirement from the first one that has a matching
+        package. Raise ``ValueError`` if none of them has it.
         """
         error: ValueError | None = None
-        for urls in self._sources():
-            if urls is None:
+        for item in ordered_sources(self.request.index_urls):
+            if isinstance(item, LockFileSource):
                 if await self._add_requirement_from_pyodide_lock(req):
                     logger.debug("Resolver: package found in lock file: %r", req)
                     return
@@ -365,10 +320,10 @@ class Resolver:
                 continue
 
             try:
-                await self._add_requirement_from_package_index(req, urls)
+                await self._add_requirement_from_package_index(req, list(item))
                 return
             except ValueError as e:
-                logger.debug("Resolver: package %r not found in %r", req, urls)
+                logger.debug("Resolver: package %r not found in %r", req, item)
                 error = e
 
         if error is not None:

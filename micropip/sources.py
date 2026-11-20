@@ -35,6 +35,7 @@ from collections.abc import Awaitable, Callable
 
 from ._compat import FetchResponse
 from .package_index import (
+    DEFAULT_INDEX_URLS,
     PYODIDE,
     PYPI,
     PYPI_URL,
@@ -130,8 +131,55 @@ def to_source(entry: "str | Source") -> Source:
     return IndexSource(entry)
 
 
+def ordered_sources(
+    index_urls: "list[str | Source] | str",
+) -> "list[list[Source] | LockFileSource]":
+    """
+    The sources to search for a package, in order, for the given ``index_urls``.
+
+    Each item is either the :py:class:`LockFileSource`, or a group of sources
+    searched together: the first source in a group that has the project is
+    used. If the lock file or a group has no version that satisfies the
+    requirement, the search moves on to the next item.
+
+    - ``"PYODIDE"`` (or a :py:class:`LockFileSource`) puts the lock file at
+      that position.
+    - Otherwise, the lock file comes first if ``index_urls`` is the default
+      (PyPI), and last (as a fallback) if it is customized.
+
+    For example, ``["PYODIDE", A, "PYPI"]`` gives ``[LockFileSource(), [A, PyPI]]``
+    and ``[A, "PYODIDE", B, C]`` gives ``[[A], LockFileSource(), [B, C]]``.
+    """
+    if isinstance(index_urls, str):
+        index_urls = [index_urls]
+
+    sources = [to_source(entry) for entry in index_urls]
+
+    if not any(isinstance(source, LockFileSource) for source in sources):
+        # With the default index (PyPI), the lock file has to be searched first.
+        # TODO: when PyPI starts to support hosting WASM wheels, this might be deleted.
+        if index_urls == DEFAULT_INDEX_URLS:
+            return [LockFileSource(), sources]
+        return [sources, LockFileSource()]
+
+    result: list[list[Source] | LockFileSource] = []
+    group: list[Source] = []
+    for source in sources:
+        if not isinstance(source, LockFileSource):
+            group.append(source)
+            continue
+        if group:
+            result.append(group)
+            group = []
+        result.append(source)
+    if group:
+        result.append(group)
+    return result
+
+
 __all__ = [
     "Fetch",
+    "ordered_sources",
     "IndexSource",
     "LockFileSource",
     "ProjectFile",

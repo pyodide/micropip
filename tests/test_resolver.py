@@ -349,37 +349,6 @@ def test_last_version_and_best_tag_from_pypi(
     assert str(wheel.version) == new_version
 
 
-def test_search_pyodide_lock_first(host_compat_layer):
-    from micropip import package_index
-    from micropip.resolver import Resolver
-
-    t = Resolver(
-        host_compat_layer,
-        ResolveRequest(
-            environment={},
-            keep_going=True,
-            deps=True,
-            pre=True,
-            verbose=False,
-            index_urls=package_index.DEFAULT_INDEX_URLS,
-        ),
-    )
-    assert t.search_pyodide_lock_first is True
-
-    t = Resolver(
-        host_compat_layer,
-        ResolveRequest(
-            environment={},
-            keep_going=True,
-            deps=True,
-            pre=True,
-            verbose=False,
-            index_urls=["https://my.custom.index.com"],
-        ),
-    )
-    assert t.search_pyodide_lock_first is False
-
-
 def test_index_url_priority(selenium_standalone_micropip, fake_index):
     # If index_urls are provided, packages should be searched in the
     # index_urls first, before searching in the Pyodide lock file.
@@ -439,29 +408,37 @@ def test_shared_requirement_added_once(
 # https://github.com/pyodide/micropip/issues/147
 
 
+def _expected_sources(expected):
+    """Write expected ordered_sources() results with None for the lock file and URLs for indexes."""
+    from micropip.sources import IndexSource, LockFileSource
+
+    return [
+        LockFileSource() if item is None else [IndexSource(url) for url in item]
+        for item in expected
+    ]
+
+
 @pytest.mark.parametrize(
-    "index_urls,search_lock_first,expected",
+    "index_urls,expected",
     [
         # without "PYODIDE": lock file first with the default index,
         # and as a fallback after custom indexes
-        (["https://pypi.org/simple"], True, [None, ["https://pypi.org/simple"]]),
-        (["A", "B"], False, [["A", "B"], None]),
-        ("A", False, [["A"], None]),
-        ([], False, [[], None]),
+        (["https://pypi.org/simple"], [None, ["https://pypi.org/simple"]]),
+        (["A", "B"], [["A", "B"], None]),
+        ("A", [["A"], None]),
+        ([], [[], None]),
         # with "PYODIDE": the lock file is searched at that position
-        (["PYODIDE"], False, [None]),
-        ("PYODIDE", False, [None]),
-        (["PYODIDE", "A", "PYPI"], False, [None, ["A", "PYPI"]]),
-        (["A", "PYODIDE"], False, [["A"], None]),
-        (["A", "PYODIDE", "B", "C"], False, [["A"], None, ["B", "C"]]),
+        (["PYODIDE"], [None]),
+        ("PYODIDE", [None]),
+        (["PYODIDE", "A", "PYPI"], [None, ["A", "https://pypi.org/simple"]]),
+        (["A", "PYODIDE"], [["A"], None]),
+        (["A", "PYODIDE", "B", "C"], [["A"], None, ["B", "C"]]),
     ],
 )
-def test_sources(host_compat_layer, index_urls, search_lock_first, expected):
-    from micropip.resolver import Resolver
+def test_ordered_sources(index_urls, expected):
+    from micropip.sources import ordered_sources
 
-    resolver = Resolver(host_compat_layer, ResolveRequest(index_urls=index_urls))
-    assert resolver.search_pyodide_lock_first is search_lock_first
-    assert resolver._sources() == expected
+    assert ordered_sources(index_urls) == _expected_sources(expected)
 
 
 def test_project_urls_skips_pyodide():
