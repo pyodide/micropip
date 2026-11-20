@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator, Iterable
-from contextlib import aclosing
 from importlib.metadata import Distribution
 from pathlib import Path
 
@@ -32,30 +31,15 @@ class Installer:
         wheels: list[WheelInfo],
         pyodide_packages: list[PackageMetadata],
         target: Path,
-    ) -> None:
-        """
-        Install downloaded ``wheels`` into ``target``, and load ``pyodide_packages``.
-
-        Raises the first error. Wheels that are already being installed keep
-        going, but the lock file packages are not loaded after a wheel fails.
-        """
-        async with aclosing(
-            self.install_iter(wheels, pyodide_packages, target)
-        ) as results:
-            async for result in results:
-                if result.error is not None:
-                    raise result.error
-
-    async def install_iter(
-        self,
-        wheels: list[WheelInfo],
-        pyodide_packages: list[PackageMetadata],
-        target: Path,
     ) -> AsyncGenerator[InstallResult, None]:
         """
-        Like :meth:`install`, but yield the result of each package as soon as it
-        is known, instead of raising. Wheels are installed concurrently and
-        yielded as they finish; then the lock file packages are loaded together.
+        Install downloaded ``wheels`` into ``target``, and load ``pyodide_packages``
+        from the lock file.
+
+        Yield the result of each package as soon as it is known; failures are
+        reported in the results, not raised. Wheels are installed concurrently
+        and yielded as they finish, then the lock file packages are loaded
+        together.
         """
 
         async def install_one(wheel: WheelInfo) -> InstallResult:

@@ -367,7 +367,7 @@ class Client:
 
             installed = []
             try:
-                async for result in installer.install_iter(
+                async for result in installer.install(
                     resolution.wheels, resolution.lockfile_packages, wheel_base
                 ):
                     if result.ok:
