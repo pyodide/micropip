@@ -2,6 +2,7 @@ import pytest
 from conftest import TEST_PYPI_RESPONSE_DIR
 
 import micropip.package_index as package_index
+from micropip.resolution import ResolveRequest
 from micropip.resolver import Resolver
 
 
@@ -144,16 +145,16 @@ async def test_query_package(mock_fixture, pkg1, pkg2, request, host_compat_laye
         [pkg1_index_url],
         [pkg2_index_url, pkg1_index_url],
     ):
-        resolver = Resolver(host_compat_layer, index_urls=_index_urls)
+        resolver = Resolver(host_compat_layer, ResolveRequest(index_urls=_index_urls))
         project_info = await resolver.query_package(pkg1)
 
         assert project_info.name == pkg1
         assert project_info.releases
 
     with pytest.raises(ValueError, match="Can't fetch metadata"):
-        await Resolver(host_compat_layer, index_urls=[pkg2_index_url]).query_package(
-            pkg1
-        )
+        await Resolver(
+            host_compat_layer, ResolveRequest(index_urls=[pkg2_index_url])
+        ).query_package(pkg1)
 
 
 @pytest.mark.parametrize(
