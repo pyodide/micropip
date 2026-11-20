@@ -171,6 +171,7 @@ def test_custom_lockfile(selenium_standalone_micropip):
 
             async def load(self, names):
                 self.loaded.extend(names)
+                return names
 
             def freeze(self):
                 return "custom lock file"

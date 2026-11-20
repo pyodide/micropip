@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from pyodide.ffi import create_proxy, to_js
 from pyodide.http import pyfetch
 
+from .._vendored.packaging.src.packaging.utils import canonicalize_name
 from ._pyodide_lock import freeze_lockfile
 from .compatibility_layer import (
     CompatibilityLayer,
@@ -60,16 +61,40 @@ class PyodideLockFile(LockFile):
             depends=list(package.get("depends", [])),
         )
 
-    async def load(self, names: list[str]) -> None:
-        await loadPackage(
-            to_js(names),
-            to_js(
-                {
-                    "messageCallback": _message_callback,
-                    "errorCallback": _error_callback,
-                }
-            ),
-        )
+    async def load(self, names: list[str]) -> list[str]:
+        # What is loaded is decided by checking pyodide.loadedPackages after
+        # the call, so this works whichever way loadPackage reports failures:
+        # - Pyodide currently doesn't raise when a package fails to load (it
+        #   only calls errorCallback), and
+        # - its return value only lists packages loaded by this call, not the
+        #   ones that were already loaded.
+        # If a later Pyodide raises instead, the error is logged and the
+        # packages that did load are still reported as loaded.
+        error: Exception | None = None
+        try:
+            await loadPackage(
+                to_js(names),
+                to_js(
+                    {
+                        "messageCallback": _message_callback,
+                        "errorCallback": _error_callback,
+                    }
+                ),
+            )
+        except Exception as e:
+            error = e
+
+        loaded_names = {canonicalize_name(name) for name in loadedPackages.to_py()}
+        loaded = [name for name in names if canonicalize_name(name) in loaded_names]
+
+        if error is not None:
+            if len(loaded) == len(names):
+                # Every requested package is loaded, so the error is about
+                # something else (e.g. a dependency): don't hide it.
+                raise error
+            logger.warning("Error while loading packages from the lock file: %s", error)
+
+        return loaded
 
     def freeze(self) -> str:
         return freeze_lockfile(self.packages, self.info, self.base_url)

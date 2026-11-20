@@ -28,7 +28,7 @@ class DictLockFile(LockFile):
     def get(self, name: str) -> LockedPackage | None:
         return self.packages.get(name)
 
-    async def load(self, names: list[str]) -> None:
+    async def load(self, names: list[str]) -> list[str]:
         raise NotImplementedError("Loading packages is only tested in Pyodide.")
 
     def freeze(self) -> str:

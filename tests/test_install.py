@@ -464,6 +464,7 @@ def test_load_package_errors_logged(selenium_standalone_micropip):
         import logging
 
         import pyodide_js
+        import pytest
 
         import micropip
 
@@ -479,7 +480,9 @@ def test_load_package_errors_logged(selenium_standalone_micropip):
         logger = logging.getLogger("micropip")
         logger.addHandler(handler)
         try:
-            await micropip.install("regex")
+            # loadPackage doesn't raise, but micropip checks what got loaded
+            with pytest.raises(RuntimeError, match="Failed to load 'regex'"):
+                await micropip.install("regex")
         finally:
             logger.removeHandler(handler)
 
@@ -487,6 +490,7 @@ def test_load_package_errors_logged(selenium_standalone_micropip):
             logging.WARNING,
             "The following error occurred while loading regex:",
         ) in records
+        assert not any("Successfully installed" in msg for _, msg in records)
         assert all(levelno >= logging.WARNING for levelno, _ in records)
 
     selenium.clean_logs()

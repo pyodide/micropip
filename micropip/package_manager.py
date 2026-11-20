@@ -1,6 +1,8 @@
 import builtins
 import importlib
 import importlib.metadata
+from collections.abc import AsyncGenerator
+from contextlib import aclosing
 from importlib.metadata import Distribution
 from pathlib import Path
 from typing import (  # noqa: UP035 List import is necessary due to the `list` method
@@ -14,6 +16,7 @@ from .constants import FAQ_URLS
 from .installer import Installer
 from .logging import indent_log, setup_logging
 from .package import PackageDict, PackageMetadata
+from .resolution import InstallResult, Resolution
 from .resolver import Resolver
 from .sources import Source
 
@@ -219,27 +222,84 @@ class Client:
         >>> await micropip.install("numpy>=2.2.0")
         """
 
-        with setup_logging().ctx_level(verbose) as logger:
+        with setup_logging().ctx_level(verbose):
+            resolution = await self.resolve(
+                requirements,
+                keep_going=keep_going,
+                deps=deps,
+                credentials=credentials,
+                pre=pre,
+                index_urls=index_urls,
+                constraints=constraints,
+                reinstall=reinstall,
+                verbose=verbose,
+            )
+
+            if resolution.failed:
+                failed_requirements = ", ".join(
+                    [f"'{req}'" for req in resolution.failed]
+                )
+                raise ValueError(
+                    f"Can't find a pure Python 3 wheel for: {failed_requirements}\n"
+                    f"See: {FAQ_URLS['cant_find_wheel']}\n"
+                )
+
+            async with aclosing(
+                self.install_resolution(resolution, verbose=verbose)
+            ) as results:
+                async for result in results:
+                    if result.error is not None:
+                        raise result.error
+
+    async def resolve(
+        self,
+        requirements: str | builtins.list[str],
+        keep_going: bool = False,
+        deps: bool = True,
+        credentials: str | None = None,
+        pre: bool = False,
+        index_urls: "builtins.list[str | Source] | str | None" = None,
+        *,
+        constraints: builtins.list[str] | None = None,
+        reinstall: bool = False,
+        verbose: bool | int | None = None,
+    ) -> Resolution:
+        """Find the packages to install for ``requirements``, without installing them.
+
+        Takes the same arguments as :py:meth:`install`, which is
+        :py:meth:`resolve` followed by :py:meth:`install_resolution`.
+
+        With ``keep_going=True``, requirements that can't be resolved are listed
+        in :py:attr:`Resolution.failed <micropip.resolution.Resolution.failed>`
+        instead of raising, and the other packages can still be installed.
+
+        Wheels are downloaded while resolving.
+
+        Examples
+        --------
+        Install what can be installed, and report the rest:
+
+        .. code-block:: python
+
+            resolution = await client.resolve(["pkg-a", "pkg-b"], keep_going=True)
+            for req in resolution.failed:
+                print(f"Can't install {req}")
+            async for result in client.install_resolution(resolution):
+                print(result.name, "ok" if result.ok else result.error)
+        """
+        with setup_logging().ctx_level(verbose):
             if index_urls is None:
                 index_urls = self.index_urls
 
             if constraints is None:
                 constraints = self.constraints
 
-            ctx = default_environment()
             if isinstance(requirements, str):
                 requirements = [requirements]
 
-            # Note: getsitepackages is not available in a virtual environment...
-            # See https://github.com/pypa/virtualenv/issues/228 (issue is closed but
-            # problem is not fixed)
-            from site import getsitepackages
-
-            wheel_base = Path(getsitepackages()[0])
-
             resolver = self.resolver_class(
                 compat_layer=self.compat_layer,
-                ctx=ctx,  # type: ignore[arg-type]
+                ctx=default_environment(),  # type: ignore[arg-type]
                 ctx_extras=[],
                 keep_going=keep_going,
                 deps=deps,
@@ -252,30 +312,52 @@ class Client:
             )
             await resolver.gather_requirements(requirements)
 
-            if resolver.failed:
-                failed_requirements = ", ".join([f"'{req}'" for req in resolver.failed])
-                raise ValueError(
-                    f"Can't find a pure Python 3 wheel for: {failed_requirements}\n"
-                    f"See: {FAQ_URLS['cant_find_wheel']}\n"
-                )
+            return Resolution(
+                wheels=resolver.wheels,
+                lockfile_packages=resolver.pyodide_packages,
+                failed=resolver.failed,
+                reinstall=reinstall,
+            )
 
-            pyodide_packages, wheels = resolver.pyodide_packages, resolver.wheels
+    async def install_resolution(
+        self, resolution: Resolution, *, verbose: bool | int | None = None
+    ) -> AsyncGenerator[InstallResult, None]:
+        """Install the packages of a :py:class:`~micropip.resolution.Resolution`.
 
-            packages_all = [pkg.name for pkg in wheels + pyodide_packages]
+        An async iterator that yields an
+        :py:class:`~micropip.resolution.InstallResult` for each package as soon as
+        it is installed (or fails). Failures are reported in the results instead
+        of raising, so the other packages are still installed. Wheels are
+        installed concurrently, then the lock file packages are loaded together.
 
-            distributions = search_installed_packages(packages_all)
-            # This check is redundant because the distributions will always be an empty list when reinstall==False
-            # (no installed packages will be returned from the resolver)
-            # But just in case.
+        Failed requirements in ``resolution.failed`` are skipped.
+
+        Parameters
+        ----------
+        resolution
+            What to install, from :py:meth:`resolve`.
+
+        verbose
+            Print more information about the process.
+        """
+        with setup_logging().ctx_level(verbose) as logger:
+            # Note: getsitepackages is not available in a virtual environment...
+            # See https://github.com/pypa/virtualenv/issues/228 (issue is closed but
+            # problem is not fixed)
+            from site import getsitepackages
+
+            wheel_base = Path(getsitepackages()[0])
             installer = self._installer()
-            if reinstall:
+            packages_all = [pkg.name for pkg in resolution.packages]
+
+            if resolution.reinstall:
                 with indent_log():
-                    installer.uninstall(distributions)
+                    installer.uninstall(search_installed_packages(packages_all))
 
             logger.debug(
                 "Installing packages %r and wheels %r ",
-                resolver.pyodide_packages,
-                [w.filename for w in resolver.wheels],
+                resolution.lockfile_packages,
+                [w.filename for w in resolution.wheels],
             )
 
             if packages_all:
@@ -283,16 +365,19 @@ class Client:
                     "Installing collected packages: %s", ", ".join(packages_all)
                 )
 
-            await installer.install(wheels, pyodide_packages, wheel_base)
+            installed = []
+            try:
+                async for result in installer.install(
+                    resolution.wheels, resolution.lockfile_packages, wheel_base
+                ):
+                    if result.ok:
+                        installed.append(f"{result.name}-{result.version}")
+                    yield result
+            finally:
+                importlib.invalidate_caches()
 
-            packages = [
-                f"{pkg.name}-{pkg.version}" for pkg in pyodide_packages + wheels
-            ]
-
-            if packages:
-                logger.info("Successfully installed %s", ", ".join(packages))
-
-            importlib.invalidate_caches()
+            if installed:
+                logger.info("Successfully installed %s", ", ".join(installed))
 
     def list_packages(self) -> PackageDict:
         """Get the dictionary of installed packages.
