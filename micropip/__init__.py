@@ -12,7 +12,8 @@ The :py:class:`Client` used by the module-level functions (``micropip.install``,
 change ``default_client.index_urls`` or swap its ``resolver_class``.
 """
 
-# The name used before default_client was public. Kept for downstream projects.
+# The private name used before default_client was public. Some downstream code
+# still imports it (e.g. to change index_urls), so keep it as an alias.
 _package_manager_singleton = default_client
 
 install = default_client.install
