@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Generator
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 from ._utils import is_package_compatible, parse_version
 from ._vendored.mousebender.simple import from_project_details_html
@@ -54,12 +54,14 @@ class ProjectFile:
         file entry. A relative ``url`` is resolved against ``base_url``.
         """
         url = data["url"]
-        if not urlparse(url).netloc:
+        # A cheap check instead of urlparse(): this runs for every file of a
+        # project (thousands for e.g. numpy), and most URLs are absolute.
+        if base_url and "://" not in url:
             url = urljoin(base_url, url)
         return cls(
             filename=data["filename"],
             url=url,
-            hashes=dict(data.get("hashes") or data.get("digests") or {}),
+            hashes=data.get("hashes") or data.get("digests") or {},
             core_metadata=data.get("core-metadata")
             or data.get("data-dist-info-metadata"),
             yanked=data.get("yanked", False),
