@@ -634,3 +634,36 @@ def test_pyodide_index_last_selenium(selenium_standalone_micropip, fake_index):
         assert pkg.version == "9999.0.0"
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+@pytest.mark.asyncio
+async def test_lockfile_package_requires_pep508(host_compat_layer, fake_index):
+    # LockedPackage.requires are full PEP 508 requirements: specifiers and
+    # markers are honored. (The resolver follows them when constraints are set.)
+    from host_compat import DictLockFile
+
+    from micropip.compat import LockedPackage
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("dep", "1.0.0")
+    fake_index.add_pkg_version("dep", "2.0.0")
+    host_compat_layer.lockfile = DictLockFile(
+        {
+            "locked": LockedPackage(
+                name="locked",
+                version="1.0.0",
+                requires=["dep<2", "never-needed; python_version < '3'"],
+            )
+        }
+    )
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(
+            index_urls=["PYODIDE", fake_index.url],
+            constraints=["unrelated==1.0"],
+        ),
+    )
+    await resolver.gather_requirements(["locked"])
+
+    assert [p.name for p in resolver.pyodide_packages] == ["locked"]
+    assert [(w.name, str(w.version)) for w in resolver.wheels] == [("dep", "1.0.0")]
