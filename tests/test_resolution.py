@@ -142,3 +142,46 @@ def test_install_resolution_reinstall(selenium_standalone_micropip, fake_index):
         assert importlib.metadata.version("dummy") == "2.0.0"
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+def test_lockfile_load_when_loadpackage_raises(selenium_standalone_micropip):
+    """
+    Pyodide's loadPackage currently doesn't raise when a package fails to load.
+    If a later version does, packages that loaded are still reported as loaded.
+    This wraps the real loadPackage to behave like that.
+    """
+
+    @run_in_pyodide
+    async def run(selenium):
+        import pyodide_js
+        import pytest
+
+        import micropip
+        from micropip._compat import _compat_in_pyodide
+
+        real_load_package = _compat_in_pyodide.loadPackage
+
+        async def raising_load_package(names, options):
+            await real_load_package(names, options)
+            missing = [n for n in names if not hasattr(pyodide_js.loadedPackages, n)]
+            raise RuntimeError(f"failed to load {missing}")
+
+        _compat_in_pyodide.loadPackage = raising_load_package
+        try:
+            pyodide_js._api.lockfile_packages.regex.file_name = "/nonexistent/regex.whl"
+
+            client = micropip.Client()
+            resolution = await client.resolve(["regex", "affine"])
+            results = {r.name: r async for r in client.install_resolution(resolution)}
+
+            assert results["affine"].ok
+            assert isinstance(results["regex"].error, RuntimeError)
+
+            # The error is raised as is when every requested package is loaded
+            # (it's about something else), rather than being hidden
+            with pytest.raises(RuntimeError, match=r"failed to load \[\]"):
+                await client.install("toolz")
+        finally:
+            _compat_in_pyodide.loadPackage = real_load_package
+
+    run(selenium_standalone_micropip)
