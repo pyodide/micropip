@@ -18,6 +18,7 @@ from ._vendored.packaging.src.packaging.utils import (
     parse_wheel_filename as parse_wheel_filename_orig,
 )
 from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
+from .constants import FAQ_URLS
 
 
 def get_dist_info(dist: Distribution) -> Path:
@@ -162,7 +163,8 @@ def check_compatible(filename: str) -> None:
     if "emscripten" not in tag.platform:
         raise ValueError(
             f"Wheel platform '{tag.platform}' is not compatible with "
-            f"Pyodide's platform '{get_platform()}'"
+            f"Pyodide's platform '{get_platform()}'.\n"
+            f"See {FAQ_URLS['building_packages']} for how to build a wheel for Pyodide."
         )
 
     def platform_to_version(platform: str) -> str:
