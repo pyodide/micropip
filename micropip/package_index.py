@@ -15,7 +15,11 @@ from ._vendored.packaging.src.packaging.version import InvalidVersion, Version
 from .types import DistributionMetadata
 from .wheelinfo import WheelInfo
 
+# Special values that can be used in ``index_urls``.
+# "PYPI" is replaced with the PyPI URL.
 PYPI = "PYPI"
+# "PYODIDE" means "look up the package in the Pyodide lock file at this position".
+PYODIDE = "PYODIDE"
 PYPI_URL = "https://pypi.org/simple"
 DEFAULT_INDEX_URLS = [PYPI_URL]
 
@@ -269,12 +273,15 @@ def project_urls(name: str, index_urls: list[str] | str) -> list[str]:
 
     If an index URL contains the ``{package_name}`` placeholder, it is replaced
     with the package name. Otherwise, the package name is appended to the URL.
+    The special value ``"PYODIDE"`` (the Pyodide lock file) is skipped.
     """
     if isinstance(index_urls, str):
         index_urls = [index_urls]
 
     urls = []
     for url in index_urls:
+        if url == PYODIDE:
+            continue
         if url == PYPI:
             url = PYPI_URL
         if _contain_placeholder(url):

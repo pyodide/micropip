@@ -82,6 +82,41 @@ await micropip.install("snowballstemmer @ https://.../snowballstemmer.*.whl")
 await micropip.install("snowballstemmer[all]")
 ```
 
+### Choosing package indexes
+
+By default, micropip looks for a package in the Pyodide lock file
+(the packages that come with Pyodide) first, and then on PyPI.
+You can use other package indexes with the `index_urls` argument of
+{any}`micropip.install`, or set them for all subsequent calls with
+{any}`micropip.set_index_urls`. The indexes are tried in order.
+Each index must support the [Simple repository API][simple-api],
+and must send CORS headers when used in a web browser.
+
+[simple-api]: https://packaging.python.org/en/latest/specifications/simple-repository-api/
+
+```python
+micropip.set_index_urls(["https://example.com/simple", "https://pypi.org/simple"])
+await micropip.install("pkg")
+```
+
+Two special values can be used in the list of index URLs:
+
+- `"PYPI"` is replaced with `https://pypi.org/simple`.
+- `"PYODIDE"` stands for the Pyodide lock file. micropip looks for the package
+  in the lock file at that position, and moves on to the next index if the lock
+  file does not have a version that satisfies the requirement.
+
+```python
+# The packages that come with Pyodide, then a custom index, then PyPI
+micropip.set_index_urls(["PYODIDE", "https://example.com/simple", "PYPI"])
+
+# A custom index first, then the packages that come with Pyodide
+micropip.set_index_urls(["https://example.com/simple", "PYODIDE"])
+```
+
+If `"PYODIDE"` is not in the list, the lock file is searched first when the index
+URLs are left at the default, and after the given index URLs otherwise.
+
 ### Disabling dependency resolution
 
 micropip does dependency resolution by default, but you can disable it,

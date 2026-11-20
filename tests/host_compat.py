@@ -10,7 +10,29 @@ in Pyodide.
 
 from urllib.request import Request, urlopen
 
-from micropip._compat import CompatibilityLayer, FetchOptions, FetchResponse
+from micropip._compat import (
+    CompatibilityLayer,
+    FetchOptions,
+    FetchResponse,
+    LockedPackage,
+    LockFile,
+)
+
+
+class DictLockFile(LockFile):
+    """A lock file for host tests, backed by a dict of ``LockedPackage``."""
+
+    def __init__(self, packages: dict[str, LockedPackage]) -> None:
+        self.packages = packages
+
+    def get(self, name: str) -> LockedPackage | None:
+        return self.packages.get(name)
+
+    async def load(self, names: list[str]) -> None:
+        raise NotImplementedError("Loading packages is only tested in Pyodide.")
+
+    def freeze(self) -> str:
+        raise NotImplementedError("Freezing is only tested in Pyodide.")
 
 
 class HostCompatibilityLayer(CompatibilityLayer):
