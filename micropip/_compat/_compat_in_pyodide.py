@@ -53,15 +53,17 @@ class PyodideLockFile(LockFile):
         self.base_url: str | None = lockfileBaseUrl
 
     def __iter__(self) -> Iterator[LockedPackage]:
-        for name in self.packages:
-            locked = self.get(name)
-            if locked is not None:
-                yield locked
+        for name, package in self.packages.items():
+            yield self._locked_package(name, package)
 
     def get(self, name: str) -> LockedPackage | None:
         package = self.packages.get(name)
         if package is None:
             return None
+        return self._locked_package(name, package)
+
+    @staticmethod
+    def _locked_package(name: str, package: dict[str, Any]) -> LockedPackage:
         return LockedPackage(
             name=name,
             version=str(package["version"]),
