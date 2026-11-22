@@ -191,7 +191,8 @@ class Resolver:
         self, req: Requirement, *, allow_reinstall: bool = False
     ) -> tuple[bool, str]:
         """
-        Check if the installed version of a package satisfies the requirement.
+        Check if a version of the package that satisfies the requirement is
+        already selected in this resolution, or installed.
         Returns True if the requirement is satisfied, False otherwise.
 
         Parameters
@@ -202,28 +203,49 @@ class Resolver:
         allow_reinstall
             If False, this function will raise exception if the package is already installed
             and the installed version does not satisfy the requirement.
+
+        If another version of the package is already selected in this
+        resolution, it is kept (with a warning), whatever ``allow_reinstall``
+        is: one resolution never installs two versions of a package.
         """
-        ver = None
-        try:
-            ver = importlib.metadata.version(req.name)
-        except PackageNotFoundError:
-            pass
         if req.name in self.locked:
             ver = self.locked[req.name].version
+            if not req.specifier.contains(ver, prereleases=True):
+                # micropip's resolver doesn't backtrack. Like pip's legacy
+                # resolver, keep the version that was selected first and warn.
+                root = _current_root.get()
+                logger.warning(
+                    "'%s'%s is not satisfied by %s==%s, which was selected for "
+                    "another requirement; keeping %s==%s. If this causes problems, "
+                    "pin a version of %s that satisfies all requirements.",
+                    req,
+                    f" (needed by '{root}')" if root else "",
+                    req.name,
+                    ver,
+                    req.name,
+                    ver,
+                    req.name,
+                )
+            return True, ver
 
-        if not ver:
+        try:
+            installed: str | None = importlib.metadata.version(req.name)
+        except PackageNotFoundError:
+            installed = None
+
+        if not installed:
             return False, ""
 
-        if req.specifier.contains(ver, prereleases=True):
+        if req.specifier.contains(installed, prereleases=True):
             # installed version matches, nothing to do
-            return True, ver
+            return True, installed
 
         if allow_reinstall:
             return False, ""
         else:
             raise ValueError(
                 f"Requested '{req}', "
-                f"but {req.name}=={ver} is already installed. "
+                f"but {req.name}=={installed} is already installed. "
                 "If you want to reinstall the package with a different version, "
                 "use micropip.install(..., reinstall=True) to force reinstall, "
                 "or micropip.uninstall(...) to uninstall the package first."
@@ -348,11 +370,20 @@ class Resolver:
         if locked_package and req.specifier.contains(
             locked_package.version, prereleases=True
         ):
-            self.pyodide_packages.append(
-                PackageMetadata(
-                    name=req.name, version=locked_package.version, source="pyodide"
-                )
+            # Another branch may have selected the package in the meantime
+            satisfied, _ = self.check_version_satisfied(
+                req, allow_reinstall=self.request.reinstall
             )
+            if satisfied:
+                return True
+
+            metadata = PackageMetadata(
+                name=req.name, version=locked_package.version, source="pyodide"
+            )
+            # Record the selection, so other requirements for the same package
+            # see it (it used to be added again for each one)
+            self.locked[req.name] = metadata
+            self.pyodide_packages.append(metadata)
             if self.request.constraints and locked_package.requires:
                 await self.gather_requirements(locked_package.requires)
             return True

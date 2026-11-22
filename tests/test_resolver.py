@@ -644,3 +644,108 @@ async def test_lockfile_package_requires_pep508(host_compat_layer, fake_index):
 
     assert [p.name for p in resolver.pyodide_packages] == ["locked"]
     assert [(w.name, str(w.version)) for w in resolver.wheels] == [("dep", "1.0.0")]
+
+
+def _lockfile_resolver(compat_layer, locked, index_urls, **kwargs):
+    from host_compat import DictLockFile
+
+    from micropip.resolver import Resolver
+
+    compat_layer.lockfile = DictLockFile({p.name: p for p in locked})
+    return Resolver(compat_layer, ResolveRequest(index_urls=index_urls, **kwargs))
+
+
+@pytest.mark.asyncio
+async def test_lockfile_package_added_once(host_compat_layer, fake_index):
+    # Two packages that depend on the same lock file package
+    from micropip.compat import LockedPackage
+
+    fake_index.add_pkg_version("app-a", requirements=["shared"])
+    fake_index.add_pkg_version("app-b", requirements=["shared"])
+    resolver = _lockfile_resolver(
+        host_compat_layer,
+        [LockedPackage(name="shared", version="1.0.0")],
+        ["PYODIDE", fake_index.url],
+    )
+    await resolver.gather_requirements(["app-a", "app-b"])
+
+    assert [p.name for p in resolver.pyodide_packages] == ["shared"]
+
+
+class _Warnings:
+    """Collect the warnings logged by micropip's logger."""
+
+    def __init__(self):
+        import logging
+
+        self.messages: list[str] = []
+        self.handler = logging.Handler(level=logging.WARNING)
+        self.handler.emit = lambda record: self.messages.append(record.getMessage())
+
+    def __enter__(self):
+        import logging
+
+        logging.getLogger("micropip").addHandler(self.handler)
+        return self.messages
+
+    def __exit__(self, *exc):
+        import logging
+
+        logging.getLogger("micropip").removeHandler(self.handler)
+
+
+@pytest.mark.asyncio
+async def test_conflict_with_lockfile_version(host_compat_layer, fake_index):
+    # "shared" is selected from the lock file (2.0.0), then "app" needs shared<2.
+    # The resolver can't backtrack: it keeps 2.0.0 with a warning, and never
+    # selects a second version.
+    from micropip.compat import LockedPackage
+
+    fake_index.add_pkg_version("app", requirements=["shared<2"])
+    fake_index.add_pkg_version("shared", "1.0.0")
+    resolver = _lockfile_resolver(
+        host_compat_layer,
+        [LockedPackage(name="shared", version="2.0.0")],
+        ["PYODIDE", fake_index.url],
+    )
+    with _Warnings() as warnings:
+        await resolver.gather_requirements(["shared", "app"])
+
+    selected = [(p.name, p.version) for p in resolver.pyodide_packages] + [
+        (w.name, str(w.version)) for w in resolver.wheels
+    ]
+    assert sorted(selected) == [("app", "1.0.0"), ("shared", "2.0.0")]
+    assert resolver.failed == []
+    assert len(warnings) == 1
+    assert "'shared<2' is not satisfied by shared==2.0.0" in warnings[0]
+    assert "keeping shared==2.0.0" in warnings[0]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reinstall", [False, True])
+async def test_conflict_between_wheels(host_compat_layer, fake_index, reinstall):
+    # a needs c<2, b needs c>=2: c 1.0.0 (selected first) is kept with a
+    # warning. With reinstall=True, the old check let a second version through;
+    # with reinstall=False, it raised a misleading "already installed" error.
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("a", requirements=["c<2"])
+    fake_index.add_pkg_version("b", requirements=["c>=2"])
+    fake_index.add_pkg_version("c", "1.0.0")
+    fake_index.add_pkg_version("c", "2.0.0")
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(
+            requirements=["a", "b"], index_urls=[fake_index.url], reinstall=reinstall
+        ),
+    )
+    with _Warnings() as warnings:
+        resolution = await resolver.resolve()
+
+    assert sorted((w.name, str(w.version)) for w in resolution.wheels) == [
+        ("a", "1.0.0"),
+        ("b", "1.0.0"),
+        ("c", "1.0.0"),
+    ]
+    assert len(warnings) == 1
+    assert "'c>=2' (needed by 'b') is not satisfied by c==1.0.0" in warnings[0]
