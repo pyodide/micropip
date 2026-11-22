@@ -8,6 +8,7 @@ Installing packages is not supported: tests that install packages should run
 in Pyodide.
 """
 
+from collections.abc import Iterator
 from urllib.request import Request, urlopen
 
 from micropip._compat import (
@@ -24,6 +25,9 @@ class DictLockFile(LockFile):
 
     def __init__(self, packages: dict[str, LockedPackage]) -> None:
         self.packages = packages
+
+    def __iter__(self) -> Iterator[LockedPackage]:
+        return iter(self.packages.values())
 
     def get(self, name: str) -> LockedPackage | None:
         return self.packages.get(name)

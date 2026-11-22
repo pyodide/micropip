@@ -164,6 +164,9 @@ def test_custom_lockfile(selenium_standalone_micropip):
             def __init__(self):
                 self.loaded = []
 
+            def __iter__(self):
+                return iter([LockedPackage(name="fake-locked-pkg", version="1.0.0")])
+
             def get(self, name):
                 if name == "fake-locked-pkg":
                     return LockedPackage(name=name, version="1.0.0")
@@ -211,3 +214,41 @@ def test_compat_module_outside_pyodide():
 
     with pytest.raises(RuntimeError, match="not running in Pyodide"):
         micropip.Client().list_packages()
+
+
+def test_pyodide_lockfile_iter(selenium_standalone_micropip):
+    @run_in_pyodide
+    def run(selenium):
+        from pyodide_js._api import lockfile_packages
+
+        from micropip._compat import get_default_compatibility_layer
+
+        lockfile = get_default_compatibility_layer().lockfile
+        packages = {p.name: p for p in lockfile}
+
+        raw = lockfile_packages.to_py()
+        assert set(packages) == set(raw)
+        numpy = packages["numpy"]
+        assert numpy.version == raw["numpy"]["version"]
+        assert numpy.requires == raw["numpy"]["depends"]
+
+    run(selenium_standalone_micropip)
+
+
+def test_lockfile_must_be_iterable():
+    import pytest
+
+    from micropip.compat import LockFile
+
+    class NotIterable(LockFile):
+        def get(self, name):
+            return None
+
+        async def load(self, names):
+            return names
+
+        def freeze(self):
+            return ""
+
+    with pytest.raises(TypeError, match="__iter__"):
+        NotIterable()
