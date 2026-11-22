@@ -54,8 +54,12 @@ class LockedPackage:
 
     name: str
     version: str
-    depends: list[str] = field(default_factory=list)
-    """Names of the packages this package depends on."""
+    requires: list[str] = field(default_factory=list)
+    """
+    The requirements of this package, as PEP 508 strings (e.g.
+    ``"foo>=1.0; python_version < '3.14'"``). Lock files that only record the
+    names of dependencies (like ``pyodide-lock.json``) use bare names.
+    """
 
 
 class LockFile(ABC):

@@ -397,8 +397,8 @@ class Resolver:
                     name=req.name, version=locked_package.version, source="pyodide"
                 )
             )
-            if self.request.constraints and locked_package.depends:
-                await self.gather_requirements(locked_package.depends)
+            if self.request.constraints and locked_package.requires:
+                await self.gather_requirements(locked_package.requires)
             return True
 
         return False
