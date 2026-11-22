@@ -185,3 +185,30 @@ def test_lockfile_load_when_loadpackage_raises(selenium_standalone_micropip):
             _compat_in_pyodide.loadPackage = real_load_package
 
     run(selenium_standalone_micropip)
+
+
+def test_resolution_requested_by(selenium_standalone_micropip, fake_index):
+    """requested_by maps each package to the top-level requirements that need it."""
+    fake_index.add_pkg_version("app-a", requirements=["shared", "only-a"])
+    fake_index.add_pkg_version("app-b", requirements=["shared"])
+    fake_index.add_pkg_version("shared")
+    fake_index.add_pkg_version("only-a")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
+
+        resolution = await micropip.Client().resolve(
+            ["app-a>=1", "App_B"], index_urls=[index_url]
+        )
+
+        requested_by = {k: sorted(v) for k, v in resolution.requested_by.items()}
+        # Keys are canonicalized names, values are the requirements as given
+        assert requested_by == {
+            "app-a": ["app-a>=1"],
+            "app-b": ["App_B"],
+            "shared": ["App_B", "app-a>=1"],
+            "only-a": ["app-a>=1"],
+        }
+
+    run(selenium_standalone_micropip, fake_index.url)

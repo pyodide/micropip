@@ -4,6 +4,7 @@ import pytest
 from pytest_pyodide import run_in_pyodide
 
 from micropip.package_index import ProjectFile, ProjectPage
+from micropip.resolution import ResolveRequest
 from micropip.sources import IndexSource, LockFileSource, Source, to_source
 
 CORS = {"Access-Control-Allow-Origin": "*"}
@@ -107,7 +108,7 @@ def test_to_source():
 def test_sources_with_lockfile_source(host_compat_layer, index_urls, expected):
     from micropip.resolver import Resolver
 
-    resolver = Resolver(host_compat_layer, index_urls=index_urls)
+    resolver = Resolver(host_compat_layer, ResolveRequest(index_urls=index_urls))
     assert resolver._sources() == expected
 
 
@@ -140,7 +141,8 @@ async def test_custom_source_before_index(host_compat_layer, fake_index):
         }
     )
     resolver = Resolver(
-        host_compat_layer, index_urls=[source, fake_index.url], deps=False
+        host_compat_layer,
+        ResolveRequest(index_urls=[source, fake_index.url], deps=False),
     )
     await resolver.gather_requirements(["in-source", "index-only"])
 

@@ -3,6 +3,7 @@ from conftest import SNOWBALL_WHEEL
 from pytest_pyodide import run_in_pyodide
 
 from micropip._vendored.packaging.src.packaging.tags import Tag
+from micropip.resolution import ResolveRequest
 
 
 @pytest.mark.parametrize(
@@ -59,7 +60,7 @@ async def test_add_requirement(wheel_catalog, host_compat_layer):
 
     snowballstemmer_wheel = wheel_catalog.get("snowballstemmer")
 
-    resolver = Resolver(host_compat_layer, keep_going=True)
+    resolver = Resolver(host_compat_layer, ResolveRequest(keep_going=True))
     await resolver.add_requirement(snowballstemmer_wheel.url)
 
     wheel = resolver.wheels[0]
@@ -132,7 +133,7 @@ async def test_install_non_pure_python_wheel(host_compat_layer):
     msg = "Wheel platform 'macosx_10_9_intel' is not compatible with Pyodide's platform"
     with pytest.raises(ValueError, match=msg) as exc_info:
         url = "http://a/scikit_learn-0.22.2.post1-cp35-cp35m-macosx_10_9_intel.whl"
-        resolver = Resolver(host_compat_layer, keep_going=True)
+        resolver = Resolver(host_compat_layer, ResolveRequest(keep_going=True))
         await resolver.add_requirement(url)
     assert FAQ_URLS["building_packages"] in str(exc_info.value)
 
@@ -151,7 +152,7 @@ async def test_install_non_pure_python_wheel(host_compat_layer):
 async def test_add_requirement_vcs_url_helpful_error(url, host_compat_layer):
     from micropip.resolver import Resolver
 
-    resolver = Resolver(host_compat_layer, keep_going=True)
+    resolver = Resolver(host_compat_layer, ResolveRequest(keep_going=True))
     with pytest.raises(ValueError) as exc_info:
         await resolver.add_requirement(url)
     assert (
@@ -353,26 +354,28 @@ def test_search_pyodide_lock_first(host_compat_layer):
     from micropip.resolver import Resolver
 
     t = Resolver(
-        compat_layer=host_compat_layer,
-        ctx={},
-        ctx_extras=[],
-        keep_going=True,
-        deps=True,
-        pre=True,
-        verbose=False,
-        index_urls=package_index.DEFAULT_INDEX_URLS,
+        host_compat_layer,
+        ResolveRequest(
+            environment={},
+            keep_going=True,
+            deps=True,
+            pre=True,
+            verbose=False,
+            index_urls=package_index.DEFAULT_INDEX_URLS,
+        ),
     )
     assert t.search_pyodide_lock_first is True
 
     t = Resolver(
-        compat_layer=host_compat_layer,
-        ctx={},
-        ctx_extras=[],
-        keep_going=True,
-        deps=True,
-        pre=True,
-        verbose=False,
-        index_urls=["https://my.custom.index.com"],
+        host_compat_layer,
+        ResolveRequest(
+            environment={},
+            keep_going=True,
+            deps=True,
+            pre=True,
+            verbose=False,
+            index_urls=["https://my.custom.index.com"],
+        ),
     )
     assert t.search_pyodide_lock_first is False
 
@@ -418,10 +421,11 @@ def test_shared_requirement_added_once(
     @run_in_pyodide
     async def run(selenium, index_url, requirements):
         from micropip._compat import get_default_compatibility_layer
+        from micropip.resolution import ResolveRequest
         from micropip.resolver import Resolver
 
         resolver = Resolver(
-            compat_layer=get_default_compatibility_layer(), index_urls=[index_url]
+            get_default_compatibility_layer(), ResolveRequest(index_urls=[index_url])
         )
         await resolver.gather_requirements(requirements)
 
@@ -455,7 +459,7 @@ def test_shared_requirement_added_once(
 def test_sources(host_compat_layer, index_urls, search_lock_first, expected):
     from micropip.resolver import Resolver
 
-    resolver = Resolver(host_compat_layer, index_urls=index_urls)
+    resolver = Resolver(host_compat_layer, ResolveRequest(index_urls=index_urls))
     assert resolver.search_pyodide_lock_first is search_lock_first
     assert resolver._sources() == expected
 
@@ -480,7 +484,7 @@ def _resolver_with_lockfile(compat_layer, index_urls, **kwargs):
             "lockonly": LockedPackage(name="lockonly", version="1.0.0"),
         }
     )
-    return Resolver(compat_layer, index_urls=index_urls, **kwargs)
+    return Resolver(compat_layer, ResolveRequest(index_urls=index_urls, **kwargs))
 
 
 def _sources_of(resolver):

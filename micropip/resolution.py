@@ -6,10 +6,47 @@ See :py:meth:`micropip.Client.resolve` and
 """
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
+from ._compat import FetchOptions
 from ._vendored.packaging.src.packaging.requirements import Requirement
 from .package import PackageMetadata
+from .package_index import DEFAULT_INDEX_URLS
 from .wheelinfo import WheelInfo
+
+if TYPE_CHECKING:
+    from .sources import Source
+
+
+@dataclass
+class ResolveRequest:
+    """
+    What to resolve, and how. Passed to the resolver (see
+    :py:attr:`micropip.Client.resolver_class`). The fields match the arguments
+    of :py:meth:`micropip.Client.install`.
+    """
+
+    requirements: list[str] = field(default_factory=list)
+    """Requirements to resolve: PEP 508 strings or wheel URLs."""
+
+    index_urls: "list[str | Source] | str" = field(
+        default_factory=lambda: list["str | Source"](DEFAULT_INDEX_URLS)
+    )
+    """Index URLs and :py:class:`~micropip.sources.Source` objects, searched in order."""
+
+    constraints: list[str] = field(default_factory=list)
+    keep_going: bool = False
+    deps: bool = True
+    pre: bool = False
+    reinstall: bool = False
+
+    fetch_options: FetchOptions = field(default_factory=FetchOptions)
+    """Fetch options for all requests (package index pages, wheels and their metadata)."""
+
+    environment: dict[str, str] | None = None
+    """Environment markers (PEP 508) to evaluate requirements with. Defaults to the current environment."""
+
+    verbose: bool | int | None = None
 
 
 @dataclass
@@ -34,6 +71,12 @@ class Resolution:
 
     reinstall: bool = False
     """Whether installed versions of these packages are uninstalled first."""
+
+    requested_by: dict[str, list[str]] = field(default_factory=dict)
+    """
+    For each package to install (by canonicalized name), the top-level
+    requirements (as passed to ``resolve()``) that pulled it in.
+    """
 
     @property
     def packages(self) -> list[PackageMetadata]:
@@ -65,4 +108,4 @@ class InstallResult:
         return self.error is None
 
 
-__all__ = ["InstallResult", "Resolution"]
+__all__ = ["InstallResult", "ResolveRequest", "Resolution"]
