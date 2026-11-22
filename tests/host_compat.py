@@ -46,6 +46,7 @@ class HostCompatibilityLayer(CompatibilityLayer):
             return FetchResponse(
                 response.read(),
                 {k.lower(): v for k, v in response.headers.items()},
+                response.status,
             )
 
     async def install(

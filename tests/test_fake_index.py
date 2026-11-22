@@ -80,3 +80,28 @@ def test_fake_index_install(selenium_standalone_micropip, fake_index):
         assert "dep" in pkgs
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+def test_fetch_response_status(selenium_standalone_micropip, fake_index):
+    wheel = fake_index.add_pkg_version("dummy")
+
+    @run_in_pyodide
+    async def run(selenium, wheel_url):
+        import pytest
+
+        from micropip._compat import FetchOptions, get_default_compatibility_layer
+
+        compat = get_default_compatibility_layer()
+        response = await compat.fetch(wheel_url, FetchOptions())
+        assert response.status == 200
+
+        # Error statuses raise, so a returned response always has a success status
+        with pytest.raises(ValueError, match="Can't fetch"):
+            await compat.fetch(wheel_url + "-missing", FetchOptions())
+
+        # Local files have no HTTP status
+        open("local.txt", "wb").write(b"hi")
+        response = await compat.fetch("emfs:local.txt", FetchOptions())
+        assert (response.status, response.content) == (200, b"hi")
+
+    run(selenium_standalone_micropip, wheel.url)
