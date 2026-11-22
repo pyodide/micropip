@@ -212,3 +212,98 @@ def test_resolution_requested_by(selenium_standalone_micropip, fake_index):
         }
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+_RECORDING_LAYER = """
+from micropip.compat import PyodideCompatibilityLayer
+
+class RecordingLayer(PyodideCompatibilityLayer):
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+
+    async def fetch(self, url, options):
+        self.urls.append(url)
+        return await super().fetch(url, options)
+"""
+
+
+def test_resolve_does_not_download_wheels(selenium_standalone_micropip, fake_index):
+    """With PEP 658 metadata, resolve() only fetches metadata; wheels are downloaded on install."""
+    wheel = fake_index.add_pkg_version("dummy", requirements=["dep"])
+    dep = fake_index.add_pkg_version("dep")
+
+    @run_in_pyodide
+    async def run(selenium, layer_src, index_url, wheel_urls):
+        import micropip
+
+        ns = {}
+        exec(layer_src, ns)
+        layer = ns["RecordingLayer"]()
+        client = micropip.Client(compat=layer)
+
+        resolution = await client.resolve("dummy", index_urls=[index_url])
+        assert all(not w.downloaded for w in resolution.wheels)
+        assert not any(url in layer.urls for url in wheel_urls)
+        assert any(url.endswith(".metadata") for url in layer.urls)
+
+        results = [r async for r in client.install_resolution(resolution)]
+        assert all(r.ok for r in results)
+        for url in wheel_urls:
+            assert layer.urls.count(url) == 1
+
+    run(
+        selenium_standalone_micropip,
+        _RECORDING_LAYER,
+        fake_index.url,
+        [wheel.url, dep.url],
+    )
+
+
+def test_wheel_without_metadata_downloaded_once(
+    selenium_standalone_micropip, fake_index
+):
+    """
+    Without PEP 658 metadata, the resolver downloads the wheel to read its
+    metadata, and installing it doesn't download it again.
+    """
+    wheel = fake_index.add_pkg_version("dummy", pep658=False)
+
+    @run_in_pyodide
+    async def run(selenium, layer_src, index_url, wheel_url):
+        import micropip
+
+        ns = {}
+        exec(layer_src, ns)
+        layer = ns["RecordingLayer"]()
+        client = micropip.Client(compat=layer)
+
+        resolution = await client.resolve("dummy", index_urls=[index_url])
+        assert resolution.wheels[0].downloaded
+        results = [r async for r in client.install_resolution(resolution)]
+
+        assert [r.ok for r in results] == [True]
+        assert layer.urls.count(wheel_url) == 1
+        assert not any(url.endswith(".metadata") for url in layer.urls)
+
+    run(selenium_standalone_micropip, _RECORDING_LAYER, fake_index.url, wheel.url)
+
+
+def test_missing_metadata_file_falls_back_to_wheel(
+    selenium_standalone_micropip, fake_index
+):
+    """If the advertised PEP 658 metadata file can't be fetched, the wheel is used."""
+    wheel = fake_index.add_pkg_version("dummy", requirements=["dep"])
+    fake_index.add_pkg_version("dep")
+    # The index says the metadata file exists, but it 404s
+    del fake_index._files[f"{wheel.filename}.metadata"]
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
+
+        client = micropip.Client()
+        await client.install("dummy", index_urls=[index_url])
+        assert {"dummy", "dep"} <= set(client.list_packages())
+
+    run(selenium_standalone_micropip, fake_index.url)
