@@ -37,14 +37,6 @@ def _looks_like_vcs_url(req: str) -> bool:
     return req.startswith(_VCS_URL_PREFIXES)
 
 
-class ResolutionConflict(ValueError):
-    """
-    A requirement conflicts with a version already selected for another
-    requirement. micropip's resolver doesn't backtrack, so it reports the
-    conflict instead of trying other versions.
-    """
-
-
 def _is_lockfile_entry(entry: "str | Source") -> bool:
     return entry == package_index.PYODIDE or isinstance(entry, LockFileSource)
 
@@ -212,19 +204,29 @@ class Resolver:
             If False, this function will raise exception if the package is already installed
             and the installed version does not satisfy the requirement.
 
-        Raises :py:class:`ResolutionConflict` if another version of the package is
-        already selected in this resolution, regardless of ``allow_reinstall``:
-        one resolution never installs two versions of a package.
+        If another version of the package is already selected in this
+        resolution, it is kept (with a warning), whatever ``allow_reinstall``
+        is: one resolution never installs two versions of a package.
         """
         if req.name in self.locked:
             ver = self.locked[req.name].version
-            if req.specifier.contains(ver, prereleases=True):
-                return True, ver
-            raise ResolutionConflict(
-                f"Can't satisfy '{req}': {req.name}=={ver} is already selected "
-                "for another requirement. micropip's resolver doesn't backtrack, "
-                f"so pin a version of {req.name} that satisfies all requirements."
-            )
+            if not req.specifier.contains(ver, prereleases=True):
+                # micropip's resolver doesn't backtrack. Like pip's legacy
+                # resolver, keep the version that was selected first and warn.
+                root = _current_root.get()
+                logger.warning(
+                    "'%s'%s is not satisfied by %s==%s, which was selected for "
+                    "another requirement; keeping %s==%s. If this causes problems, "
+                    "pin a version of %s that satisfies all requirements.",
+                    req,
+                    f" (needed by '{root}')" if root else "",
+                    req.name,
+                    ver,
+                    req.name,
+                    ver,
+                    req.name,
+                )
+            return True, ver
 
         try:
             installed: str | None = importlib.metadata.version(req.name)
@@ -305,15 +307,9 @@ class Resolver:
         req.name = canonicalize_name(req.name)
         self._record_requested_by(req.name)
 
-        try:
-            satisfied, ver = self.check_version_satisfied(
-                req, allow_reinstall=self.request.reinstall
-            )
-        except ResolutionConflict:
-            self.failed.append(req)
-            if not self.request.keep_going:
-                raise
-            return
+        satisfied, ver = self.check_version_satisfied(
+            req, allow_reinstall=self.request.reinstall
+        )
 
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
@@ -349,9 +345,6 @@ class Resolver:
             try:
                 await self._add_requirement_from_package_index(req, list(item))
                 return
-            except ResolutionConflict:
-                # Not "not found": trying the next source would select another version
-                raise
             except ValueError as e:
                 logger.debug("Resolver: package %r not found in %r", req, item)
                 error = e

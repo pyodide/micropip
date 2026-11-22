@@ -672,10 +672,33 @@ async def test_lockfile_package_added_once(host_compat_layer, fake_index):
     assert [p.name for p in resolver.pyodide_packages] == ["shared"]
 
 
+class _Warnings:
+    """Collect the warnings logged by micropip's logger."""
+
+    def __init__(self):
+        import logging
+
+        self.messages: list[str] = []
+        self.handler = logging.Handler(level=logging.WARNING)
+        self.handler.emit = lambda record: self.messages.append(record.getMessage())
+
+    def __enter__(self):
+        import logging
+
+        logging.getLogger("micropip").addHandler(self.handler)
+        return self.messages
+
+    def __exit__(self, *exc):
+        import logging
+
+        logging.getLogger("micropip").removeHandler(self.handler)
+
+
 @pytest.mark.asyncio
 async def test_conflict_with_lockfile_version(host_compat_layer, fake_index):
     # "shared" is selected from the lock file (2.0.0), then "app" needs shared<2.
-    # The resolver can't backtrack, but it must not select two versions.
+    # The resolver can't backtrack: it keeps 2.0.0 with a warning, and never
+    # selects a second version.
     from micropip.compat import LockedPackage
 
     fake_index.add_pkg_version("app", requirements=["shared<2"])
@@ -684,22 +707,26 @@ async def test_conflict_with_lockfile_version(host_compat_layer, fake_index):
         host_compat_layer,
         [LockedPackage(name="shared", version="2.0.0")],
         ["PYODIDE", fake_index.url],
-        keep_going=True,
     )
-    await resolver.gather_requirements(["shared", "app"])
+    with _Warnings() as warnings:
+        await resolver.gather_requirements(["shared", "app"])
 
     selected = [(p.name, p.version) for p in resolver.pyodide_packages] + [
         (w.name, str(w.version)) for w in resolver.wheels
     ]
     assert sorted(selected) == [("app", "1.0.0"), ("shared", "2.0.0")]
-    assert [str(r) for r in resolver.failed] == ["shared<2"]
+    assert resolver.failed == []
+    assert len(warnings) == 1
+    assert "'shared<2' is not satisfied by shared==2.0.0" in warnings[0]
+    assert "keeping shared==2.0.0" in warnings[0]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reinstall", [False, True])
 async def test_conflict_between_wheels(host_compat_layer, fake_index, reinstall):
-    # a needs c<2, b needs c>=2: a clear conflict, not two versions of c
-    # (with reinstall=True, the old check let the second version through).
+    # a needs c<2, b needs c>=2: c 1.0.0 (selected first) is kept with a
+    # warning. With reinstall=True, the old check let a second version through;
+    # with reinstall=False, it raised a misleading "already installed" error.
     from micropip.resolver import Resolver
 
     fake_index.add_pkg_version("a", requirements=["c<2"])
@@ -708,9 +735,17 @@ async def test_conflict_between_wheels(host_compat_layer, fake_index, reinstall)
     fake_index.add_pkg_version("c", "2.0.0")
     resolver = Resolver(
         host_compat_layer,
-        ResolveRequest(index_urls=[fake_index.url], reinstall=reinstall),
+        ResolveRequest(
+            requirements=["a", "b"], index_urls=[fake_index.url], reinstall=reinstall
+        ),
     )
-    with pytest.raises(ValueError, match=r"c==1\.0\.0 .* already selected"):
-        await resolver.gather_requirements(["a", "b"])
+    with _Warnings() as warnings:
+        resolution = await resolver.resolve()
 
-    assert [str(w.version) for w in resolver.wheels if w.name == "c"] == ["1.0.0"]
+    assert sorted((w.name, str(w.version)) for w in resolution.wheels) == [
+        ("a", "1.0.0"),
+        ("b", "1.0.0"),
+        ("c", "1.0.0"),
+    ]
+    assert len(warnings) == 1
+    assert "'c>=2' (needed by 'b') is not satisfied by c==1.0.0" in warnings[0]
