@@ -81,6 +81,14 @@ def test_install_resolution_lockfile_packages(selenium_standalone_micropip):
         from micropip.compat import LockedPackage, LockFile, PyodideCompatibilityLayer
 
         class PartlyFailingLockFile(LockFile):
+            def __iter__(self):
+                return iter(
+                    [
+                        LockedPackage(name="loads-fine", version="1.0.0"),
+                        LockedPackage(name="fails-to-load", version="1.0.0"),
+                    ]
+                )
+
             def get(self, name):
                 if name in ("loads-fine", "fails-to-load"):
                     return LockedPackage(name=name, version="1.0.0")

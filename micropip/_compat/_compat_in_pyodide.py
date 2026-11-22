@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -50,6 +51,12 @@ class PyodideLockFile(LockFile):
             pyodide_js._api.lockfile_packages.to_py()
         )
         self.base_url: str | None = lockfileBaseUrl
+
+    def __iter__(self) -> Iterator[LockedPackage]:
+        for name in self.packages:
+            locked = self.get(name)
+            if locked is not None:
+                yield locked
 
     def get(self, name: str) -> LockedPackage | None:
         package = self.packages.get(name)

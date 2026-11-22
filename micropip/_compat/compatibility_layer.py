@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -70,8 +71,14 @@ class LockFile(ABC):
     A :py:class:`CompatibilityLayer` may provide one as its :py:attr:`~CompatibilityLayer.lockfile`.
     micropip looks requirements up in it, loads the packages it finds with
     :py:meth:`load`, and uses :py:meth:`freeze` for ``micropip.freeze()``.
+    Iterating over it gives all of its packages (e.g. for a resolver that
+    needs to know the lock file versions up front).
     The format of the lock file is up to the implementation.
     """
+
+    @abstractmethod
+    def __iter__(self) -> Iterator[LockedPackage]:
+        """Iterate over all packages in the lock file."""
 
     @abstractmethod
     def get(self, name: str) -> LockedPackage | None:
