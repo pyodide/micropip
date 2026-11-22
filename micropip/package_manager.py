@@ -1,7 +1,7 @@
 import builtins
 import importlib
 import importlib.metadata
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator, Mapping
 from contextlib import aclosing
 from importlib.metadata import Distribution
 from pathlib import Path
@@ -308,7 +308,7 @@ class Client:
                 reinstall=reinstall,
                 fetch_options=FetchOptions(credentials=credentials),
                 verbose=verbose,
-                installed=installed_packages(),
+                installed=InstalledPackages(),
             )
             return await self.resolver_class(self.compat_layer, request).resolve()
 
@@ -646,20 +646,57 @@ class Client:
 PackageManager = Client
 
 
-def installed_packages() -> dict[str, str]:
+class InstalledPackages(Mapping[str, str]):
     """
-    The installed packages, as canonicalized name to version.
+    The installed packages, as canonicalized name to version, read lazily.
 
-    If a package is installed more than once on ``sys.path``, the first one
-    wins, like ``importlib.metadata.version()``.
+    Looking up a name costs one ``importlib.metadata.version()`` call (cached),
+    like resolvers used to do for each requirement. Only iterating (e.g. a
+    resolver that needs every installed version up front) scans all installed
+    distributions. If a package is installed more than once on ``sys.path``, the
+    first one wins, like ``importlib.metadata.version()``.
     """
-    installed: dict[str, str] = {}
-    for dist in importlib.metadata.distributions():
-        name = dist.metadata["Name"]
-        if not name:
-            continue
-        installed.setdefault(canonicalize_name(name), dist.version)
-    return installed
+
+    def __init__(self) -> None:
+        self._versions: dict[str, str | None] = {}
+        self._all: dict[str, str] | None = None
+
+    def get(self, name: str, default: str | None = None) -> str | None:  # type: ignore[override]
+        if self._all is not None:
+            return self._all.get(name, default)
+        if name not in self._versions:
+            try:
+                self._versions[name] = importlib.metadata.version(name)
+            except importlib.metadata.PackageNotFoundError:
+                self._versions[name] = None
+        version = self._versions[name]
+        return default if version is None else version
+
+    def __getitem__(self, name: str) -> str:
+        version = self.get(name)
+        if version is None:
+            raise KeyError(name)
+        return version
+
+    def __contains__(self, name: object) -> bool:
+        return isinstance(name, str) and self.get(name) is not None
+
+    def _scan(self) -> dict[str, str]:
+        if self._all is None:
+            installed: dict[str, str] = {}
+            for dist in importlib.metadata.distributions():
+                metadata = dist.metadata  # parsed once per distribution
+                name = metadata["Name"]
+                if name:
+                    installed.setdefault(canonicalize_name(name), metadata["Version"])
+            self._all = installed
+        return self._all
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._scan())
+
+    def __len__(self) -> int:
+        return len(self._scan())
 
 
 def search_installed_packages(
