@@ -307,3 +307,38 @@ def test_missing_metadata_file_falls_back_to_wheel(
         assert {"dummy", "dep"} <= set(client.list_packages())
 
     run(selenium_standalone_micropip, fake_index.url)
+
+
+def test_client_resolve_passes_installed_packages(
+    selenium_standalone_micropip, fake_index
+):
+    """Client.resolve() gives the resolver a snapshot of the installed packages."""
+    fake_index.add_pkg_version("Dummy_Pkg", "1.0.0")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import importlib.metadata
+
+        import micropip
+        from micropip.resolver import Resolver
+
+        await micropip.install("Dummy_Pkg", index_urls=[index_url])
+
+        requests = []
+
+        class RecordingResolver(Resolver):
+            def __init__(self, compat_layer, request):
+                requests.append(request)
+                super().__init__(compat_layer, request)
+
+        class Client(micropip.Client):
+            resolver_class = RecordingResolver
+
+        await Client().resolve("dummy-pkg", index_urls=[index_url])
+
+        installed = requests[0].installed
+        # Canonicalized names
+        assert installed["dummy-pkg"] == "1.0.0"
+        assert installed["micropip"] == importlib.metadata.version("micropip")
+
+    run(selenium_standalone_micropip, fake_index.url)

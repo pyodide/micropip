@@ -228,10 +228,7 @@ class Resolver:
                 )
             return True, ver
 
-        try:
-            installed: str | None = importlib.metadata.version(req.name)
-        except PackageNotFoundError:
-            installed = None
+        installed = self._installed_version(req.name)
 
         if not installed:
             return False, ""
@@ -250,6 +247,15 @@ class Resolver:
                 "use micropip.install(..., reinstall=True) to force reinstall, "
                 "or micropip.uninstall(...) to uninstall the package first."
             )
+
+    def _installed_version(self, name: str) -> str | None:
+        """The installed version of ``name`` (a canonicalized name), if any."""
+        if self.request.installed is not None:
+            return self.request.installed.get(name)
+        try:
+            return importlib.metadata.version(name)
+        except PackageNotFoundError:
+            return None
 
     async def add_requirement_inner(
         self,

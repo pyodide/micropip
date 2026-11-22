@@ -11,6 +11,7 @@ from typing import (  # noqa: UP035 List import is necessary due to the `list` m
 
 from . import _mock_package, package_index
 from ._compat import CompatibilityLayer, FetchOptions, get_default_compatibility_layer
+from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .constants import FAQ_URLS
 from .installer import Installer
 from .logging import indent_log, setup_logging
@@ -307,6 +308,7 @@ class Client:
                 reinstall=reinstall,
                 fetch_options=FetchOptions(credentials=credentials),
                 verbose=verbose,
+                installed=installed_packages(),
             )
             return await self.resolver_class(self.compat_layer, request).resolve()
 
@@ -642,6 +644,22 @@ class Client:
 
 # The name used before Client was made public.
 PackageManager = Client
+
+
+def installed_packages() -> dict[str, str]:
+    """
+    The installed packages, as canonicalized name to version.
+
+    If a package is installed more than once on ``sys.path``, the first one
+    wins, like ``importlib.metadata.version()``.
+    """
+    installed: dict[str, str] = {}
+    for dist in importlib.metadata.distributions():
+        name = dist.metadata["Name"]
+        if not name:
+            continue
+        installed.setdefault(canonicalize_name(name), dist.version)
+    return installed
 
 
 def search_installed_packages(

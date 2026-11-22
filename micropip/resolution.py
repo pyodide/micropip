@@ -46,6 +46,14 @@ class ResolveRequest:
     environment: dict[str, str] | None = None
     """Environment markers (PEP 508) to evaluate requirements with. Defaults to the current environment."""
 
+    installed: dict[str, str] | None = None
+    """
+    The installed packages: canonicalized name to version.
+    :py:meth:`micropip.Client.resolve` fills it from ``importlib.metadata``, so
+    a resolver doesn't need to read the environment itself. ``None`` means the
+    resolver reads the current environment.
+    """
+
     verbose: bool | int | None = None
 
 
