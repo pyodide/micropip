@@ -37,6 +37,14 @@ def _looks_like_vcs_url(req: str) -> bool:
     return req.startswith(_VCS_URL_PREFIXES)
 
 
+class ResolutionConflict(ValueError):
+    """
+    A requirement conflicts with a version already selected for another
+    requirement. micropip's resolver doesn't backtrack, so it reports the
+    conflict instead of trying other versions.
+    """
+
+
 def _is_lockfile_entry(entry: "str | Source") -> bool:
     return entry == package_index.PYODIDE or isinstance(entry, LockFileSource)
 
@@ -191,7 +199,8 @@ class Resolver:
         self, req: Requirement, *, allow_reinstall: bool = False
     ) -> tuple[bool, str]:
         """
-        Check if the installed version of a package satisfies the requirement.
+        Check if a version of the package that satisfies the requirement is
+        already selected in this resolution, or installed.
         Returns True if the requirement is satisfied, False otherwise.
 
         Parameters
@@ -202,28 +211,39 @@ class Resolver:
         allow_reinstall
             If False, this function will raise exception if the package is already installed
             and the installed version does not satisfy the requirement.
+
+        Raises :py:class:`ResolutionConflict` if another version of the package is
+        already selected in this resolution, regardless of ``allow_reinstall``:
+        one resolution never installs two versions of a package.
         """
-        ver = None
-        try:
-            ver = importlib.metadata.version(req.name)
-        except PackageNotFoundError:
-            pass
         if req.name in self.locked:
             ver = self.locked[req.name].version
+            if req.specifier.contains(ver, prereleases=True):
+                return True, ver
+            raise ResolutionConflict(
+                f"Can't satisfy '{req}': {req.name}=={ver} is already selected "
+                "for another requirement. micropip's resolver doesn't backtrack, "
+                f"so pin a version of {req.name} that satisfies all requirements."
+            )
 
-        if not ver:
+        try:
+            installed: str | None = importlib.metadata.version(req.name)
+        except PackageNotFoundError:
+            installed = None
+
+        if not installed:
             return False, ""
 
-        if req.specifier.contains(ver, prereleases=True):
+        if req.specifier.contains(installed, prereleases=True):
             # installed version matches, nothing to do
-            return True, ver
+            return True, installed
 
         if allow_reinstall:
             return False, ""
         else:
             raise ValueError(
                 f"Requested '{req}', "
-                f"but {req.name}=={ver} is already installed. "
+                f"but {req.name}=={installed} is already installed. "
                 "If you want to reinstall the package with a different version, "
                 "use micropip.install(..., reinstall=True) to force reinstall, "
                 "or micropip.uninstall(...) to uninstall the package first."
@@ -285,9 +305,15 @@ class Resolver:
         req.name = canonicalize_name(req.name)
         self._record_requested_by(req.name)
 
-        satisfied, ver = self.check_version_satisfied(
-            req, allow_reinstall=self.request.reinstall
-        )
+        try:
+            satisfied, ver = self.check_version_satisfied(
+                req, allow_reinstall=self.request.reinstall
+            )
+        except ResolutionConflict:
+            self.failed.append(req)
+            if not self.request.keep_going:
+                raise
+            return
 
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
@@ -323,6 +349,9 @@ class Resolver:
             try:
                 await self._add_requirement_from_package_index(req, list(item))
                 return
+            except ResolutionConflict:
+                # Not "not found": trying the next source would select another version
+                raise
             except ValueError as e:
                 logger.debug("Resolver: package %r not found in %r", req, item)
                 error = e
@@ -348,11 +377,20 @@ class Resolver:
         if locked_package and req.specifier.contains(
             locked_package.version, prereleases=True
         ):
-            self.pyodide_packages.append(
-                PackageMetadata(
-                    name=req.name, version=locked_package.version, source="pyodide"
-                )
+            # Another branch may have selected the package in the meantime
+            satisfied, _ = self.check_version_satisfied(
+                req, allow_reinstall=self.request.reinstall
             )
+            if satisfied:
+                return True
+
+            metadata = PackageMetadata(
+                name=req.name, version=locked_package.version, source="pyodide"
+            )
+            # Record the selection, so other requirements for the same package
+            # see it (it used to be added again for each one)
+            self.locked[req.name] = metadata
+            self.pyodide_packages.append(metadata)
             if self.request.constraints and locked_package.requires:
                 await self.gather_requirements(locked_package.requires)
             return True

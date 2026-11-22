@@ -644,3 +644,73 @@ async def test_lockfile_package_requires_pep508(host_compat_layer, fake_index):
 
     assert [p.name for p in resolver.pyodide_packages] == ["locked"]
     assert [(w.name, str(w.version)) for w in resolver.wheels] == [("dep", "1.0.0")]
+
+
+def _lockfile_resolver(compat_layer, locked, index_urls, **kwargs):
+    from host_compat import DictLockFile
+
+    from micropip.resolver import Resolver
+
+    compat_layer.lockfile = DictLockFile({p.name: p for p in locked})
+    return Resolver(compat_layer, ResolveRequest(index_urls=index_urls, **kwargs))
+
+
+@pytest.mark.asyncio
+async def test_lockfile_package_added_once(host_compat_layer, fake_index):
+    # Two packages that depend on the same lock file package
+    from micropip.compat import LockedPackage
+
+    fake_index.add_pkg_version("app-a", requirements=["shared"])
+    fake_index.add_pkg_version("app-b", requirements=["shared"])
+    resolver = _lockfile_resolver(
+        host_compat_layer,
+        [LockedPackage(name="shared", version="1.0.0")],
+        ["PYODIDE", fake_index.url],
+    )
+    await resolver.gather_requirements(["app-a", "app-b"])
+
+    assert [p.name for p in resolver.pyodide_packages] == ["shared"]
+
+
+@pytest.mark.asyncio
+async def test_conflict_with_lockfile_version(host_compat_layer, fake_index):
+    # "shared" is selected from the lock file (2.0.0), then "app" needs shared<2.
+    # The resolver can't backtrack, but it must not select two versions.
+    from micropip.compat import LockedPackage
+
+    fake_index.add_pkg_version("app", requirements=["shared<2"])
+    fake_index.add_pkg_version("shared", "1.0.0")
+    resolver = _lockfile_resolver(
+        host_compat_layer,
+        [LockedPackage(name="shared", version="2.0.0")],
+        ["PYODIDE", fake_index.url],
+        keep_going=True,
+    )
+    await resolver.gather_requirements(["shared", "app"])
+
+    selected = [(p.name, p.version) for p in resolver.pyodide_packages] + [
+        (w.name, str(w.version)) for w in resolver.wheels
+    ]
+    assert sorted(selected) == [("app", "1.0.0"), ("shared", "2.0.0")]
+    assert [str(r) for r in resolver.failed] == ["shared<2"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reinstall", [False, True])
+async def test_conflict_between_wheels(host_compat_layer, fake_index, reinstall):
+    # a needs c<2, b needs c>=2: a clear conflict, not two versions of c
+    # (with reinstall=True, the old check let the second version through).
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("a", requirements=["c<2"])
+    fake_index.add_pkg_version("b", requirements=["c>=2"])
+    fake_index.add_pkg_version("c", "1.0.0")
+    fake_index.add_pkg_version("c", "2.0.0")
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(index_urls=[fake_index.url], reinstall=reinstall),
+    )
+    with pytest.raises(ValueError, match=r"c==1\.0\.0 .* already selected"):
+        await resolver.gather_requirements(["a", "b"])
+
+    assert [str(w.version) for w in resolver.wheels if w.name == "c"] == ["1.0.0"]
