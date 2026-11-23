@@ -339,10 +339,9 @@ def test_client_resolve_passes_installed_packages(
                 requests.append(request)
                 super().__init__(compat_layer, request)
 
-        class Client(micropip.Client):
-            resolver_class = RecordingResolver
-
-        await Client().resolve("dummy-pkg", index_urls=[index_url])
+        await micropip.Client(resolver=RecordingResolver).resolve(
+            "dummy-pkg", index_urls=[index_url]
+        )
 
         installed = requests[0].installed
         # Canonicalized names
