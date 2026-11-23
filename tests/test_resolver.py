@@ -749,3 +749,50 @@ async def test_conflict_between_wheels(host_compat_layer, fake_index, reinstall)
     ]
     assert len(warnings) == 1
     assert "'c>=2' (needed by 'b') is not satisfied by c==1.0.0" in warnings[0]
+
+
+@pytest.mark.asyncio
+async def test_request_installed_snapshot(host_compat_layer, fake_index):
+    # The resolver uses ResolveRequest.installed instead of reading the
+    # environment, when it's given.
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("app", requirements=["dep"])
+    fake_index.add_pkg_version("dep", "2.0.0")
+
+    # "dep" is installed (according to the snapshot): not added again
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(
+            requirements=["app"],
+            index_urls=[fake_index.url],
+            installed={"dep": "1.0.0"},
+        ),
+    )
+    resolution = await resolver.resolve()
+    assert [w.name for w in resolution.wheels] == ["app"]
+
+    # An installed version that doesn't satisfy the requirement
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(
+            requirements=["dep>=2"],
+            index_urls=[fake_index.url],
+            installed={"dep": "1.0.0"},
+        ),
+    )
+    with pytest.raises(ValueError, match=r"dep==1\.0\.0 is already installed"):
+        await resolver.resolve()
+
+    # ... is replaced with reinstall=True
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(
+            requirements=["dep>=2"],
+            index_urls=[fake_index.url],
+            installed={"dep": "1.0.0"},
+            reinstall=True,
+        ),
+    )
+    resolution = await resolver.resolve()
+    assert [(w.name, str(w.version)) for w in resolution.wheels] == [("dep", "2.0.0")]

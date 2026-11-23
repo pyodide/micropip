@@ -5,6 +5,7 @@ See :py:meth:`micropip.Client.resolve` and
 :py:meth:`micropip.Client.install_resolution`.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -45,6 +46,16 @@ class ResolveRequest:
 
     environment: dict[str, str] | None = None
     """Environment markers (PEP 508) to evaluate requirements with. Defaults to the current environment."""
+
+    installed: Mapping[str, str] | None = None
+    """
+    The installed packages: canonicalized name to version.
+    :py:meth:`micropip.Client.resolve` passes a mapping that reads
+    ``importlib.metadata`` lazily (looking up a name is cheap; iterating scans
+    every installed distribution), so a resolver doesn't need to read the
+    environment itself. ``None`` means the resolver reads the current
+    environment.
+    """
 
     verbose: bool | int | None = None
 
