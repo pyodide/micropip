@@ -954,3 +954,80 @@ async def test_lockfile_package_extras_no_index(host_compat_layer, fake_index, c
     assert [p.name for p in resolver.pyodide_packages] == ["pkg"]
     assert "Can't fetch metadata for 'pkg'" in caplog.text
     assert "Ignoring extras: opt" in caplog.text
+
+
+# Extras of requirements that are already satisfied (installed, or selected in
+# the same resolution) used to be ignored.
+
+
+@pytest.mark.asyncio
+async def test_extras_of_package_selected_earlier(host_compat_layer, fake_index):
+    # "app" is selected for the first requirement, then "app[opt]" comes along
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("app", extras={"opt": ["optdep"]})
+    fake_index.add_pkg_version("optdep")
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(requirements=["app", "app[opt]"], index_urls=[fake_index.url]),
+    )
+    resolution = await resolver.resolve()
+
+    assert sorted(w.name for w in resolution.wheels) == ["app", "optdep"]
+
+
+@pytest.mark.asyncio
+async def test_extras_of_lockfile_package_selected_earlier(
+    host_compat_layer, fake_index
+):
+    fake_index.add_pkg_version(
+        "pkg", "1.0.0", requirements=["basedep"], extras={"opt": ["optdep"]}
+    )
+    fake_index.add_pkg_version("optdep")
+    resolver = _lockfile_first_resolver(host_compat_layer, fake_index.url)
+    await resolver.gather_requirements(["pkg", "pkg[opt]"])
+
+    assert [p.name for p in resolver.pyodide_packages] == ["pkg"]
+    assert [w.name for w in resolver.wheels] == ["optdep"]
+
+
+@pytest.mark.asyncio
+async def test_unknown_extra_of_wheel_warns(host_compat_layer, fake_index):
+    # Used to fail with KeyError; now warns like the lock file path (and pip)
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("app", extras={"opt": ["optdep"]})
+    fake_index.add_pkg_version("optdep")
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(requirements=["app[nope,opt]"], index_urls=[fake_index.url]),
+    )
+    with _Warnings() as warnings:
+        resolution = await resolver.resolve()
+
+    assert sorted(w.name for w in resolution.wheels) == ["app", "optdep"]
+    assert warnings == ["app 1.0.0 does not provide the extra 'nope'"]
+
+
+def test_extras_of_installed_package(selenium_standalone_micropip, fake_index):
+    # install("app") then install("app[opt]") installs the extra's dependencies,
+    # read from the installed METADATA, without reinstalling "app".
+    fake_index.add_pkg_version("app", extras={"opt": ["optdep"]})
+    fake_index.add_pkg_version("optdep")
+
+    @run_in_pyodide
+    async def run(selenium, index_url):
+        import micropip
+
+        await micropip.install("app", index_urls=[index_url])
+        assert "optdep" not in micropip.list()
+
+        resolution = await micropip.default_client.resolve(
+            "app[opt]", index_urls=[index_url]
+        )
+        assert [w.name for w in resolution.wheels] == ["optdep"]
+
+        await micropip.install("app[opt]", index_urls=[index_url])
+        assert "optdep" in micropip.list()
+
+    run(selenium_standalone_micropip, fake_index.url)
