@@ -82,6 +82,8 @@ await micropip.install("snowballstemmer @ https://.../snowballstemmer.*.whl")
 await micropip.install("snowballstemmer[all]")
 ```
 
+(choosing-package-indexes)=
+
 ### Choosing package indexes
 
 By default, micropip looks for a package in the Pyodide lock file

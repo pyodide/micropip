@@ -112,7 +112,7 @@ class CompatibilityLayer(ABC):
     and may set :py:attr:`lockfile`.
 
     To change only part of the default behavior in Pyodide, subclass
-    :py:class:`micropip.compat.PyodideCompatibilityLayer` instead.
+    ``micropip.compat.PyodideCompatibilityLayer`` instead.
     """
 
     lockfile: LockFile | None = None

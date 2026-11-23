@@ -6,7 +6,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+This release reorganizes micropip around a public `Client`, replaceable
+resolvers and installers, package "sources", and a documented compatibility
+layer. The module-level API (`micropip.install`, `micropip.list`, ...) keeps
+working as before. Projects that imported micropip internals (e.g.
+`micropip.transaction`, `micropip.package_index.query_package` or
+`micropip._package_manager_singleton`) need to migrate: see **Removed** below
+and the *Customizing micropip* page of the documentation.
+
 ### Added
+
+- `micropip.Client`: a micropip client with its own index URLs, constraints and
+  compatibility layer. The module-level functions use `micropip.default_client`.
+  `micropip.package_manager.PackageManager` is kept as an alias of `Client`.
+  [#305](https://github.com/pyodide/micropip/pull/305),
+  [#317](https://github.com/pyodide/micropip/pull/317)
+
+- `micropip.compat`: the interface between micropip and the runtime
+  (`CompatibilityLayer`, `FetchOptions`, `FetchResponse`, `LockFile`,
+  `LockedPackage`), and `PyodideCompatibilityLayer`, the default layer in
+  Pyodide. Pass a layer to `Client(compat=...)` to change how micropip fetches
+  files, installs wheels, or reads the lock file. A layer may have no lock file
+  (`lockfile = None`); then every package is looked up on the indexes and
+  `freeze()` raises `RuntimeError`.
+  [#302](https://github.com/pyodide/micropip/pull/302),
+  [#305](https://github.com/pyodide/micropip/pull/305),
+  [#315](https://github.com/pyodide/micropip/pull/315),
+  [#321](https://github.com/pyodide/micropip/pull/321),
+  [#322](https://github.com/pyodide/micropip/pull/322),
+  [#327](https://github.com/pyodide/micropip/pull/327)
+
+- `micropip.sources`: `index_urls` accepts `Source` objects alongside URL
+  strings, so packages can be looked up somewhere other than a package index
+  (e.g. a single JSON file listing many packages). `ordered_sources()` returns
+  the order in which sources are searched.
+  [#317](https://github.com/pyodide/micropip/pull/317),
+  [#323](https://github.com/pyodide/micropip/pull/323)
 
 - The special value `"PYODIDE"` can be used in `index_urls` (in `install`,
   `set_index_urls` and `Client`) to search the Pyodide lock file at that position.
@@ -16,7 +51,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as before.
   [#314](https://github.com/pyodide/micropip/pull/314)
 
+- `Client.resolve()` returns what would be installed (`micropip.resolution.Resolution`)
+  without installing it, and `Client.install_resolution()` installs it, yielding
+  an `InstallResult` per package as it finishes. With `resolve(..., keep_going=True)`,
+  the packages that can be installed are still installed when some requirements
+  fail. `Resolution.requested_by` maps each package to the top-level requirements
+  that pulled it in. `Client.install` is `resolve` followed by
+  `install_resolution`, and behaves as before.
+  [#319](https://github.com/pyodide/micropip/pull/319),
+  [#320](https://github.com/pyodide/micropip/pull/320)
+
+- The resolver and the installer can be replaced by subclassing `Client` and
+  setting `resolver_class` / `installer_class`. A resolver is constructed as
+  `Resolver(compat_layer, request)` with a `micropip.resolution.ResolveRequest`,
+  and `resolve()` returns a `Resolution`. The request includes the installed
+  packages, read lazily from `importlib.metadata`.
+  [#304](https://github.com/pyodide/micropip/pull/304),
+  [#320](https://github.com/pyodide/micropip/pull/320),
+  [#328](https://github.com/pyodide/micropip/pull/328)
+
 ### Changed
+
+- Resolving only fetches wheel metadata (PEP 658) when the index provides it;
+  wheels are downloaded when they are installed. Wheels without separate
+  metadata are still downloaded while resolving (to read their metadata), and
+  not downloaded again.
+  [#324](https://github.com/pyodide/micropip/pull/324)
+
+- A package from the Pyodide lock file that fails to load (`pyodide.loadPackage`
+  only logs errors) is now reported as failed, and `install` raises
+  `RuntimeError`, instead of printing "Successfully installed".
+  [#319](https://github.com/pyodide/micropip/pull/319)
+
+- Outside of Pyodide, `import micropip` still works, but functions that need the
+  Pyodide runtime (e.g. `install`, `list`, `freeze`, `uninstall`) raise
+  `RuntimeError`. Previously a fallback layer, only meant for micropip's own
+  tests, was used.
+  [#300](https://github.com/pyodide/micropip/pull/300)
 
 - The error for a wheel built for another platform now links to the Pyodide docs
   on building packages.
@@ -33,6 +104,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [#308](https://github.com/pyodide/micropip/pull/308)
 
 ### Fixed
+
+- The resolver no longer selects two versions of the same package. A package
+  from the lock file needed by several requirements was added once per
+  requirement, and a requirement that conflicted with an earlier selection could
+  add a second version (e.g. `["fastapi==0.110.0", "starlette>=0.36"]` installed
+  two versions of starlette). micropip's resolver doesn't backtrack: it now keeps
+  the version selected first and logs a warning naming the unsatisfied
+  requirement.
+  [#326](https://github.com/pyodide/micropip/pull/326)
+
+- A dependency shared by several requirements could be downloaded and installed
+  twice, because requirements are resolved concurrently.
+  [#313](https://github.com/pyodide/micropip/pull/313)
+
+- When the PEP 658 metadata file advertised by an index can't be fetched,
+  micropip falls back to downloading the wheel, as intended.
+  [#324](https://github.com/pyodide/micropip/pull/324)
+
+- Relative file URLs in Simple JSON API (PEP 691) responses are now resolved
+  against the index page URL.
+  [#317](https://github.com/pyodide/micropip/pull/317)
 
 - The error raised for a wheel URL with an unsupported scheme now says
   "Unexpected URL scheme" and lists the supported schemes, instead of
@@ -52,6 +144,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `freeze` no longer fails with `PackageNotFoundError` when a package installed
   with `deps=False` has a dependency that is not installed.
   [#307](https://github.com/pyodide/micropip/pull/307)
+
+### Removed
+
+These were internals, but some projects used them. Replacements:
+
+- `micropip.transaction.Transaction` → `micropip.resolver.Resolver`, constructed
+  as `Resolver(compat_layer, ResolveRequest(...))`; use `Client.resolve()` and
+  `Client.install_resolution()` instead of driving it directly.
+  [#303](https://github.com/pyodide/micropip/pull/303),
+  [#319](https://github.com/pyodide/micropip/pull/319),
+  [#320](https://github.com/pyodide/micropip/pull/320)
+
+- `micropip.package_index.query_package` (and patching it to add a package
+  source) → a `micropip.sources.Source` in `index_urls`. `Resolver.query_package`
+  remains as an override point. `micropip.package_index` no longer re-exports
+  `CompatibilityLayer`; import it from `micropip.compat`.
+  [#303](https://github.com/pyodide/micropip/pull/303),
+  [#317](https://github.com/pyodide/micropip/pull/317)
+
+- `micropip._package_manager_singleton` → `micropip.default_client`.
+  [#317](https://github.com/pyodide/micropip/pull/317)
+
+- The compatibility layer interface changed: `fetch_bytes` and
+  `fetch_string_and_headers` → `fetch(url, FetchOptions)`; `lockfile_info`,
+  `lockfile_packages`, `lockfile_base_url` and `loadPackage` → a `LockFile`
+  (`lockfile`); `loadedPackages` and `to_js` → `loaded_packages()`,
+  `add_loaded_package()` and `remove_loaded_package()`. Layers are passed as
+  instances, not classes.
+  [#302](https://github.com/pyodide/micropip/pull/302),
+  [#315](https://github.com/pyodide/micropip/pull/315)
+
+- The `micropip.freeze` module (the pyodide-lock.json writer) is now internal;
+  the `micropip.freeze()` function is unchanged.
+  [#315](https://github.com/pyodide/micropip/pull/315)
+
+- `WheelInfo.download()` / `download_pep658_metadata()` / `install()` →
+  `Resolver.download_wheel()` / `download_wheel_metadata()` and
+  `Installer.install_wheel()`.
+  [#303](https://github.com/pyodide/micropip/pull/303),
+  [#304](https://github.com/pyodide/micropip/pull/304)
 
 ## [0.11.1] - 2026/04/02
 

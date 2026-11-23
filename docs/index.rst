@@ -10,6 +10,7 @@ Overview
    :maxdepth: 1
 
    project/usage.md
+   project/customizing.md
    project/api.md
    project/micropip-in-other-projects.md
 
