@@ -37,7 +37,7 @@ class Client:
     """
     A micropip client, with its own index URLs, constraints and compatibility layer.
 
-    The module-level functions (``micropip.install``, ``micropip.list``, ...) use a
+    The top-level functions (``micropip.install``, ``micropip.list``, ...) use a
     default client. Create a ``Client`` to use different settings, e.g. a custom
     compatibility layer:
 

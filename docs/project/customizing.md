@@ -1,6 +1,6 @@
 # Customizing micropip
 
-The module-level functions ({any}`micropip.install`, {any}`micropip.list`, ...)
+The top-level functions ({any}`micropip.install`, {any}`micropip.list`, ...)
 cover most uses. This page is for projects that embed micropip and need to
 change where packages come from, how files are fetched, or how installation is
 reported.
@@ -8,7 +8,7 @@ reported.
 ## Clients
 
 A {any}`micropip.Client` has its own index URLs, constraints and compatibility
-layer. The module-level functions use {any}`micropip.default_client`, so
+layer. The top-level functions use {any}`micropip.default_client`, so
 changing it changes them too.
 
 ```python
@@ -16,7 +16,7 @@ import micropip
 
 client = micropip.Client()
 client.set_index_urls(["https://example.com/simple", "PYODIDE"])
-await client.install("pkg")  # doesn't affect micropip.install()
+await client.install("pkg")
 ```
 
 Installed packages are shared by all clients: they all install into the same
@@ -34,9 +34,9 @@ A source returns the files of a project as a {any}`micropip.sources.ProjectPage`
 `fetch` function it is given, so that the client's compatibility layer and fetch
 options apply.
 
-For example, a site built with JupyterLite can ship one JSON file with the
-releases of many packages, in the JSON API format, and use it before the
-packages that come with Pyodide, without querying PyPI:
+For example, a site can ship one JSON file with the releases of many packages,
+in the JSON API format, and use it before the packages that come with Pyodide,
+without querying PyPI:
 
 ```python
 import json
@@ -192,16 +192,8 @@ class MyClient(micropip.Client):
     resolver_class = LoggingResolver
 ```
 
-A completely different resolver only needs the same contract: it is constructed
+A different resolver only needs the same contract: it is constructed
 with `(compat_layer, request)`, where `request` is a
 {any}`micropip.resolution.ResolveRequest`, and its `async resolve()` returns a
 {any}`micropip.resolution.Resolution`. The request includes the installed
 packages, so the resolver doesn't need to read the environment.
-[micropip-uv-resolver](https://github.com/ryanking13/micropip-uv-resolver) is an
-experimental resolver of this kind, based on uv's resolver compiled to
-WebAssembly.
-
-```{note}
-The methods of `Resolver` and `Installer` other than the constructor and
-`resolve()` are extension points that may change between releases.
-```

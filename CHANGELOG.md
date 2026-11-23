@@ -7,18 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 This release reorganizes micropip around a public `Client`, replaceable
-resolvers and installers, package "sources", and a documented compatibility
-layer. The module-level API (`micropip.install`, `micropip.list`, ...) keeps
-working as before. Projects that imported micropip internals (e.g.
-`micropip.transaction`, `micropip.package_index.query_package` or
-`micropip._package_manager_singleton`) need to migrate: see **Removed** below
-and the *Customizing micropip* page of the documentation.
+resolvers and installers, and a documented compatibility layer. The module-level
+API (`micropip.install`, `micropip.list`, ...) keeps working as before. Projects
+that imported micropip internals (e.g. `micropip.transaction`,
+`micropip.package_index.query_package` or `micropip._package_manager_singleton`)
+need to migrate: see **Removed** below and the *Customizing micropip* page of
+the documentation.
 
 ### Added
 
 - `micropip.Client`: a micropip client with its own index URLs, constraints and
-  compatibility layer. The module-level functions use `micropip.default_client`.
-  `micropip.package_manager.PackageManager` is kept as an alias of `Client`.
+  compatibility layer.
   [#305](https://github.com/pyodide/micropip/pull/305),
   [#317](https://github.com/pyodide/micropip/pull/317)
 
@@ -52,20 +51,13 @@ and the *Customizing micropip* page of the documentation.
   [#314](https://github.com/pyodide/micropip/pull/314)
 
 - `Client.resolve()` returns what would be installed (`micropip.resolution.Resolution`)
-  without installing it, and `Client.install_resolution()` installs it, yielding
-  an `InstallResult` per package as it finishes. With `resolve(..., keep_going=True)`,
-  the packages that can be installed are still installed when some requirements
-  fail. `Resolution.requested_by` maps each package to the top-level requirements
-  that pulled it in. `Client.install` is `resolve` followed by
-  `install_resolution`, and behaves as before.
+  without installing it, and `Client.install_resolution()` installs it.
+  `Client.install` is `resolve` followed by `install_resolution`, and behaves as before.
   [#319](https://github.com/pyodide/micropip/pull/319),
   [#320](https://github.com/pyodide/micropip/pull/320)
 
 - The resolver and the installer can be replaced by subclassing `Client` and
-  setting `resolver_class` / `installer_class`. A resolver is constructed as
-  `Resolver(compat_layer, request)` with a `micropip.resolution.ResolveRequest`,
-  and `resolve()` returns a `Resolution`. The request includes the installed
-  packages, read lazily from `importlib.metadata`.
+  setting `resolver_class` / `installer_class`.
   [#304](https://github.com/pyodide/micropip/pull/304),
   [#320](https://github.com/pyodide/micropip/pull/320),
   [#328](https://github.com/pyodide/micropip/pull/328)
@@ -78,20 +70,14 @@ and the *Customizing micropip* page of the documentation.
   not downloaded again.
   [#324](https://github.com/pyodide/micropip/pull/324)
 
-- A package from the Pyodide lock file that fails to load (`pyodide.loadPackage`
-  only logs errors) is now reported as failed, and `install` raises
+- A package from the Pyodide lock file that fails to load is now reported as failed, and `install` raises
   `RuntimeError`, instead of printing "Successfully installed".
   [#319](https://github.com/pyodide/micropip/pull/319)
 
 - Outside of Pyodide, `import micropip` still works, but functions that need the
   Pyodide runtime (e.g. `install`, `list`, `freeze`, `uninstall`) raise
-  `RuntimeError`. Previously a fallback layer, only meant for micropip's own
-  tests, was used.
+  `RuntimeError`.
   [#300](https://github.com/pyodide/micropip/pull/300)
-
-- The error for a wheel built for another platform now links to the Pyodide docs
-  on building packages.
-  [#316](https://github.com/pyodide/micropip/pull/316)
 
 - `install` now raises a helpful `ValueError` when given a VCS URL
   (`git+`, `hg+`, `svn+`, `bzr+`) instead of an opaque parser error,
@@ -113,10 +99,6 @@ and the *Customizing micropip* page of the documentation.
   the version selected first and logs a warning naming the unsatisfied
   requirement.
   [#326](https://github.com/pyodide/micropip/pull/326)
-
-- A dependency shared by several requirements could be downloaded and installed
-  twice, because requirements are resolved concurrently.
-  [#313](https://github.com/pyodide/micropip/pull/313)
 
 - When the PEP 658 metadata file advertised by an index can't be fetched,
   micropip falls back to downloading the wheel, as intended.

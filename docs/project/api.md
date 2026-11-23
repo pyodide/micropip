@@ -1,8 +1,8 @@
 # API Reference
 
-## Module-level functions
+## Top-level functions
 
-The module-level functions use {any}`micropip.default_client`.
+The top-level functions use {any}`micropip.default_client`.
 
 ```{eval-rst}
 .. automodule:: micropip
@@ -56,8 +56,7 @@ was loaded with. Subclass it to change part of its behavior (see {doc}`customizi
 
 ```{warning}
 These are advanced extension points, used by subclassing {any}`micropip.Client`
-and setting `resolver_class` / `installer_class`. Their methods (other than
-the constructor and `resolve()` of the resolver) may change between releases.
+and setting `resolver_class` / `installer_class`. Their methods may change between releases.
 ```
 
 ```{eval-rst}
