@@ -2,7 +2,7 @@ import asyncio
 import importlib.metadata
 import logging
 import warnings
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from dataclasses import replace
 from importlib.metadata import PackageNotFoundError
@@ -22,6 +22,7 @@ from ._vendored.packaging.src.packaging.requirements import (
 )
 from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .constants import FAQ_URLS, YANKED_WARNING_MESSAGE
+from .metadata import Metadata
 from .package import PackageMetadata
 from .package_index import ProjectInfo
 from .resolution import Resolution, ResolveRequest
@@ -92,6 +93,8 @@ class Resolver:
         self.pyodide_packages: list[PackageMetadata] = []
         self.failed: list[Requirement] = []
         self.requested_by: dict[str, list[str]] = {}
+        # Wheels selected in this resolution, by canonicalized name
+        self._selected_wheels: dict[str, WheelInfo] = {}
 
         self.constrained_reqs, messages = validate_constraints(
             self.request.constraints, self.ctx
@@ -321,6 +324,7 @@ class Resolver:
 
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
+            await self._add_extras_of_satisfied(req, ver)
             return
 
         if req.url:
@@ -379,10 +383,11 @@ class Resolver:
             locked_package.version, prereleases=True
         ):
             # Another branch may have selected the package in the meantime
-            satisfied, _ = self.check_version_satisfied(
+            satisfied, ver = self.check_version_satisfied(
                 req, allow_reinstall=self.request.reinstall
             )
             if satisfied:
+                await self._add_extras_of_satisfied(req, ver)
                 return True
 
             metadata = PackageMetadata(
@@ -394,9 +399,149 @@ class Resolver:
             self.pyodide_packages.append(metadata)
             if self.request.constraints and locked_package.requires:
                 await self.gather_requirements(locked_package.requires)
+            if req.extras and self.request.deps:
+                await self._add_extra_requirements_from_package_index(
+                    req, locked_package.version, locked_package.requires
+                )
             return True
 
         return False
+
+    async def _add_extra_requirements_from_package_index(
+        self, req: Requirement, version: str, depends: list[str]
+    ) -> None:
+        """
+        Add the optional dependencies of a package installed from the lock file.
+
+        The lock file only records the base dependencies of a package, not its
+        extras. To support ``pkg[extra]``, we look up the same version of the
+        package in the package index and read the dependencies of the requested
+        extras from its metadata (PEP 658), without downloading the wheel.
+        If the metadata is not available, the extras are ignored with a warning.
+        """
+        extras = sorted(req.extras)
+
+        try:
+            metadata = await self.query_package(req.name)
+            wheel = self.find_wheel(metadata, Requirement(f"{req.name}=={version}"))
+            if not wheel.pep658_metadata_available():
+                raise ValueError(f"no metadata file (PEP 658) for {wheel.filename}")
+            await self.download_wheel_metadata(wheel)
+        except Exception as e:
+            logger.warning(
+                "%s==%s is installed from the Pyodide lock file, which does not "
+                "record optional dependencies, and its metadata could not be "
+                "fetched from the package index (%s). Ignoring extras: %s. "
+                "Install the optional dependencies explicitly if you need them.",
+                req.name,
+                version,
+                str(e).splitlines()[0] if str(e) else type(e).__name__,
+                ", ".join(extras),
+            )
+            return
+
+        # The base dependencies are loaded together with the package from the
+        # lock file, so only add what the extras bring in on top of them.
+        base_names = {canonicalize_name(Requirement(r).name) for r in depends}
+        await self.gather_requirements(
+            self._extra_requirements(req, version, wheel.requires, base_names)
+        )
+
+    def _extra_requirements(
+        self,
+        req: Requirement,
+        version: str,
+        requires: Callable[[set[str]], list[Requirement]],
+        base_names: "Iterable[str]" = (),
+    ) -> list[Requirement]:
+        """
+        The requirements that the extras of ``req`` add on top of the base
+        requirements of the package, given its ``requires(extras)``.
+
+        Extras may repeat base requirements with a different marker or specifier,
+        so they are compared by name too (``base_names`` adds more names to skip),
+        unless the extra asks for extras of that dependency. Unknown extras are
+        skipped with a warning, like pip does.
+        """
+        base_requirements = set(requires(set()))
+        names: set[str] = {canonicalize_name(r.name) for r in base_requirements}
+        names.update(base_names)
+
+        extra_requirements: dict[Requirement, None] = {}
+        for extra in sorted(req.extras):
+            try:
+                requirements = requires({extra})
+            except KeyError:
+                logger.warning(
+                    "%s %s does not provide the extra '%s'", req.name, version, extra
+                )
+                continue
+            for r in requirements:
+                if r in base_requirements:
+                    continue
+                if canonicalize_name(r.name) in names and not r.extras:
+                    continue
+                extra_requirements[r] = None
+
+        logger.debug(
+            "Resolver: extra requirements of %r: %r", req, list(extra_requirements)
+        )
+        return list(extra_requirements)
+
+    async def _add_extras_of_satisfied(self, req: Requirement, version: str) -> None:
+        """
+        Add the dependencies of the extras of ``req``, whose package is already
+        satisfied: installed, or selected in this resolution for another
+        requirement (e.g. ``install("pkg")`` then ``install("pkg[extra]")``, or
+        ``install(["pkg", "pkg[extra]"])``). Without this, the extras of a
+        satisfied requirement were ignored.
+        """
+        if not req.extras or not self.request.deps:
+            return
+        name = req.name
+
+        wheel = self._selected_wheels.get(name)
+        if wheel is not None:
+            # Selected in this resolution: its metadata may still be downloading
+            # in another branch, or not fetched at all.
+            if wheel._metadata is None:
+                if wheel.pep658_metadata_available():
+                    await self.download_wheel_metadata(wheel)
+                else:
+                    await self.download_wheel(wheel)
+            await self.gather_requirements(
+                self._extra_requirements(req, version, wheel.requires)
+            )
+            return
+
+        if any(canonicalize_name(p.name) == name for p in self.pyodide_packages):
+            # Selected from the lock file, which doesn't record extras
+            lockfile = self.compat_layer.lockfile
+            locked = lockfile.get(name) if lockfile is not None else None
+            await self._add_extra_requirements_from_package_index(
+                req, version, locked.requires if locked is not None else []
+            )
+            return
+
+        # Installed: its METADATA has the extras, no network needed
+        try:
+            text = importlib.metadata.distribution(name).read_text("METADATA")
+            if text is None:
+                raise FileNotFoundError("METADATA")
+            metadata = Metadata(text.encode())
+        except Exception as e:
+            logger.warning(
+                "Couldn't read the metadata of the installed %s==%s (%s). "
+                "Ignoring extras: %s.",
+                name,
+                version,
+                e,
+                ", ".join(sorted(req.extras)),
+            )
+            return
+        await self.gather_requirements(
+            self._extra_requirements(req, version, metadata.requires)
+        )
 
     async def _add_requirement_from_package_index(
         self, req: Requirement, index_urls: "list[str | Source] | None" = None
@@ -430,6 +575,7 @@ class Resolver:
         )
         if satisfied:
             logger.info("Requirement already satisfied: %s (%s)", req, ver)
+            await self._add_extras_of_satisfied(req, ver)
             return
 
         await self.add_wheel(wheel, req.extras, specifier=str(req.specifier))
@@ -466,6 +612,7 @@ class Resolver:
         """
         normalized_name = canonicalize_name(wheel.name)
         self._record_requested_by(normalized_name)
+        self._selected_wheels[normalized_name] = wheel
         self.locked[normalized_name] = PackageMetadata(
             name=wheel.name,
             version=str(wheel.version),
@@ -490,9 +637,25 @@ class Resolver:
             if not metadata_fetched:
                 await self.download_wheel(wheel)
 
-            await self.gather_requirements(wheel.requires(extras))
+            await self.gather_requirements(self._wheel_requires(wheel, extras))
 
         self.wheels.append(wheel)
+
+    def _wheel_requires(self, wheel: WheelInfo, extras: set[str]) -> list[Requirement]:
+        """``wheel.requires(extras)``, skipping unknown extras with a warning."""
+        known = set()
+        for extra in extras:
+            try:
+                wheel.requires({extra})
+                known.add(extra)
+            except KeyError:
+                logger.warning(
+                    "%s %s does not provide the extra '%s'",
+                    wheel.name,
+                    wheel.version,
+                    extra,
+                )
+        return wheel.requires(known)
 
     async def query_package(
         self, name: str, index_urls: "list[str | Source] | str | None" = None
