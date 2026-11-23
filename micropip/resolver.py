@@ -50,7 +50,9 @@ _current_root: ContextVar[str | None] = ContextVar("_current_root", default=None
 class Resolver:
     """
     Resolver finds the wheels and lock file packages that satisfy a
-    :py:class:`~micropip.resolution.ResolveRequest`, and downloads the wheels.
+    :py:class:`~micropip.resolution.ResolveRequest`. It fetches wheel metadata
+    (or the wheel itself, when the index doesn't provide metadata separately);
+    wheels are downloaded when they are installed.
 
     A resolver is created for each request, and :meth:`resolve` is called once::
 

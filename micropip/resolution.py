@@ -28,7 +28,7 @@ class ResolveRequest:
     """
 
     requirements: list[str] = field(default_factory=list)
-    """Requirements to resolve: PEP 508 strings or wheel URLs."""
+    """Requirements to resolve (PEP 508 strings or wheel URLs)."""
 
     index_urls: "list[str | Source] | str" = field(
         default_factory=lambda: list["str | Source"](DEFAULT_INDEX_URLS)
@@ -49,7 +49,7 @@ class ResolveRequest:
 
     installed: Mapping[str, str] | None = None
     """
-    The installed packages: canonicalized name to version.
+    The installed packages, as canonicalized name to version.
     :py:meth:`micropip.Client.resolve` passes a mapping that reads
     ``importlib.metadata`` lazily (looking up a name is cheap; iterating scans
     every installed distribution), so a resolver doesn't need to read the
@@ -118,7 +118,7 @@ class InstallResult:
     name: str
     version: str
     source: str
-    """Where the package was installed from: ``"pyodide"`` (the lock file), ``"pypi"`` or a URL."""
+    """Where the package was installed from (``"pyodide"`` for the lock file, ``"pypi"``, or a URL)."""
     error: BaseException | None = None
     """The error that made the installation fail, or ``None`` if it succeeded."""
 

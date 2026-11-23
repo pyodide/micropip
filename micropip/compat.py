@@ -3,7 +3,7 @@ Compatibility layers connect micropip to the runtime it runs in.
 
 Pass an instance of a :py:class:`CompatibilityLayer` subclass to
 :py:class:`micropip.Client` to change how micropip fetches files, installs
-wheels, or reads the lock file. :py:class:`PyodideCompatibilityLayer` is the
+wheels, or reads the lock file. ``PyodideCompatibilityLayer`` is the
 default layer, and can only be imported in Pyodide.
 """
 

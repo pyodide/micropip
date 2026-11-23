@@ -7,9 +7,7 @@ except ImportError:
 
 default_client = Client()
 """
-The :py:class:`Client` used by the module-level functions (``micropip.install``,
-``micropip.set_index_urls``, ...). Use it to share their settings, e.g. to
-change ``default_client.index_urls`` or swap its ``resolver``.
+The :py:class:`Client` used by the top-level functions.
 """
 
 install = default_client.install
