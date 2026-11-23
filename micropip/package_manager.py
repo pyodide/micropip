@@ -1,7 +1,7 @@
 import builtins
 import importlib
 import importlib.metadata
-from collections.abc import AsyncGenerator, Iterator, Mapping
+from collections.abc import AsyncGenerator, Callable, Iterator, Mapping
 from contextlib import aclosing
 from importlib.metadata import Distribution
 from pathlib import Path
@@ -19,6 +19,18 @@ from .package import PackageDict, PackageMetadata
 from .resolution import InstallResult, Resolution, ResolveRequest
 from .resolver import Resolver
 from .sources import Source
+
+ResolverFactory = Callable[[CompatibilityLayer, ResolveRequest], Resolver]
+"""
+Creates the resolver for a request: called as ``factory(compat_layer, request)``.
+A :py:class:`~micropip.resolver.Resolver` subclass is a resolver factory.
+"""
+
+InstallerFactory = Callable[[CompatibilityLayer], Installer]
+"""
+Creates an installer: called as ``factory(compat_layer)``.
+An :py:class:`~micropip.installer.Installer` subclass is an installer factory.
+"""
 
 
 class Client:
@@ -45,17 +57,36 @@ class Client:
 
     Each client holds its own local state that is independent of other clients.
 
-    Subclasses can replace how packages are resolved and installed by
-    overriding ``resolver_class`` and ``installer_class``.
+    To replace how packages are resolved and installed, pass ``resolver`` and
+    ``installer`` (or set the attributes). They are factories: a
+    :py:class:`~micropip.resolver.Resolver` or
+    :py:class:`~micropip.installer.Installer` subclass, or any callable with
+    the same arguments, e.g. to pass settings with :py:func:`functools.partial`:
+
+    .. code-block:: python
+
+        client = micropip.Client(resolver=functools.partial(MyResolver, setting=...))
     """
 
-    resolver_class: type[Resolver] = Resolver
-    """The class used to find and download the packages to install."""
+    resolver: ResolverFactory = Resolver
+    """
+    Creates the resolver for each request, as ``resolver(compat_layer, request)``.
+    See :py:class:`~micropip.resolver.Resolver`.
+    """
 
-    installer_class: type[Installer] = Installer
-    """The class used to install and uninstall packages."""
+    installer: InstallerFactory = Installer
+    """
+    Creates the installer that installs and uninstalls packages, as
+    ``installer(compat_layer)``. See :py:class:`~micropip.installer.Installer`.
+    """
 
-    def __init__(self, compat: CompatibilityLayer | None = None) -> None:
+    def __init__(
+        self,
+        compat: CompatibilityLayer | None = None,
+        *,
+        resolver: ResolverFactory | None = None,
+        installer: InstallerFactory | None = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -63,7 +94,15 @@ class Client:
             The :py:class:`~micropip.compat.CompatibilityLayer` that connects
             micropip to the runtime (fetching files, installing wheels, the lock
             file, ...). Defaults to the Pyodide compatibility layer.
+        resolver
+            Sets :py:attr:`resolver`. Defaults to micropip's resolver.
+        installer
+            Sets :py:attr:`installer`. Defaults to micropip's installer.
         """
+        if resolver is not None:
+            self.resolver = resolver
+        if installer is not None:
+            self.installer = installer
         self.index_urls: builtins.list[str | Source] = list[str | Source](
             package_index.DEFAULT_INDEX_URLS
         )
@@ -79,7 +118,7 @@ class Client:
         return self._compat_layer
 
     def _installer(self) -> Installer:
-        return self.installer_class(self.compat_layer)
+        return self.installer(self.compat_layer)
 
     async def install(
         self,
@@ -310,7 +349,7 @@ class Client:
                 verbose=verbose,
                 installed=InstalledPackages(),
             )
-            return await self.resolver_class(self.compat_layer, request).resolve()
+            return await self.resolver(self.compat_layer, request).resolve()
 
     async def install_resolution(
         self, resolution: Resolution, *, verbose: bool | int | None = None

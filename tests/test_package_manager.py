@@ -57,6 +57,40 @@ def test_custom_index_url(selenium_standalone_micropip, fake_index):
     run(selenium_standalone_micropip, fake_index.url)
 
 
+@pytest.mark.asyncio
+async def test_resolver_factory_with_settings(host_compat_layer):
+    """``resolver`` is a factory, so settings can be passed with functools.partial."""
+    import functools
+
+    from micropip import Client
+    from micropip.resolution import Resolution
+    from micropip.resolver import Resolver
+
+    calls = []
+
+    class PinningResolver(Resolver):
+        def __init__(self, compat_layer, request, *, pin):
+            super().__init__(compat_layer, request)
+            calls.append((compat_layer, request.requirements, pin))
+
+        async def resolve(self):
+            return Resolution()
+
+    client = Client(
+        compat=host_compat_layer,
+        resolver=functools.partial(PinningResolver, pin="dummy==1.0"),
+    )
+    await client.resolve("dummy")
+    assert calls == [(host_compat_layer, ["dummy"], "dummy==1.0")]
+
+    # A subclass of Client can still set the factory as a class attribute
+    class MyClient(Client):
+        resolver = functools.partial(PinningResolver, pin="other")
+
+    await MyClient(compat=host_compat_layer).resolve("dummy")
+    assert calls[-1][2] == "other"
+
+
 def test_custom_resolver_and_installer(selenium_standalone_micropip, fake_index):
     fake_index.add_pkg_version("dummy")
 
@@ -79,11 +113,7 @@ def test_custom_resolver_and_installer(selenium_standalone_micropip, fake_index)
                 installed.append(wheel.name)
                 await super().install_wheel(wheel, target)
 
-        class MyClient(Client):
-            resolver_class = MyResolver
-            installer_class = MyInstaller
-
-        manager = MyClient()
+        manager = Client(resolver=MyResolver, installer=MyInstaller)
         manager.set_index_urls([index_url])
         await manager.install("dummy")
 

@@ -56,8 +56,10 @@ class Resolver:
 
         resolution = await Resolver(compat_layer, request).resolve()
 
-    To use a different resolver, set :py:attr:`micropip.Client.resolver_class`
-    to a class with the same constructor and :meth:`resolve`.
+    To use a different resolver, set :py:attr:`micropip.Client.resolver` to a
+    factory with the same arguments as the constructor, returning an object
+    with :meth:`resolve`: a subclass, or e.g. ``functools.partial(MyResolver,
+    setting=...)`` to pass settings to a subclass's ``__init__``.
 
     All access to the network goes through ``compat_layer``. Subclasses can
     override methods such as :meth:`query_package`, :meth:`find_wheel`,

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 class ResolveRequest:
     """
     What to resolve, and how. Passed to the resolver (see
-    :py:attr:`micropip.Client.resolver_class`). The fields match the arguments
+    :py:attr:`micropip.Client.resolver`). The fields match the arguments
     of :py:meth:`micropip.Client.install`.
     """
 
