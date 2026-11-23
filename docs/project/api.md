@@ -55,8 +55,8 @@ was loaded with. Subclass it to change part of its behavior (see {doc}`customizi
 ## Resolver and installer
 
 ```{warning}
-These are advanced extension points, used by subclassing {any}`micropip.Client`
-and setting `resolver_class` / `installer_class`. Their methods may change between releases.
+These are advanced extension points, used by passing `resolver` / `installer`
+to {any}`micropip.Client`. Their methods may change between releases.
 ```
 
 ```{eval-rst}

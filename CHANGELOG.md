@@ -56,11 +56,12 @@ the documentation.
   [#319](https://github.com/pyodide/micropip/pull/319),
   [#320](https://github.com/pyodide/micropip/pull/320)
 
-- The resolver and the installer can be replaced by subclassing `Client` and
-  setting `resolver_class` / `installer_class`.
+- The resolver and the installer can be replaced with
+  `Client(resolver=..., installer=...)`.
   [#304](https://github.com/pyodide/micropip/pull/304),
   [#320](https://github.com/pyodide/micropip/pull/320),
-  [#328](https://github.com/pyodide/micropip/pull/328)
+  [#328](https://github.com/pyodide/micropip/pull/328),
+  [#330](https://github.com/pyodide/micropip/pull/330)
 
 ### Changed
 

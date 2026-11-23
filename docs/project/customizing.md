@@ -174,8 +174,8 @@ provides it.
 
 ## Replacing the resolver or the installer
 
-Subclass {any}`micropip.Client` and set `resolver_class` or `installer_class`. To
-change one step, subclass {any}`micropip.resolver.Resolver` or
+Pass `resolver` or `installer` to {any}`micropip.Client`. To change one step,
+subclass {any}`micropip.resolver.Resolver` or
 {any}`micropip.installer.Installer`:
 
 ```python
@@ -188,11 +188,18 @@ class LoggingResolver(Resolver):
         return await super().query_package(name, index_urls)
 
 
-class MyClient(micropip.Client):
-    resolver_class = LoggingResolver
+client = micropip.Client(resolver=LoggingResolver)
 ```
 
-A different resolver only needs the same contract: it is constructed
+`resolver` and `installer` are factories, called as `resolver(compat_layer, request)`
+and `installer(compat_layer)`. To pass settings to a subclass, use
+{py:func}`functools.partial`:
+
+```python
+client = micropip.Client(resolver=functools.partial(MyResolver, setting="..."))
+```
+
+A different resolver only needs the same contract: the factory is called
 with `(compat_layer, request)`, where `request` is a
 {any}`micropip.resolution.ResolveRequest`, and its `async resolve()` returns a
 {any}`micropip.resolution.Resolution`. The request includes the installed
