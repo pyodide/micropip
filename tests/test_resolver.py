@@ -798,13 +798,6 @@ async def test_request_installed_snapshot(host_compat_layer, fake_index):
     assert [(w.name, str(w.version)) for w in resolution.wheels] == [("dep", "2.0.0")]
 
 
-def _lockfile_version(request, name):
-    import json
-
-    lockfile = request.config.option.dist_dir / "pyodide-lock.json"
-    return json.loads(lockfile.read_text())["packages"][name]["version"]
-
-
 def test_lockfile_package_extras(selenium_standalone_micropip, fake_index, request):
     # The Pyodide lock file does not record optional dependencies, so the
     # dependencies of `pkg[extra]` for a package that is installed from the
