@@ -24,7 +24,7 @@ from ._vendored.packaging.src.packaging.utils import canonicalize_name
 from .constants import FAQ_URLS, YANKED_WARNING_MESSAGE
 from .package import PackageMetadata
 from .package_index import ProjectInfo
-from .resolution import Resolution, ResolveRequest
+from .resolution import Resolution, ResolveRequest, UnsatisfiedRequirement
 from .sources import LockFileSource, Source, ordered_sources, to_source
 from .wheelinfo import WheelInfo
 
@@ -45,6 +45,10 @@ def _is_lockfile_entry(entry: "str | Source") -> bool:
 # being resolved comes from. Set per top-level requirement in resolve(); the
 # tasks spawned while resolving it inherit it.
 _current_root: ContextVar[str | None] = ContextVar("_current_root", default=None)
+
+# The package (canonicalized name) whose dependency is being resolved, or None
+# for a top-level requirement. Set per dependency in gather_requirements().
+_current_parent: ContextVar[str | None] = ContextVar("_current_parent", default=None)
 
 
 class Resolver:
@@ -94,6 +98,7 @@ class Resolver:
         self.pyodide_packages: list[PackageMetadata] = []
         self.failed: list[Requirement] = []
         self.requested_by: dict[str, list[str]] = {}
+        self.unsatisfied: list[UnsatisfiedRequirement] = []
 
         self.constrained_reqs, messages = validate_constraints(
             self.request.constraints, self.ctx
@@ -128,6 +133,7 @@ class Resolver:
             failed=self.failed,
             reinstall=self.request.reinstall,
             fetch_options=self.request.fetch_options,
+            unsatisfied=self.unsatisfied,
             requested_by={
                 name: roots
                 for name, roots in self.requested_by.items()
@@ -147,12 +153,16 @@ class Resolver:
     async def gather_requirements(
         self,
         requirements: list[str] | list[Requirement],
+        parent: str | None = None,
     ) -> None:
-        requirement_promises = [
-            self.add_requirement(requirement) for requirement in requirements
-        ]
+        """Add ``requirements``, the dependencies of the package ``parent``."""
 
-        await asyncio.gather(*requirement_promises)
+        async def add_dependency(requirement: str | Requirement) -> None:
+            # Each gathered coroutine runs in its own task, with a copy of the context
+            _current_parent.set(parent)
+            await self.add_requirement(requirement)
+
+        await asyncio.gather(*(add_dependency(r) for r in requirements))
 
     async def add_requirement(self, req: str | Requirement) -> None:
         if isinstance(req, Requirement):
@@ -216,14 +226,18 @@ class Resolver:
             ver = self.locked[req.name].version
             if not req.specifier.contains(ver, prereleases=True):
                 # micropip's resolver doesn't backtrack. Like pip's legacy
-                # resolver, keep the version that was selected first and warn.
+                # resolver, keep the version that was selected first, warn, and
+                # record it in Resolution.unsatisfied.
+                self._record_unsatisfied(req, ver)
+                parent = _current_parent.get()
                 root = _current_root.get()
+                needed_by = parent or root
                 logger.warning(
                     "'%s'%s is not satisfied by %s==%s, which was selected for "
                     "another requirement; keeping %s==%s. If this causes problems, "
                     "pin a version of %s that satisfies all requirements.",
                     req,
-                    f" (needed by '{root}')" if root else "",
+                    f" (needed by '{needed_by}')" if needed_by else "",
                     req.name,
                     ver,
                     req.name,
@@ -251,6 +265,17 @@ class Resolver:
                 "use micropip.install(..., reinstall=True) to force reinstall, "
                 "or micropip.uninstall(...) to uninstall the package first."
             )
+
+    def _record_unsatisfied(self, req: Requirement, selected: str) -> None:
+        conflict = UnsatisfiedRequirement(
+            # A copy: the requirement objects are modified while resolving
+            requirement=Requirement(str(req)),
+            selected=selected,
+            required_by=_current_parent.get(),
+            root=_current_root.get(),
+        )
+        if conflict not in self.unsatisfied:
+            self.unsatisfied.append(conflict)
 
     def _installed_version(self, name: str) -> str | None:
         """The installed version of ``name`` (a canonicalized name), if any."""
@@ -395,7 +420,7 @@ class Resolver:
             self.locked[req.name] = metadata
             self.pyodide_packages.append(metadata)
             if self.request.constraints and locked_package.requires:
-                await self.gather_requirements(locked_package.requires)
+                await self.gather_requirements(locked_package.requires, req.name)
             return True
 
         return False
@@ -492,7 +517,7 @@ class Resolver:
             if not metadata_fetched:
                 await self.download_wheel(wheel)
 
-            await self.gather_requirements(wheel.requires(extras))
+            await self.gather_requirements(wheel.requires(extras), normalized_name)
 
         self.wheels.append(wheel)
 

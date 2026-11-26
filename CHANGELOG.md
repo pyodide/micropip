@@ -97,9 +97,13 @@ the documentation.
   requirement, and a requirement that conflicted with an earlier selection could
   add a second version (e.g. `["fastapi==0.110.0", "starlette>=0.36"]` installed
   two versions of starlette). micropip's resolver doesn't backtrack: it now keeps
-  the version selected first and logs a warning naming the unsatisfied
-  requirement.
-  [#326](https://github.com/pyodide/micropip/pull/326)
+  the version selected first, logs a warning naming the unsatisfied
+  requirement, and lists it in `Resolution.unsatisfied` (with the package that
+  declares it). Before, such a conflict raised a misleading "already installed"
+  error unless `reinstall=True`; check `Resolution.unsatisfied` to keep failing
+  on it.
+  [#326](https://github.com/pyodide/micropip/pull/326),
+  [#332](https://github.com/pyodide/micropip/pull/332)
 
 - When the PEP 658 metadata file advertised by an index can't be fetched,
   micropip falls back to downloading the wheel, as intended.

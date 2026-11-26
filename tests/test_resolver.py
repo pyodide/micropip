@@ -717,8 +717,13 @@ async def test_conflict_with_lockfile_version(host_compat_layer, fake_index):
     assert sorted(selected) == [("app", "1.0.0"), ("shared", "2.0.0")]
     assert resolver.failed == []
     assert len(warnings) == 1
-    assert "'shared<2' is not satisfied by shared==2.0.0" in warnings[0]
+    assert (
+        "'shared<2' (needed by 'app') is not satisfied by shared==2.0.0" in warnings[0]
+    )
     assert "keeping shared==2.0.0" in warnings[0]
+    assert [
+        (str(u.requirement), u.selected, u.required_by) for u in resolver.unsatisfied
+    ] == [("shared<2", "2.0.0", "app")]
 
 
 @pytest.mark.asyncio
@@ -749,6 +754,57 @@ async def test_conflict_between_wheels(host_compat_layer, fake_index, reinstall)
     ]
     assert len(warnings) == 1
     assert "'c>=2' (needed by 'b') is not satisfied by c==1.0.0" in warnings[0]
+    assert [
+        (str(u.requirement), u.selected, u.required_by, u.root)
+        for u in resolution.unsatisfied
+    ] == [("c>=2", "1.0.0", "b", "b")]
+
+
+@pytest.mark.asyncio
+async def test_unsatisfied_pin(host_compat_layer, fake_index):
+    # A pinned top-level requirement, and a dependency of a dependency that
+    # needs a newer version: the conflict is reported in Resolution.unsatisfied
+    # (not in failed), with the package that declares the requirement and the
+    # top-level requirement that pulled it in.
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("lib", "1.0.0")
+    fake_index.add_pkg_version("lib", "2.0.0")
+    fake_index.add_pkg_version("app", requirements=["plugin"])
+    fake_index.add_pkg_version("plugin", requirements=["lib>=2"])
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(requirements=["lib==1.0.0", "app"], index_urls=[fake_index.url]),
+    )
+    with _Warnings() as warnings:
+        resolution = await resolver.resolve()
+
+    assert sorted((w.name, str(w.version)) for w in resolution.wheels) == [
+        ("app", "1.0.0"),
+        ("lib", "1.0.0"),
+        ("plugin", "1.0.0"),
+    ]
+    assert resolution.failed == []
+    [conflict] = resolution.unsatisfied
+    assert str(conflict.requirement) == "lib>=2"
+    assert conflict.selected == "1.0.0"
+    assert conflict.required_by == "plugin"
+    assert conflict.root == "app"
+    assert "(needed by 'plugin')" in warnings[0]
+
+
+@pytest.mark.asyncio
+async def test_no_unsatisfied_without_conflicts(host_compat_layer, fake_index):
+    from micropip.resolver import Resolver
+
+    fake_index.add_pkg_version("app", requirements=["lib>=1"])
+    fake_index.add_pkg_version("lib", "1.0.0")
+    resolver = Resolver(
+        host_compat_layer,
+        ResolveRequest(requirements=["lib==1.0.0", "app"], index_urls=[fake_index.url]),
+    )
+    resolution = await resolver.resolve()
+    assert resolution.unsatisfied == []
 
 
 @pytest.mark.asyncio

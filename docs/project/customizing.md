@@ -168,7 +168,10 @@ async for result in client.install_resolution(resolution):
 ```
 
 `resolution.requested_by` maps each package to install (by canonicalized name) to
-the top-level requirements, as written, that pulled it in. Wheels are downloaded
+the top-level requirements, as written, that pulled it in.
+`resolution.unsatisfied` lists requirements that conflict with the version
+selected for another requirement (micropip keeps the first one and warns); check
+it to fail on conflicts instead. Wheels are downloaded
 by `install_resolution()`; `resolve()` only fetches their metadata when the index
 provides it.
 
