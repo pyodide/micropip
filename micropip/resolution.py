@@ -61,6 +61,29 @@ class ResolveRequest:
 
 
 @dataclass
+class UnsatisfiedRequirement:
+    """
+    A requirement that is not satisfied by the version of the package in a
+    :py:class:`Resolution`. See :py:attr:`Resolution.unsatisfied`.
+    """
+
+    requirement: Requirement
+    """The requirement, with constraints applied (e.g. ``lib>=2``)."""
+
+    selected: str
+    """The version of the package that was selected for another requirement, and kept (e.g. ``"1.0.0"``)."""
+
+    required_by: str | None = None
+    """
+    The package that declares the requirement (e.g. ``"plugin"``), or ``None``
+    for a requirement passed to ``resolve()``.
+    """
+
+    root: str | None = None
+    """The top-level requirement (as passed to ``resolve()``) that pulled the requirement in."""
+
+
+@dataclass
 class Resolution:
     """
     The packages to install for a set of requirements, as returned by
@@ -97,6 +120,19 @@ class Resolution:
     requirements (as passed to ``resolve()``) that pulled it in.
     """
 
+    unsatisfied: list[UnsatisfiedRequirement] = field(default_factory=list)
+    """
+    Requirements that conflict with the version selected for another
+    requirement. micropip's resolver doesn't backtrack: it keeps the version
+    selected first, logs a warning and records the conflict here, so the
+    packages can still be installed. Check this list to fail (or warn) instead,
+    e.g.::
+
+        resolution = await client.resolve(requirements)
+        for conflict in resolution.unsatisfied:
+            print(f"{conflict.required_by} needs {conflict.requirement}, got {conflict.selected}")
+    """
+
     @property
     def packages(self) -> list[PackageMetadata]:
         """All packages to install, from wheels and from the lock file."""
@@ -127,4 +163,4 @@ class InstallResult:
         return self.error is None
 
 
-__all__ = ["InstallResult", "ResolveRequest", "Resolution"]
+__all__ = ["InstallResult", "ResolveRequest", "Resolution", "UnsatisfiedRequirement"]
